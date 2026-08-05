@@ -1,0 +1,256 @@
+{
+  "string": [
+    {
+      "name": "batch_multi_select",
+      "value": "Multi-select"
+    },
+    {
+      "name": "bookmark_count",
+      "value": "%d bookmarks"
+    },
+    {
+      "name": "bookmark_limit_message",
+      "value": "Maximum %d bookmarks. Delete some before adding more."
+    },
+    {
+      "name": "bookmark_root",
+      "value": "Bookmarks"
+    },
+    {
+      "name": "browse_page_title_default",
+      "value": "Browser"
+    },
+    {
+      "name": "content_count",
+      "value": "%d items"
+    },
+    {
+      "name": "copy",
+      "value": "Copy"
+    },
+    {
+      "name": "copy_link",
+      "value": "Copy link"
+    },
+    {
+      "name": "delete",
+      "value": "Delete"
+    },
+    {
+      "name": "download_complete_toast",
+      "value": "[%1$s] download completed"
+    },
+    {
+      "name": "download_notification_done_text",
+      "value": "%1$s · Completed"
+    },
+    {
+      "name": "download_notification_progress_text",
+      "value": "%1$s · %2$d%%"
+    },
+    {
+      "name": "edit",
+      "value": "Edit"
+    },
+    {
+      "name": "file_exists_message",
+      "value": "\"%s\" was downloaded before. What would you like to do?"
+    },
+    {
+      "name": "font_size_large",
+      "value": "Large"
+    },
+    {
+      "name": "font_size_medium",
+      "value": "Medium"
+    },
+    {
+      "name": "font_size_small",
+      "value": "Small"
+    },
+    {
+      "name": "font_size_system",
+      "value": "Follow system"
+    },
+    {
+      "name": "history_date_section",
+      "value": "%1$d/%2$d"
+    },
+    {
+      "name": "history_date_section_full",
+      "value": "%2$d/%3$d/%1$d"
+    },
+    {
+      "name": "input_too_long",
+      "value": "Input length exceeds the limit"
+    },
+    {
+      "name": "more",
+      "value": "More"
+    },
+    {
+      "name": "move_to_label",
+      "value": "Move to"
+    },
+    {
+      "name": "moved_to",
+      "value": "Moved to \"%s\""
+    },
+    {
+      "name": "new_bookmark",
+      "value": "New bookmark"
+    },
+    {
+      "name": "new_folder",
+      "value": "New folder"
+    },
+    {
+      "name": "new_tab",
+      "value": "New tab"
+    },
+    {
+      "name": "open_in_new_tab",
+      "value": "Open in new tab"
+    },
+    {
+      "name": "opened_in_n_tabs",
+      "value": "Opened in %d new tabs"
+    },
+    {
+      "name": "opened_in_new_tab",
+      "value": "Opened in new tab"
+    },
+    {
+      "name": "perm_allow",
+      "value": "Allow"
+    },
+    {
+      "name": "perm_app_missing_cannot_allow_fmt",
+      "value": "Browser does not have %1$s permission. Cannot allow websites to use it."
+    },
+    {
+      "name": "perm_camera",
+      "value": "Camera"
+    },
+    {
+      "name": "perm_deny",
+      "value": "Deny"
+    },
+    {
+      "name": "perm_location",
+      "value": "Location"
+    },
+    {
+      "name": "perm_microphone",
+      "value": "Microphone"
+    },
+    {
+      "name": "perm_notification",
+      "value": "Notifications"
+    },
+    {
+      "name": "perm_site_denied_fmt",
+      "value": "Websites are not allowed to access %1$s. Change this in browser settings."
+    },
+    {
+      "name": "rename",
+      "value": "Rename"
+    },
+    {
+      "name": "rename_save_with",
+      "value": "Save as (%s)"
+    },
+    {
+      "name": "save_image",
+      "value": "Save image"
+    },
+    {
+      "name": "select_all",
+      "value": "Select all"
+    },
+    {
+      "name": "selected_count",
+      "value": "%d selected"
+    },
+    {
+      "name": "share_action",
+      "value": "Share"
+    },
+    {
+      "name": "share_image",
+      "value": "Share image"
+    },
+    {
+      "name": "shortcut_360",
+      "value": "360 Search"
+    },
+    {
+      "name": "shortcut_added_to_home",
+      "value": "Added \"%1$s\" to home"
+    },
+    {
+      "name": "shortcut_baidu",
+      "value": "Baidu"
+    },
+    {
+      "name": "shortcut_bing",
+      "value": "Bing"
+    },
+    {
+      "name": "shortcut_bookmarks",
+      "value": "Bookmarks"
+    },
+    {
+      "name": "shortcut_downloads",
+      "value": "Downloads"
+    },
+    {
+      "name": "shortcut_history",
+      "value": "History"
+    },
+    {
+      "name": "shortcut_quark",
+      "value": "Quark"
+    },
+    {
+      "name": "shortcut_sogou",
+      "value": "Sogou"
+    },
+    {
+      "name": "tab_limit_reached",
+      "value": "Tab limit reached"
+    },
+    {
+      "name": "theme_mode_dark",
+      "value": "Dark mode"
+    },
+    {
+      "name": "theme_mode_light",
+      "value": "Light mode"
+    },
+    {
+      "name": "theme_mode_system",
+      "value": "Follow system"
+    },
+    {
+      "name": "today",
+      "value": "Today"
+    },
+    {
+      "name": "url_format_invalid",
+      "value": "Invalid URL format"
+    },
+    {
+      "name": "url_input_required",
+      "value": "Enter a URL"
+    },
+    {
+      "name": "url_too_long",
+      "value": "URL length exceeds the limit"
+    },
+    {
+      "name": "yesterday",
+      "value": "Yesterday"
+    }
+  ]
+}

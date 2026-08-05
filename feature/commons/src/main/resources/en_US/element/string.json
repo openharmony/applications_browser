@@ -1,0 +1,64 @@
+{
+  "string": [
+    {
+      "name": "cancel",
+      "value": "Cancel"
+    },
+    {
+      "name": "confirm",
+      "value": "OK"
+    },
+    {
+      "name": "save",
+      "value": "Save"
+    },
+    {
+      "name": "got_it",
+      "value": "Got it"
+    },
+    {
+      "name": "dark_mode_dialog_title",
+      "value": "Dark mode"
+    },
+    {
+      "name": "new_bookmark",
+      "value": "New bookmark"
+    },
+    {
+      "name": "new_folder",
+      "value": "New folder"
+    },
+    {
+      "name": "add_to_bookmarks",
+      "value": "Add bookmark"
+    },
+    {
+      "name": "folder_exists",
+      "value": "Folder already exists"
+    },
+    {
+      "name": "folder_name_required",
+      "value": "Enter a folder name"
+    },
+    {
+      "name": "folder_name_label",
+      "value": "Folder name"
+    },
+    {
+      "name": "location_label",
+      "value": "Location"
+    },
+    {
+      "name": "select_target_folder",
+      "value": "Select destination folder"
+    },
+    {
+      "name": "bookmark_root_dir",
+      "value": "Bookmarks (root)"
+    },
+    {
+      "name": "search_placeholder",
+      "value": "Search or enter URL"
+    }
+  ]
+}

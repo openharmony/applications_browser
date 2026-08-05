@@ -1,0 +1,112 @@
+{
+  "string": [
+    {
+      "name": "cancel",
+      "value": "取消"
+    },
+    {
+      "name": "confirm",
+      "value": "确定"
+    },
+    {
+      "name": "save",
+      "value": "保存"
+    },
+    {
+      "name": "rename",
+      "value": "重命名"
+    },
+    {
+      "name": "none_selected",
+      "value": "未选择"
+    },
+    {
+      "name": "no_search_results",
+      "value": "无对应的搜索结果显示"
+    },
+    {
+      "name": "download_manage",
+      "value": "下载管理"
+    },
+    {
+      "name": "no_downloads",
+      "value": "没有下载"
+    },
+    {
+      "name": "delete_history_confirm",
+      "value": "是否删除此历史记录?"
+    },
+    {
+      "name": "renamed",
+      "value": "已重命名"
+    },
+    {
+      "name": "download_file_missing_redownload",
+      "value": "文件不存在或已被删除，是否重新下载？"
+    },
+    {
+      "name": "continue_action",
+      "value": "继续"
+    },
+    {
+      "name": "search_downloads_placeholder",
+      "value": "搜索下载文件"
+    },
+    {
+      "name": "delete_download_local",
+      "value": "已删除任务及对应文件"
+    },
+    {
+      "name": "delete_download_task_only",
+      "value": "已仅删除任务"
+    },
+    {
+      "name": "download_file_title",
+      "value": "下载文件"
+    },
+    {
+      "name": "file_exists_title",
+      "value": "文件已存在"
+    },
+    {
+      "name": "overwrite_file",
+      "value": "覆盖原文件"
+    },
+    {
+      "name": "delete_task_and_file",
+      "value": "删除任务及对应文件"
+    },
+    {
+      "name": "delete_task_only",
+      "value": "仅删除任务"
+    },
+    {
+      "name": "download_status_done",
+      "value": "已完成"
+    },
+    {
+      "name": "download_action_open",
+      "value": "打开"
+    },
+    {
+      "name": "download_status_failed",
+      "value": "失败"
+    },
+    {
+      "name": "download_status_queued",
+      "value": "排队中"
+    },
+    {
+      "name": "download_status_deleted",
+      "value": "已删除"
+    },
+    {
+      "name": "download_failed_retry_confirm",
+      "value": "下载失败，是否重新下载？"
+    },
+    {
+      "name": "retry_download",
+      "value": "重新下载"
+    }
+  ]
+}

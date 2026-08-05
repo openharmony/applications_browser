@@ -1,0 +1,300 @@
+{
+  "string": [
+    {
+      "name": "bookmarks",
+      "value": "Bookmarks"
+    },
+    {
+      "name": "settings",
+      "value": "Settings"
+    },
+    {
+      "name": "about_browser",
+      "value": "About Browser"
+    },
+    {
+      "name": "cancel",
+      "value": "Cancel"
+    },
+    {
+      "name": "confirm",
+      "value": "OK"
+    },
+    {
+      "name": "delete",
+      "value": "Delete"
+    },
+    {
+      "name": "save",
+      "value": "Save"
+    },
+    {
+      "name": "rename",
+      "value": "Rename"
+    },
+    {
+      "name": "got_it",
+      "value": "Got it"
+    },
+    {
+      "name": "none_selected",
+      "value": "None selected"
+    },
+    {
+      "name": "no_content",
+      "value": "No content"
+    },
+    {
+      "name": "no_search_results",
+      "value": "No matching results"
+    },
+    {
+      "name": "font_size",
+      "value": "Font size"
+    },
+    {
+      "name": "font_size_system_sync_hint",
+      "value": "Follow system: UI and web track system font; Small/Medium/Large are fixed tiers (apply instantly)"
+    },
+    {
+      "name": "bookmark_search_placeholder",
+      "value": "Enter keywords"
+    },
+    {
+      "name": "new_bookmark",
+      "value": "New bookmark"
+    },
+    {
+      "name": "new_folder",
+      "value": "New folder"
+    },
+    {
+      "name": "history_title",
+      "value": "History"
+    },
+    {
+      "name": "history_empty",
+      "value": "No history"
+    },
+    {
+      "name": "history_search_placeholder",
+      "value": "Search history..."
+    },
+    {
+      "name": "clear_history_confirm",
+      "value": "Clear history in this group?"
+    },
+    {
+      "name": "delete_history_confirm",
+      "value": "Delete this history item?"
+    },
+    {
+      "name": "clear",
+      "value": "Clear"
+    },
+    {
+      "name": "cleared",
+      "value": "Cleared"
+    },
+    {
+      "name": "deleted",
+      "value": "Deleted"
+    },
+    {
+      "name": "renamed",
+      "value": "Renamed"
+    },
+    {
+      "name": "bookmark_added",
+      "value": "Bookmark added"
+    },
+    {
+      "name": "add_to_bookmarks",
+      "value": "Add bookmark"
+    },
+    {
+      "name": "folder_created",
+      "value": "Folder created"
+    },
+    {
+      "name": "folder_exists",
+      "value": "Folder already exists"
+    },
+    {
+      "name": "folder_name_required",
+      "value": "Enter a folder name"
+    },
+    {
+      "name": "select_one_to_rename",
+      "value": "Select one item to rename"
+    },
+    {
+      "name": "bookmark_limit_title",
+      "value": "Bookmark limit reached"
+    },
+    {
+      "name": "delete_selected_confirm",
+      "value": "Delete selected items?"
+    },
+    {
+      "name": "bookmark_name_label",
+      "value": "Name"
+    },
+    {
+      "name": "bookmark_url_label",
+      "value": "URL"
+    },
+    {
+      "name": "folder_name_label",
+      "value": "Folder name"
+    },
+    {
+      "name": "location_label",
+      "value": "Location"
+    },
+    {
+      "name": "move_target_invalid",
+      "value": "Cannot move into itself or its subfolders"
+    },
+    {
+      "name": "move_already_at_target",
+      "value": "Already at the destination"
+    },
+    {
+      "name": "move_failed_retry",
+      "value": "Move failed. Please try again"
+    },
+    {
+      "name": "select_target_folder",
+      "value": "Select destination folder"
+    },
+    {
+      "name": "move_here",
+      "value": "Move here"
+    },
+    {
+      "name": "bookmark_root_dir",
+      "value": "Bookmarks (root)"
+    },
+    {
+      "name": "shortcut_empty_bookmarks",
+      "value": "No bookmarks yet"
+    },
+    {
+      "name": "create_bookmark_menu",
+      "value": "New bookmark"
+    },
+    {
+      "name": "share_action",
+      "value": "Share"
+    },
+    {
+      "name": "edit",
+      "value": "Edit"
+    },
+    {
+      "name": "edit_folder",
+      "value": "Edit folder"
+    },
+    {
+      "name": "delete_folder_confirm",
+      "value": "Delete this folder?"
+    },
+    {
+      "name": "delete_folder_confirm_hint",
+      "value": "This action cannot be undone."
+    },
+    {
+      "name": "clear_all",
+      "value": "Clear all"
+    },
+    {
+      "name": "open_in_new_tab",
+      "value": "Open in new tab"
+    },
+    {
+      "name": "batch_multi_select",
+      "value": "Multi-select"
+    },
+    {
+      "name": "settings_browse",
+      "value": "Browse settings"
+    },
+    {
+      "name": "settings_site_permissions",
+      "value": "Site permissions"
+    },
+    {
+      "name": "search_engine",
+      "value": "Search engine"
+    },
+    {
+      "name": "night_mode",
+      "value": "Night mode"
+    },
+    {
+      "name": "search_engine_default_hint",
+      "value": "Search engine (default Baidu)"
+    },
+    {
+      "name": "perm_location",
+      "value": "Location"
+    },
+    {
+      "name": "perm_camera",
+      "value": "Camera"
+    },
+    {
+      "name": "perm_microphone",
+      "value": "Microphone"
+    },
+    {
+      "name": "perm_notification",
+      "value": "Notifications"
+    },
+    {
+      "name": "browser_name",
+      "value": "Browser"
+    },
+    {
+      "name": "version_label",
+      "value": "Version v2.0.0"
+    },
+    {
+      "name": "image_less_mode",
+      "value": "Text-only mode"
+    },
+    {
+      "name": "clear_cookies_cache",
+      "value": "Clear cookies & cache"
+    },
+    {
+      "name": "clear_data_confirm",
+      "value": "Clear cookies and site cache data?"
+    },
+    {
+      "name": "perm_app_open_settings",
+      "value": "Open Settings"
+    },
+    {
+      "name": "perm_app_manage_header",
+      "value": "App permissions (system)"
+    },
+    {
+      "name": "perm_app_request",
+      "value": "Request"
+    },
+    {
+      "name": "perm_app_granted_short",
+      "value": "Granted"
+    },
+    {
+      "name": "perm_app_settings_hint",
+      "value": "App permissions are managed by the system. Request here or open Settings to adjust."
+    },
+    {
+      "name": "perm_image_video",
+      "value": "Photos & videos"
+    }
+  ]
+}

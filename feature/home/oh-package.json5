@@ -1,0 +1,13 @@
+{
+  "name": "home",
+  "version": "1.0.0",
+  "description": "Browser home feature module",
+  "main": "index.ets",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "common": "file:../../common",
+    "browser_core": "file:../browser_core",
+    "commons": "file:../commons"
+  }
+}

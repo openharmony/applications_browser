@@ -1,0 +1,13 @@
+{
+  "name": "security",
+  "version": "1.0.0",
+  "description": "Browser security feature module",
+  "main": "index.ets",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "common": "file:../../common",
+    "browser_core": "file:../browser_core",
+    "commons": "file:../commons"
+  }
+}

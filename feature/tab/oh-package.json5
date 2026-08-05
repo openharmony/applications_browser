@@ -1,0 +1,15 @@
+{
+  "name": "tab",
+  "version": "1.0.0",
+  "description": "Browser tab feature module",
+  "main": "index.ets",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "common": "file:../../common",
+    "browser_core": "file:../browser_core",
+    "commons": "file:../commons",
+    "home": "file:../home",
+    "settings": "file:../settings"
+  }
+}

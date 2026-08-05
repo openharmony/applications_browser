@@ -1,0 +1,64 @@
+{
+  "string": [
+    {
+      "name": "cancel",
+      "value": "取消"
+    },
+    {
+      "name": "confirm",
+      "value": "确定"
+    },
+    {
+      "name": "save",
+      "value": "保存"
+    },
+    {
+      "name": "got_it",
+      "value": "知道了"
+    },
+    {
+      "name": "dark_mode_dialog_title",
+      "value": "深色模式"
+    },
+    {
+      "name": "new_bookmark",
+      "value": "新书签"
+    },
+    {
+      "name": "new_folder",
+      "value": "新建文件夹"
+    },
+    {
+      "name": "add_to_bookmarks",
+      "value": "添加书签"
+    },
+    {
+      "name": "folder_exists",
+      "value": "文件夹已存在"
+    },
+    {
+      "name": "folder_name_required",
+      "value": "请输入文件夹名称"
+    },
+    {
+      "name": "folder_name_label",
+      "value": "文件夹名称"
+    },
+    {
+      "name": "location_label",
+      "value": "位置"
+    },
+    {
+      "name": "select_target_folder",
+      "value": "选择目标文件夹"
+    },
+    {
+      "name": "bookmark_root_dir",
+      "value": "书签（根目录）"
+    },
+    {
+      "name": "search_placeholder",
+      "value": "搜索、提问或输入网址"
+    }
+  ]
+}

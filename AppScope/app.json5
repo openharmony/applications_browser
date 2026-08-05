@@ -1,0 +1,15 @@
+{
+  "app": {
+    "bundleName": "com.ohos.browser",
+    "vendor": "example",
+    "versionCode": 10000001,
+    "versionName": "1.0.0",
+    "icon": "$media:layered_image",
+    "label": "$string:app_name",
+    "configuration": "$profile:configuration",
+    "removable": false,
+    "default": {
+      "removable": false
+    }
+  }
+}

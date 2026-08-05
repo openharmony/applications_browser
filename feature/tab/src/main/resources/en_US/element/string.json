@@ -1,0 +1,36 @@
+{
+  "string": [
+    {
+      "name": "close_all",
+      "value": "Close all"
+    },
+    {
+      "name": "new_window",
+      "value": "New window"
+    },
+    {
+      "name": "new_incognito_window",
+      "value": "New incognito window"
+    },
+    {
+      "name": "back",
+      "value": "Back"
+    },
+    {
+      "name": "cancel",
+      "value": "Cancel"
+    },
+    {
+      "name": "incognito_mode_title",
+      "value": "Incognito"
+    },
+    {
+      "name": "incognito_empty_hint",
+      "value": "Browsing history is not saved after closing incognito tabs"
+    },
+    {
+      "name": "close_all_tabs_confirm",
+      "value": "Close all tabs?"
+    }
+  ]
+}

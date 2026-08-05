@@ -1,0 +1,240 @@
+{
+  "string": [
+    {
+      "name": "new_tab_failed",
+      "value": "Failed to create a new window"
+    },
+    {
+      "name": "cancel",
+      "value": "Cancel"
+    },
+    {
+      "name": "incognito_enabled",
+      "value": "Incognito mode enabled"
+    },
+    {
+      "name": "font_size",
+      "value": "Font size"
+    },
+    {
+      "name": "download_started",
+      "value": "Download started"
+    },
+    {
+      "name": "download_failed",
+      "value": "Download failed"
+    },
+    {
+      "name": "download_publish_failed",
+      "value": "Failed to save to Files"
+    },
+    {
+      "name": "download_error_storage",
+      "value": "Insufficient storage or write error"
+    },
+    {
+      "name": "download_error_network",
+      "value": "Network error, try again later"
+    },
+    {
+      "name": "download_error_ssl",
+      "value": "Security certificate verification failed"
+    },
+    {
+      "name": "download_ssl_confirm_message",
+      "value": "This download URL has a certificate problem. Continuing may be unsafe. Continue anyway?"
+    },
+    {
+      "name": "download_ssl_continue",
+      "value": "Continue download"
+    },
+    {
+      "name": "download_error_file_missing",
+      "value": "Downloaded file missing"
+    },
+    {
+      "name": "download_paused",
+      "value": "Download paused"
+    },
+    {
+      "name": "download_resumed",
+      "value": "Download resumed"
+    },
+    {
+      "name": "download_paused_network",
+      "value": "Network disconnected. Downloads paused; will resume when online."
+    },
+    {
+      "name": "download_resumed_network",
+      "value": "Network restored. Downloads resumed automatically."
+    },
+    {
+      "name": "download_resume_need_network",
+      "value": "No network connection. Cannot resume download."
+    },
+    {
+      "name": "download_resume_failed",
+      "value": "Unable to resume download. Please try again later."
+    },
+    {
+      "name": "download_already_running",
+      "value": "Download is already in progress."
+    },
+    {
+      "name": "bookmark_limit_title",
+      "value": "Bookmark limit reached"
+    },
+    {
+      "name": "toast_bookmark_added",
+      "value": "Bookmark added"
+    },
+    {
+      "name": "toast_bookmark_removed",
+      "value": "Bookmark removed"
+    },
+    {
+      "name": "download_redownload_no_source",
+      "value": "Cannot re-download: source URL missing"
+    },
+    {
+      "name": "image_saved_to_gallery",
+      "value": "Image saved to gallery"
+    },
+    {
+      "name": "image_save_gallery_failed",
+      "value": "Failed to save to gallery. Please try again."
+    },
+    {
+      "name": "download_permission_denied",
+      "value": "Download directory permission required. Please allow when prompted."
+    },
+    {
+      "name": "image_permission_denied",
+      "value": "Photo permission denied. Enable Photos & videos for Browser in Settings to save images."
+    },
+    {
+      "name": "notification_permission_open_settings",
+      "value": "Enable browser notifications in system settings for download progress and alerts."
+    },
+    {
+      "name": "download_space_insufficient",
+      "value": "Insufficient storage. Download cancelled. Need %1$s, free %2$s"
+    },
+    {
+      "name": "download_complete_notification_title",
+      "value": "Download complete"
+    },
+    {
+      "name": "download_progress_notification_title",
+      "value": "Downloading"
+    },
+    {
+      "name": "download_notification_pause",
+      "value": "Pause"
+    },
+    {
+      "name": "download_notification_resume",
+      "value": "Resume"
+    },
+    {
+      "name": "download_no_notification_started",
+      "value": "Notifications disabled. Enable in Settings. Download started."
+    },
+    {
+      "name": "scan_no_valid_link",
+      "value": "No valid web link found"
+    },
+    {
+      "name": "scan_failed",
+      "value": "Scan failed. Please try again"
+    },
+    {
+      "name": "download_open_failed",
+      "value": "Cannot open file. Install a compatible app."
+    },
+    {
+      "name": "download_open_not_ready",
+      "value": "Download not completed yet"
+    },
+    {
+      "name": "toast_image_copy_success",
+      "value": "Copied"
+    },
+    {
+      "name": "perm_location",
+      "value": "Location"
+    },
+    {
+      "name": "web_location_loading_hint",
+      "value": "Getting location, please wait."
+    },
+    {
+      "name": "web_location_retry_failed_hint",
+      "value": "Browser cannot get your location. Please try again later."
+    },
+    {
+      "name": "web_location_fetch_failed_hint",
+      "value": "Failed to get location. Enable Location Services in Settings to avoid this issue."
+    },
+    {
+      "name": "perm_camera",
+      "value": "Camera"
+    },
+    {
+      "name": "perm_microphone",
+      "value": "Microphone"
+    },
+    {
+      "name": "perm_notification",
+      "value": "Notifications"
+    },
+    {
+      "name": "toast_transfer",
+      "value": "Added to transfer"
+    },
+    {
+      "name": "image_less_on",
+      "value": "Text-only mode on"
+    },
+    {
+      "name": "image_less_off",
+      "value": "Text-only mode off"
+    },
+    {
+      "name": "clear_data_done",
+      "value": "Cookies and cache cleared"
+    },
+    {
+      "name": "clear_data_failed",
+      "value": "Clear failed. Try again later."
+    },
+    {
+      "name": "download_queued_toast",
+      "value": "Download slots full. \"%s\" is queued and will start automatically"
+    },
+    {
+      "name": "download_status_deleted",
+      "value": "Deleted"
+    },
+    {
+      "name": "share_failed",
+      "value": "Share failed"
+    },
+    {
+      "name": "copy_failed",
+      "value": "Copy failed"
+    },
+    {
+      "name": "perm_denied_toast",
+      "value": "Site permission denied"
+    },
+    {
+      "name": "perm_global_switch_off_toast",
+      "value": "System %1$s is disabled. Enable it in the dialog or Settings, then try again"
+    },
+    {
+      "name": "ssl_error_title",
+      "value": "Security warning"
+    }
+  ]
+}

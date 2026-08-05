@@ -1,0 +1,10 @@
+{
+  "name": "common",
+  "version": "1.0.0",
+  "description": "Browser shared utilities, models, and repositories",
+  "main": "index.ets",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+  }
+}

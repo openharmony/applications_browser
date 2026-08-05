@@ -1,0 +1,12 @@
+{
+  "name": "commons",
+  "version": "1.0.0",
+  "description": "Browser shared UI components",
+  "main": "index.ets",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "common": "file:../../common",
+    "browser_core": "file:../browser_core"
+  }
+}

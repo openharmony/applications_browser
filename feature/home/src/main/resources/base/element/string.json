@@ -1,0 +1,136 @@
+{
+  "string": [
+    {
+      "name": "home_title",
+      "value": "首页"
+    },
+    {
+      "name": "profile_nav_title",
+      "value": "管理"
+    },
+    {
+      "name": "search_placeholder",
+      "value": "搜索、提问或输入网址"
+    },
+    {
+      "name": "search_history",
+      "value": "搜索历史"
+    },
+    {
+      "name": "search_history_empty",
+      "value": "暂无搜索历史"
+    },
+    {
+      "name": "add_shortcut",
+      "value": "添加"
+    },
+    {
+      "name": "shortcut_status_added",
+      "value": "已添加"
+    },
+    {
+      "name": "common_functions",
+      "value": "常用功能"
+    },
+    {
+      "name": "cancel",
+      "value": "取消"
+    },
+    {
+      "name": "confirm",
+      "value": "确定"
+    },
+    {
+      "name": "save",
+      "value": "保存"
+    },
+    {
+      "name": "renamed",
+      "value": "已重命名"
+    },
+    {
+      "name": "bookmark_name_label",
+      "value": "名称"
+    },
+    {
+      "name": "bookmark_url_label",
+      "value": "网址"
+    },
+    {
+      "name": "shortcut_already_on_home",
+      "value": "已在首页显示"
+    },
+    {
+      "name": "shortcut_removed",
+      "value": "已移除快捷方式"
+    },
+    {
+      "name": "shortcut_remove",
+      "value": "移除"
+    },
+    {
+      "name": "add_to_home_title",
+      "value": "添加至首页"
+    },
+    {
+      "name": "shortcut_tab_recommend",
+      "value": "推荐"
+    },
+    {
+      "name": "shortcut_tab_bookmarks",
+      "value": "书签"
+    },
+    {
+      "name": "shortcut_tab_history",
+      "value": "历史"
+    },
+    {
+      "name": "custom_shortcut",
+      "value": "自定义快捷方式"
+    },
+    {
+      "name": "custom_shortcut_title",
+      "value": "添加自定义网址"
+    },
+    {
+      "name": "custom_shortcut_name_hint",
+      "value": "请输入名称"
+    },
+    {
+      "name": "custom_shortcut_url_hint",
+      "value": "请输入网址"
+    },
+    {
+      "name": "custom_shortcut_name_required",
+      "value": "请输入名称"
+    },
+    {
+      "name": "shortcut_empty_bookmarks",
+      "value": "暂无书签"
+    },
+    {
+      "name": "shortcut_empty_history",
+      "value": "暂无历史记录"
+    },
+    {
+      "name": "shortcut_limit_reached",
+      "value": "已达到快捷方式允许上限，无法继续添加"
+    },
+    {
+      "name": "clear_search_history_confirm",
+      "value": "确定清空搜索历史？"
+    },
+    {
+      "name": "edit",
+      "value": "编辑"
+    },
+    {
+      "name": "browser_name",
+      "value": "浏览器"
+    },
+    {
+      "name": "search_suggestions",
+      "value": "搜索建议"
+    }
+  ]
+}

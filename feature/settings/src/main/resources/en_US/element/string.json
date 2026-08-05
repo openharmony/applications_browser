@@ -1,0 +1,120 @@
+{
+  "string": [
+    {
+      "name": "profile_page_title",
+      "value": "Manage"
+    },
+    {
+      "name": "bookmarks",
+      "value": "Bookmarks"
+    },
+    {
+      "name": "history",
+      "value": "History"
+    },
+    {
+      "name": "downloads",
+      "value": "Downloads"
+    },
+    {
+      "name": "common_services",
+      "value": "Services"
+    },
+    {
+      "name": "incognito",
+      "value": "Incognito"
+    },
+    {
+      "name": "dark_mode",
+      "value": "Dark"
+    },
+    {
+      "name": "settings",
+      "value": "Settings"
+    },
+    {
+      "name": "about_browser",
+      "value": "About Browser"
+    },
+    {
+      "name": "cancel",
+      "value": "Cancel"
+    },
+    {
+      "name": "share_wechat",
+      "value": "WeChat"
+    },
+    {
+      "name": "share_qq",
+      "value": "QQ"
+    },
+    {
+      "name": "share_sms",
+      "value": "SMS"
+    },
+    {
+      "name": "copy_link",
+      "value": "Copy link"
+    },
+    {
+      "name": "share_clipboard_subtitle",
+      "value": "Content copied to clipboard. Paste manually if the app cannot pre-fill."
+    },
+    {
+      "name": "toast_link_copied",
+      "value": "Link copied"
+    },
+    {
+      "name": "share_one_item",
+      "value": "Share 1 item"
+    },
+    {
+      "name": "image_label",
+      "value": "Image"
+    },
+    {
+      "name": "harmony_share",
+      "value": "Huawei Share"
+    },
+    {
+      "name": "wecom",
+      "value": "WeCom"
+    },
+    {
+      "name": "douyin",
+      "value": "Douyin"
+    },
+    {
+      "name": "bluetooth",
+      "value": "Bluetooth"
+    },
+    {
+      "name": "copy",
+      "value": "Copy"
+    },
+    {
+      "name": "add_to_transfer",
+      "value": "Add to transfer"
+    },
+    {
+      "name": "print",
+      "value": "Print"
+    },
+    {
+      "name": "save_as",
+      "value": "Save as"
+    },
+    {
+      "name": "toast_copied",
+      "value": "Copied"
+    },
+    {
+      "name": "system_share",
+      "value": "Share via system"
+    },
+    {
+      "name": "share_failed",
+      "value": "Share failed"
+    }
+  ]
+}

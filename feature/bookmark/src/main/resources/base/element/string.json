@@ -1,0 +1,300 @@
+{
+  "string": [
+    {
+      "name": "bookmarks",
+      "value": "书签"
+    },
+    {
+      "name": "settings",
+      "value": "设置"
+    },
+    {
+      "name": "about_browser",
+      "value": "关于浏览器"
+    },
+    {
+      "name": "cancel",
+      "value": "取消"
+    },
+    {
+      "name": "confirm",
+      "value": "确定"
+    },
+    {
+      "name": "delete",
+      "value": "删除"
+    },
+    {
+      "name": "save",
+      "value": "保存"
+    },
+    {
+      "name": "rename",
+      "value": "重命名"
+    },
+    {
+      "name": "got_it",
+      "value": "知道了"
+    },
+    {
+      "name": "none_selected",
+      "value": "未选择"
+    },
+    {
+      "name": "no_content",
+      "value": "暂无内容"
+    },
+    {
+      "name": "no_search_results",
+      "value": "无对应的搜索结果显示"
+    },
+    {
+      "name": "font_size",
+      "value": "字体大小"
+    },
+    {
+      "name": "font_size_system_sync_hint",
+      "value": "跟随系统：界面与网页随系统字体变化；小/中/大为固定档位（立即生效，不随系统变化）"
+    },
+    {
+      "name": "bookmark_search_placeholder",
+      "value": "请输入关键字"
+    },
+    {
+      "name": "new_bookmark",
+      "value": "新书签"
+    },
+    {
+      "name": "new_folder",
+      "value": "新建文件夹"
+    },
+    {
+      "name": "history_title",
+      "value": "历史记录"
+    },
+    {
+      "name": "history_empty",
+      "value": "暂无历史记录"
+    },
+    {
+      "name": "history_search_placeholder",
+      "value": "搜索历史记录..."
+    },
+    {
+      "name": "clear_history_confirm",
+      "value": "是否清空该分类历史记录?"
+    },
+    {
+      "name": "delete_history_confirm",
+      "value": "是否删除此历史记录?"
+    },
+    {
+      "name": "clear",
+      "value": "清空"
+    },
+    {
+      "name": "cleared",
+      "value": "已清空"
+    },
+    {
+      "name": "deleted",
+      "value": "已删除"
+    },
+    {
+      "name": "renamed",
+      "value": "已重命名"
+    },
+    {
+      "name": "bookmark_added",
+      "value": "书签已添加"
+    },
+    {
+      "name": "add_to_bookmarks",
+      "value": "添加书签"
+    },
+    {
+      "name": "folder_created",
+      "value": "文件夹已创建"
+    },
+    {
+      "name": "folder_exists",
+      "value": "文件夹已存在"
+    },
+    {
+      "name": "folder_name_required",
+      "value": "请输入文件夹名称"
+    },
+    {
+      "name": "select_one_to_rename",
+      "value": "请选择一项进行重命名"
+    },
+    {
+      "name": "bookmark_limit_title",
+      "value": "书签已满"
+    },
+    {
+      "name": "delete_selected_confirm",
+      "value": "要删除所选内容吗？"
+    },
+    {
+      "name": "bookmark_name_label",
+      "value": "名称"
+    },
+    {
+      "name": "bookmark_url_label",
+      "value": "网址"
+    },
+    {
+      "name": "folder_name_label",
+      "value": "文件夹名称"
+    },
+    {
+      "name": "location_label",
+      "value": "位置"
+    },
+    {
+      "name": "move_target_invalid",
+      "value": "不能移动到自身或子文件夹"
+    },
+    {
+      "name": "move_already_at_target",
+      "value": "已在目标位置"
+    },
+    {
+      "name": "move_failed_retry",
+      "value": "移动失败，请重试"
+    },
+    {
+      "name": "select_target_folder",
+      "value": "选择目标文件夹"
+    },
+    {
+      "name": "move_here",
+      "value": "移动到此处"
+    },
+    {
+      "name": "bookmark_root_dir",
+      "value": "书签（根目录）"
+    },
+    {
+      "name": "shortcut_empty_bookmarks",
+      "value": "暂无书签"
+    },
+    {
+      "name": "create_bookmark_menu",
+      "value": "新建书签"
+    },
+    {
+      "name": "share_action",
+      "value": "分享"
+    },
+    {
+      "name": "edit",
+      "value": "编辑"
+    },
+    {
+      "name": "edit_folder",
+      "value": "编辑文件夹"
+    },
+    {
+      "name": "delete_folder_confirm",
+      "value": "是否删除此文件夹？"
+    },
+    {
+      "name": "delete_folder_confirm_hint",
+      "value": "删除后不可恢复。"
+    },
+    {
+      "name": "clear_all",
+      "value": "清空全部"
+    },
+    {
+      "name": "open_in_new_tab",
+      "value": "在新页签打开"
+    },
+    {
+      "name": "batch_multi_select",
+      "value": "多选"
+    },
+    {
+      "name": "settings_browse",
+      "value": "浏览设置"
+    },
+    {
+      "name": "settings_site_permissions",
+      "value": "网站权限管理"
+    },
+    {
+      "name": "search_engine",
+      "value": "搜索引擎"
+    },
+    {
+      "name": "night_mode",
+      "value": "夜间模式"
+    },
+    {
+      "name": "search_engine_default_hint",
+      "value": "搜索引擎（默认百度）"
+    },
+    {
+      "name": "perm_location",
+      "value": "位置权限"
+    },
+    {
+      "name": "perm_camera",
+      "value": "相机"
+    },
+    {
+      "name": "perm_microphone",
+      "value": "麦克风"
+    },
+    {
+      "name": "perm_notification",
+      "value": "通知权限"
+    },
+    {
+      "name": "browser_name",
+      "value": "浏览器"
+    },
+    {
+      "name": "version_label",
+      "value": "版本 v2.0.0"
+    },
+    {
+      "name": "image_less_mode",
+      "value": "无图模式"
+    },
+    {
+      "name": "clear_cookies_cache",
+      "value": "清理 Cookie 和缓存"
+    },
+    {
+      "name": "clear_data_confirm",
+      "value": "确定清理 Cookie 和网站缓存数据？"
+    },
+    {
+      "name": "perm_app_open_settings",
+      "value": "去设置"
+    },
+    {
+      "name": "perm_app_manage_header",
+      "value": "应用权限（系统）"
+    },
+    {
+      "name": "perm_app_request",
+      "value": "申请权限"
+    },
+    {
+      "name": "perm_app_granted_short",
+      "value": "已授权"
+    },
+    {
+      "name": "perm_app_settings_hint",
+      "value": "浏览器应用权限由系统管理。未授权时可在此申请，或跳转系统设置调整。"
+    },
+    {
+      "name": "perm_image_video",
+      "value": "图片和视频"
+    }
+  ]
+}

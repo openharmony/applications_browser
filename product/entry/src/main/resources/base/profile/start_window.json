@@ -1,0 +1,4 @@
+{
+  "startWindowAppIcon": "$media:app_start_splash_icon",
+  "startWindowBackgroundColor": "$color:start_window_background"
+}

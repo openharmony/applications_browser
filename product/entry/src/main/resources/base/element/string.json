@@ -1,0 +1,1108 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "浏览器主模块"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "OpenHarmony 浏览器"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "浏览器"
+    },
+    {
+      "name": "home_title",
+      "value": "首页"
+    },
+    {
+      "name": "profile_nav_title",
+      "value": "管理"
+    },
+    {
+      "name": "profile_page_title",
+      "value": "管理"
+    },
+    {
+      "name": "search_placeholder",
+      "value": "搜索、提问或输入网址"
+    },
+    {
+      "name": "search_history",
+      "value": "搜索历史"
+    },
+    {
+      "name": "search_history_empty",
+      "value": "暂无搜索历史"
+    },
+    {
+      "name": "add_shortcut",
+      "value": "添加"
+    },
+    {
+      "name": "shortcut_status_added",
+      "value": "已添加"
+    },
+    {
+      "name": "bookmarks",
+      "value": "书签"
+    },
+    {
+      "name": "history",
+      "value": "历史"
+    },
+    {
+      "name": "downloads",
+      "value": "下载"
+    },
+    {
+      "name": "common_services",
+      "value": "常用服务"
+    },
+    {
+      "name": "common_functions",
+      "value": "常用功能"
+    },
+    {
+      "name": "incognito",
+      "value": "无痕"
+    },
+    {
+      "name": "dark_mode",
+      "value": "深色"
+    },
+    {
+      "name": "settings",
+      "value": "设置"
+    },
+    {
+      "name": "about_browser",
+      "value": "关于浏览器"
+    },
+    {
+      "name": "close_all",
+      "value": "全部关闭"
+    },
+    {
+      "name": "new_window",
+      "value": "新建窗口"
+    },
+    {
+      "name": "new_incognito_window",
+      "value": "新建无痕窗口"
+    },
+    {
+      "name": "new_tab_failed",
+      "value": "新建窗口失败，请重试"
+    },
+    {
+      "name": "tab_limit_reached",
+      "value": "标签页已达到数量上限"
+    },
+    {
+      "name": "back",
+      "value": "返回"
+    },
+    {
+      "name": "cancel",
+      "value": "取消"
+    },
+    {
+      "name": "confirm",
+      "value": "确定"
+    },
+    {
+      "name": "delete",
+      "value": "删除"
+    },
+    {
+      "name": "save",
+      "value": "保存"
+    },
+    {
+      "name": "rename",
+      "value": "重命名"
+    },
+    {
+      "name": "move",
+      "value": "移动"
+    },
+    {
+      "name": "select_all",
+      "value": "全选"
+    },
+    {
+      "name": "more",
+      "value": "更多"
+    },
+    {
+      "name": "got_it",
+      "value": "知道了"
+    },
+    {
+      "name": "none_selected",
+      "value": "未选择"
+    },
+    {
+      "name": "no_content",
+      "value": "暂无内容"
+    },
+    {
+      "name": "no_search_results",
+      "value": "无对应的搜索结果显示"
+    },
+    {
+      "name": "incognito_enabled",
+      "value": "已开启无痕模式"
+    },
+    {
+      "name": "incognito_mode_title",
+      "value": "无痕模式"
+    },
+    {
+      "name": "incognito_empty_hint",
+      "value": "关闭无痕标签页后，浏览记录不会被保存"
+    },
+    {
+      "name": "dark_mode_dialog_title",
+      "value": "深色模式"
+    },
+    {
+      "name": "theme_mode_system",
+      "value": "跟随系统"
+    },
+    {
+      "name": "theme_mode_light",
+      "value": "浅色模式"
+    },
+    {
+      "name": "theme_mode_dark",
+      "value": "深色模式"
+    },
+    {
+      "name": "font_size",
+      "value": "字体大小"
+    },
+    {
+      "name": "font_size_small",
+      "value": "小"
+    },
+    {
+      "name": "font_size_medium",
+      "value": "中"
+    },
+    {
+      "name": "font_size_large",
+      "value": "大"
+    },
+    {
+      "name": "font_size_system",
+      "value": "跟随系统"
+    },
+    {
+      "name": "font_size_system_sync_hint",
+      "value": "跟随系统：界面与网页随系统字体变化；小/中/大为固定档位（立即生效，不随系统变化）"
+    },
+    {
+      "name": "download_started",
+      "value": "已开始下载"
+    },
+    {
+      "name": "download_complete_toast",
+      "value": "【%1$s】下载已完成"
+    },
+    {
+      "name": "download_failed",
+      "value": "下载失败"
+    },
+    {
+      "name": "download_publish_failed",
+      "value": "推送至文件管理失败"
+    },
+    {
+      "name": "download_error_storage",
+      "value": "存储空间不足或无法写入"
+    },
+    {
+      "name": "download_error_network",
+      "value": "网络异常，请稍后重试"
+    },
+    {
+      "name": "download_error_ssl",
+      "value": "安全证书校验失败"
+    },
+    {
+      "name": "download_ssl_confirm_message",
+      "value": "该下载地址的安全证书存在问题，继续下载可能存在风险，是否仍要继续？"
+    },
+    {
+      "name": "download_ssl_continue",
+      "value": "继续下载"
+    },
+    {
+      "name": "download_error_file_missing",
+      "value": "下载文件丢失"
+    },
+    {
+      "name": "download_paused",
+      "value": "已暂停"
+    },
+    {
+      "name": "download_resumed",
+      "value": "继续下载"
+    },
+    {
+      "name": "download_paused_network",
+      "value": "网络已断开，下载已暂停；恢复网络后将自动续传"
+    },
+    {
+      "name": "download_resumed_network",
+      "value": "网络已恢复，下载已自动继续"
+    },
+    {
+      "name": "download_resume_need_network",
+      "value": "当前无网络连接，无法继续下载"
+    },
+    {
+      "name": "download_resume_failed",
+      "value": "无法继续下载，请稍后重试"
+    },
+    {
+      "name": "download_already_running",
+      "value": "下载任务已在进行中"
+    },
+    {
+      "name": "download_manage",
+      "value": "下载管理"
+    },
+    {
+      "name": "no_downloads",
+      "value": "没有下载"
+    },
+    {
+      "name": "today",
+      "value": "今天"
+    },
+    {
+      "name": "yesterday",
+      "value": "昨天"
+    },
+    {
+      "name": "new_tab",
+      "value": "新标签页"
+    },
+    {
+      "name": "bookmark_root",
+      "value": "书签"
+    },
+    {
+      "name": "bookmark_search_placeholder",
+      "value": "请输入关键字"
+    },
+    {
+      "name": "new_bookmark",
+      "value": "新书签"
+    },
+    {
+      "name": "new_folder",
+      "value": "新建文件夹"
+    },
+    {
+      "name": "close_all_tabs_confirm",
+      "value": "是否关闭全部标签页?"
+    },
+    {
+      "name": "history_title",
+      "value": "历史记录"
+    },
+    {
+      "name": "history_empty",
+      "value": "暂无历史记录"
+    },
+    {
+      "name": "history_search_placeholder",
+      "value": "搜索历史记录..."
+    },
+    {
+      "name": "clear_history_confirm",
+      "value": "是否清空该分类历史记录?"
+    },
+    {
+      "name": "delete_history_confirm",
+      "value": "是否删除此历史记录?"
+    },
+    {
+      "name": "clear",
+      "value": "清空"
+    },
+    {
+      "name": "cleared",
+      "value": "已清空"
+    },
+    {
+      "name": "deleted",
+      "value": "已删除"
+    },
+    {
+      "name": "renamed",
+      "value": "已重命名"
+    },
+    {
+      "name": "bookmark_added",
+      "value": "书签已添加"
+    },
+    {
+      "name": "add_to_bookmarks",
+      "value": "添加书签"
+    },
+    {
+      "name": "folder_created",
+      "value": "文件夹已创建"
+    },
+    {
+      "name": "folder_exists",
+      "value": "文件夹已存在"
+    },
+    {
+      "name": "folder_name_required",
+      "value": "请输入文件夹名称"
+    },
+    {
+      "name": "select_one_to_rename",
+      "value": "请选择一项进行重命名"
+    },
+    {
+      "name": "bookmark_limit_title",
+      "value": "书签已满"
+    },
+    {
+      "name": "bookmark_limit_message",
+      "value": "书签数量已达上限（%d 条），请删除部分书签后再添加。"
+    },
+    {
+      "name": "delete_selected_confirm",
+      "value": "要删除所选内容吗？"
+    },
+    {
+      "name": "delete_folder_confirm",
+      "value": "是否删除此文件夹？"
+    },
+    {
+      "name": "delete_folder_confirm_hint",
+      "value": "删除后不可恢复。"
+    },
+    {
+      "name": "bookmark_name_label",
+      "value": "名称"
+    },
+    {
+      "name": "bookmark_url_label",
+      "value": "网址"
+    },
+    {
+      "name": "folder_name_label",
+      "value": "文件夹名称"
+    },
+    {
+      "name": "location_label",
+      "value": "位置"
+    },
+    {
+      "name": "move_to_label",
+      "value": "移动至"
+    },
+    {
+      "name": "recent_locations",
+      "value": "最近常用"
+    },
+    {
+      "name": "all_folders",
+      "value": "全部文件夹"
+    },
+    {
+      "name": "move_confirm",
+      "value": "移动到此处"
+    },
+    {
+      "name": "url_input_required",
+      "value": "请输入网址"
+    },
+    {
+      "name": "url_format_invalid",
+      "value": "网址格式不正确"
+    },
+    {
+      "name": "url_too_long",
+      "value": "网址长度超出限制"
+    },
+    {
+      "name": "input_too_long",
+      "value": "输入内容长度超出限制"
+    },
+    {
+      "name": "selected_count",
+      "value": "已选择 %d 项"
+    },
+    {
+      "name": "content_count",
+      "value": "%d个内容"
+    },
+    {
+      "name": "bookmark_count",
+      "value": "%d个书签"
+    },
+    {
+      "name": "moved_to",
+      "value": "已移动到「%s」"
+    },
+    {
+      "name": "move_target_invalid",
+      "value": "不能移动到自身或子文件夹"
+    },
+    {
+      "name": "move_already_at_target",
+      "value": "已在目标位置"
+    },
+    {
+      "name": "move_failed_retry",
+      "value": "移动失败，请重试"
+    },
+    {
+      "name": "select_target_folder",
+      "value": "选择目标文件夹"
+    },
+    {
+      "name": "move_here",
+      "value": "移动到此处"
+    },
+    {
+      "name": "bookmark_root_dir",
+      "value": "书签（根目录）"
+    },
+    {
+      "name": "history_date_section",
+      "value": "%1$d月%2$d日"
+    },
+    {
+      "name": "history_date_section_full",
+      "value": "%1$d年%2$d月%3$d日"
+    },
+    {
+      "name": "shortcut_bookmarks",
+      "value": "书签收藏"
+    },
+    {
+      "name": "shortcut_history",
+      "value": "历史记录"
+    },
+    {
+      "name": "shortcut_downloads",
+      "value": "下载管理"
+    },
+    {
+      "name": "shortcut_baidu",
+      "value": "百度"
+    },
+    {
+      "name": "shortcut_quark",
+      "value": "夸克"
+    },
+    {
+      "name": "shortcut_bing",
+      "value": "必应"
+    },
+    {
+      "name": "shortcut_sogou",
+      "value": "搜狗"
+    },
+    {
+      "name": "shortcut_360",
+      "value": "360搜索"
+    },
+    {
+      "name": "shortcut_added_to_home",
+      "value": "已添加「%1$s」到首页"
+    },
+    {
+      "name": "shortcut_already_on_home",
+      "value": "已在首页显示"
+    },
+    {
+      "name": "shortcut_removed",
+      "value": "已移除快捷方式"
+    },
+    {
+      "name": "shortcut_remove",
+      "value": "移除"
+    },
+    {
+      "name": "add_to_home_title",
+      "value": "添加至首页"
+    },
+    {
+      "name": "shortcut_tab_recommend",
+      "value": "推荐"
+    },
+    {
+      "name": "shortcut_tab_bookmarks",
+      "value": "书签"
+    },
+    {
+      "name": "shortcut_tab_history",
+      "value": "历史"
+    },
+    {
+      "name": "custom_shortcut",
+      "value": "自定义快捷方式"
+    },
+    {
+      "name": "custom_shortcut_title",
+      "value": "添加自定义网址"
+    },
+    {
+      "name": "custom_shortcut_name_hint",
+      "value": "请输入名称"
+    },
+    {
+      "name": "custom_shortcut_url_hint",
+      "value": "请输入网址"
+    },
+    {
+      "name": "custom_shortcut_name_required",
+      "value": "请输入名称"
+    },
+    {
+      "name": "shortcut_empty_bookmarks",
+      "value": "暂无书签"
+    },
+    {
+      "name": "shortcut_empty_history",
+      "value": "暂无历史记录"
+    },
+    {
+      "name": "shortcut_limit_reached",
+      "value": "已达到快捷方式允许上限，无法继续添加"
+    },
+    {
+      "name": "clear_search_history_confirm",
+      "value": "确定清空搜索历史？"
+    },
+    {
+      "name": "toast_refreshing",
+      "value": "正在刷新"
+    },
+    {
+      "name": "toast_bookmark_added",
+      "value": "已添加书签"
+    },
+    {
+      "name": "toast_bookmark_removed",
+      "value": "已取消收藏"
+    },
+    {
+      "name": "download_file_missing_redownload",
+      "value": "文件不存在或已被删除，是否重新下载？"
+    },
+    {
+      "name": "download_redownload_no_source",
+      "value": "缺少下载来源，无法重新下载"
+    },
+    {
+      "name": "image_saved_to_gallery",
+      "value": "图片已保存到相册"
+    },
+    {
+      "name": "image_save_gallery_failed",
+      "value": "保存到相册失败，请稍后重试"
+    },
+    {
+      "name": "download_permission_denied",
+      "value": "需要「下载目录」权限，请在弹窗中允许"
+    },
+    {
+      "name": "image_permission_denied",
+      "value": "未授予相册权限，无法保存图片。可在系统设置中为浏览器开启「图片和视频」权限"
+    },
+    {
+      "name": "permission_write_image_reason",
+      "value": "保存网页图片到相册"
+    },
+    {
+      "name": "permission_write_download_reason",
+      "value": "将下载的文件保存到系统 Download 文件夹"
+    },
+    {
+      "name": "notification_permission_open_settings",
+      "value": "请在系统设置中开启浏览器通知，以便接收下载进度等提醒"
+    },
+    {
+      "name": "permission_location_reason",
+      "value": "网页请求使用你的位置（如地图、附近推荐）"
+    },
+    {
+      "name": "permission_camera_reason",
+      "value": "网页请求使用你的相机（如拍照、扫码）"
+    },
+    {
+      "name": "permission_microphone_reason",
+      "value": "网页请求使用你的麦克风（如语音通话、录音）"
+    },
+    {
+      "name": "download_space_insufficient",
+      "value": "本地存储空间不足，下载已取消。需要 %1$s，可用 %2$s"
+    },
+    {
+      "name": "download_complete_notification_title",
+      "value": "下载完成"
+    },
+    {
+      "name": "download_progress_notification_title",
+      "value": "正在下载"
+    },
+    {
+      "name": "download_notification_progress_text",
+      "value": "%1$s · %2$d%%"
+    },
+    {
+      "name": "download_notification_done_text",
+      "value": "%1$s · 已完成"
+    },
+    {
+      "name": "download_notification_pause",
+      "value": "暂停"
+    },
+    {
+      "name": "download_notification_resume",
+      "value": "继续"
+    },
+    {
+      "name": "download_no_notification_started",
+      "value": "没有通知权限，建议到设置中开启，下载任务已开始"
+    },
+    {
+      "name": "scan_no_valid_link",
+      "value": "未识别到有效网页链接"
+    },
+    {
+      "name": "scan_failed",
+      "value": "扫码失败，请重试"
+    },
+    {
+      "name": "download_open_failed",
+      "value": "无法打开文件，请安装对应类型的应用"
+    },
+    {
+      "name": "download_open_not_ready",
+      "value": "文件尚未下载完成"
+    },
+    {
+      "name": "continue_action",
+      "value": "继续"
+    },
+    {
+      "name": "search_downloads_placeholder",
+      "value": "搜索下载文件"
+    },
+    {
+      "name": "delete_download_local",
+      "value": "已删除任务及对应文件"
+    },
+    {
+      "name": "delete_download_task_only",
+      "value": "已仅删除任务"
+    },
+    {
+      "name": "create_bookmark_menu",
+      "value": "新建书签"
+    },
+    {
+      "name": "find_in_page",
+      "value": "页面内搜索"
+    },
+    {
+      "name": "find_in_page_placeholder",
+      "value": "在页面中查找…"
+    },
+    {
+      "name": "browse_page_title_default",
+      "value": "浏览器"
+    },
+    {
+      "name": "save_image",
+      "value": "保存图片"
+    },
+    {
+      "name": "share_image",
+      "value": "分享图片"
+    },
+    {
+      "name": "toast_image_copy_success",
+      "value": "复制成功"
+    },
+    {
+      "name": "web_image_share_title",
+      "value": "网页图片"
+    },
+    {
+      "name": "share_action",
+      "value": "分享"
+    },
+    {
+      "name": "edit",
+      "value": "编辑"
+    },
+    {
+      "name": "edit_folder",
+      "value": "编辑文件夹"
+    },
+    {
+      "name": "clear_all",
+      "value": "清空全部"
+    },
+    {
+      "name": "open_in_new_tab",
+      "value": "在新页签打开"
+    },
+    {
+      "name": "web_link_open_in_new_window",
+      "value": "在新窗口中打开"
+    },
+    {
+      "name": "web_link_copy",
+      "value": "复制超链接"
+    },
+    {
+      "name": "opened_in_new_tab",
+      "value": "已在新页签打开"
+    },
+    {
+      "name": "opened_in_n_tabs",
+      "value": "已在 %d 个新页签打开"
+    },
+    {
+      "name": "batch_multi_select",
+      "value": "多选"
+    },
+    {
+      "name": "settings_browse",
+      "value": "浏览设置"
+    },
+    {
+      "name": "settings_site_permissions",
+      "value": "网站权限管理"
+    },
+    {
+      "name": "search_engine",
+      "value": "搜索引擎"
+    },
+    {
+      "name": "night_mode",
+      "value": "夜间模式"
+    },
+    {
+      "name": "search_engine_default_hint",
+      "value": "搜索引擎（默认百度）"
+    },
+    {
+      "name": "perm_location",
+      "value": "位置权限"
+    },
+    {
+      "name": "web_location_loading_hint",
+      "value": "位置获取中，请稍后"
+    },
+    {
+      "name": "web_location_retry_failed_hint",
+      "value": "浏览器无法获取你的位置信息，请稍后重试"
+    },
+    {
+      "name": "web_location_fetch_failed_hint",
+      "value": "位置获取失败，开启【系统设置→定位服务】可以有效避免无法获取位置信息的情况"
+    },
+    {
+      "name": "perm_camera",
+      "value": "相机"
+    },
+    {
+      "name": "perm_microphone",
+      "value": "麦克风"
+    },
+    {
+      "name": "perm_notification",
+      "value": "通知权限"
+    },
+    {
+      "name": "perm_allow",
+      "value": "允许"
+    },
+    {
+      "name": "perm_deny",
+      "value": "禁止"
+    },
+    {
+      "name": "browser_name",
+      "value": "浏览器"
+    },
+    {
+      "name": "version_label",
+      "value": "版本 v2.0.0"
+    },
+    {
+      "name": "download_file_title",
+      "value": "下载文件"
+    },
+    {
+      "name": "file_exists_title",
+      "value": "文件已存在"
+    },
+    {
+      "name": "file_exists_message",
+      "value": "「%s」已下载过，如何处理？"
+    },
+    {
+      "name": "overwrite_file",
+      "value": "覆盖原文件"
+    },
+    {
+      "name": "rename_save_with",
+      "value": "重命名保存 (%s)"
+    },
+    {
+      "name": "share_wechat",
+      "value": "微信"
+    },
+    {
+      "name": "share_qq",
+      "value": "QQ"
+    },
+    {
+      "name": "share_sms",
+      "value": "短信"
+    },
+    {
+      "name": "copy_link",
+      "value": "复制链接"
+    },
+    {
+      "name": "share_clipboard_subtitle",
+      "value": "分享内容已经复制到剪贴板，如果对应应用不支持预填请手动粘贴"
+    },
+    {
+      "name": "toast_link_copied",
+      "value": "链接已复制"
+    },
+    {
+      "name": "share_one_item",
+      "value": "分享 1 项"
+    },
+    {
+      "name": "image_label",
+      "value": "图片"
+    },
+    {
+      "name": "harmony_share",
+      "value": "华为分享"
+    },
+    {
+      "name": "wecom",
+      "value": "企业微信"
+    },
+    {
+      "name": "douyin",
+      "value": "抖音"
+    },
+    {
+      "name": "bluetooth",
+      "value": "蓝牙"
+    },
+    {
+      "name": "copy",
+      "value": "复制"
+    },
+    {
+      "name": "add_to_transfer",
+      "value": "添加至中转站"
+    },
+    {
+      "name": "print",
+      "value": "打印"
+    },
+    {
+      "name": "save_as",
+      "value": "另存为"
+    },
+    {
+      "name": "toast_copied",
+      "value": "已复制"
+    },
+    {
+      "name": "toast_transfer",
+      "value": "已添加至中转站"
+    },
+    {
+      "name": "delete_task_and_file",
+      "value": "删除任务及对应文件"
+    },
+    {
+      "name": "delete_task_only",
+      "value": "仅删除任务"
+    },
+    {
+      "name": "image_less_mode",
+      "value": "无图模式"
+    },
+    {
+      "name": "image_less_on",
+      "value": "已开启无图模式"
+    },
+    {
+      "name": "image_less_off",
+      "value": "已关闭无图模式"
+    },
+    {
+      "name": "clear_cookies_cache",
+      "value": "清理 Cookie 和缓存"
+    },
+    {
+      "name": "clear_data_confirm",
+      "value": "确定清理 Cookie 和网站缓存数据？"
+    },
+    {
+      "name": "clear_data_done",
+      "value": "已清理 Cookie 和缓存"
+    },
+    {
+      "name": "clear_data_failed",
+      "value": "清理失败，请稍后重试"
+    },
+    {
+      "name": "search_suggestions",
+      "value": "搜索建议"
+    },
+    {
+      "name": "download_status_done",
+      "value": "已完成"
+    },
+    {
+      "name": "download_action_open",
+      "value": "打开"
+    },
+    {
+      "name": "download_status_failed",
+      "value": "失败"
+    },
+    {
+      "name": "download_status_queued",
+      "value": "排队中"
+    },
+    {
+      "name": "download_queued_toast",
+      "value": "下载任务已达上限，「%s」已加入排队，空闲时自动开始"
+    },
+    {
+      "name": "download_status_deleted",
+      "value": "已删除"
+    },
+    {
+      "name": "download_failed_retry_confirm",
+      "value": "下载失败，是否重新下载？"
+    },
+    {
+      "name": "retry_download",
+      "value": "重新下载"
+    },
+    {
+      "name": "system_share",
+      "value": "系统分享"
+    },
+    {
+      "name": "share_failed",
+      "value": "分享失败"
+    },
+    {
+      "name": "copy_failed",
+      "value": "复制失败"
+    },
+    {
+      "name": "perm_denied_toast",
+      "value": "网站权限已被禁止"
+    },
+    {
+      "name": "perm_global_switch_off_toast",
+      "value": "系统%1$s功能未开启，请在弹框或系统设置中打开后再试"
+    },
+    {
+      "name": "perm_site_denied_fmt",
+      "value": "当前不允许网站获取%1$s，请到浏览器设置中修改"
+    },
+    {
+      "name": "perm_app_missing_cannot_allow_fmt",
+      "value": "浏览器没有%1$s，无法允许网站使用"
+    },
+    {
+      "name": "perm_app_status_header",
+      "value": "浏览器应用权限状态"
+    },
+    {
+      "name": "perm_app_status_granted_fmt",
+      "value": "已授予：%1$s"
+    },
+    {
+      "name": "perm_app_status_missing_fmt",
+      "value": "未授予：%1$s"
+    },
+    {
+      "name": "ssl_error_title",
+      "value": "安全连接问题"
+    },
+    {
+      "name": "ssl_error_message",
+      "value": "该网站的安全证书存在问题，是否继续访问？"
+    },
+    {
+      "name": "ssl_continue",
+      "value": "继续访问"
+    },
+    {
+      "name": "web_error_title_general",
+      "value": "无法访问此网站"
+    },
+    {
+      "name": "web_error_title_offline",
+      "value": "网络无法连接"
+    },
+    {
+      "name": "web_error_desc_general",
+      "value": "网址为 %s 的网页可能暂时无法连接，或者它已永久性地移动到了新网址。"
+    },
+    {
+      "name": "web_error_desc_offline",
+      "value": "请检查您的网络设置，确认设备已连接网络后重试。"
+    },
+    {
+      "name": "perm_app_open_settings",
+      "value": "去设置"
+    },
+    {
+      "name": "perm_app_manage_header",
+      "value": "应用权限（系统）"
+    },
+    {
+      "name": "perm_app_request",
+      "value": "申请权限"
+    },
+    {
+      "name": "perm_app_granted_short",
+      "value": "已授权"
+    },
+    {
+      "name": "perm_app_settings_hint",
+      "value": "浏览器应用权限由系统管理。未授权时可在此申请，或跳转系统设置调整。"
+    },
+    {
+      "name": "perm_image_video",
+      "value": "图片和视频"
+    }
+  ]
+}

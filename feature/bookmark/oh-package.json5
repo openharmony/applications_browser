@@ -1,0 +1,15 @@
+{
+  "name": "bookmark",
+  "version": "1.0.0",
+  "description": "Browser bookmark feature module",
+  "main": "index.ets",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "common": "file:../../common",
+    "browser_core": "file:../browser_core",
+    "commons": "file:../commons",
+    "home": "file:../home",
+    "download": "file:../download"
+  }
+}

@@ -1,0 +1,17 @@
+/**
+ * 注入脚本：用原生麦克风旁路替换 getUserMedia 的 audio 轨道，
+ * 规避 ArkWeb ohos_audio_capturer_source 丢弃 >20ms 缓冲导致的无声。
+ */
+export function buildMicGumPolyfillScript(): string {
+  return `(function(){try{
+if(window.__ohBrowserMicGumV2){return;}
+window.__ohBrowserMicGumV2=1;
+function waitBridge(ms){return new Promise(function(resolve,reject){var n=0;var t=setInterval(function(){if(window.BrowserBridge&&typeof window.BrowserBridge.startNativeMic==='function'){clearInterval(t);resolve();}else if(++n>Math.ceil(ms/50)){clearInterval(t);reject(new Error('BrowserBridge unavailable'));}},50);});}
+function b64ToFloat32(b64){var bin=atob(b64);var bytes=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++){bytes[i]=bin.charCodeAt(i);}var samples=bytes.byteLength>>1;var f32=new Float32Array(samples);var view=new DataView(bytes.buffer);for(var j=0;j<samples;j++){f32[j]=view.getInt16(j*2,true)/32768;}return f32;}
+function waitReady(timeoutMs){return new Promise(function(resolve,reject){var start=Date.now();var t=setInterval(function(){var s=window.BrowserBridge.getNativeMicState();if(s==='ready'){clearInterval(t);resolve();}else if(typeof s==='string'&&s.indexOf('error:')===0){clearInterval(t);reject(new Error(s));}else if(Date.now()-start>timeoutMs){clearInterval(t);reject(new Error('native mic timeout'));}},50);});}
+function createNativeAudioStream(){return waitBridge(3000).then(function(){var origin=location.origin||'';window.BrowserBridge.startNativeMic(origin);return waitReady(15000);}).then(function(){var AC=window.AudioContext||window.webkitAudioContext;var ac=new AC({sampleRate:48000});var dest=ac.createMediaStreamDestination();var proc=ac.createScriptProcessor(2048,1,1);var ring=[];proc.onaudioprocess=function(ev){try{var need=ev.outputBuffer.length;var b64=window.BrowserBridge.pullMicPcm(String(need*2));if(b64){var f=b64ToFloat32(b64);for(var i=0;i<f.length;i++){ring.push(f[i]);}}var out=ev.outputBuffer.getChannelData(0);for(var k=0;k<out.length;k++){out[k]=ring.length?ring.shift():0;}}catch(e){}};var silent=ac.createBuffer(1,1024,ac.sampleRate);var src=ac.createBufferSource();src.buffer=silent;src.loop=true;src.connect(proc);proc.connect(dest);src.start();var stream=dest.stream;stream.__ohNativeMic=true;stream.getTracks().forEach(function(tr){tr.addEventListener('ended',function(){try{window.BrowserBridge.stopNativeMic();}catch(e){}});});return stream;});}
+function patchGum(orig){return function(constraints){var c=constraints?Object.assign({},constraints):{};var wantAudio=!!c.audio;var wantVideo=!!c.video;if(!wantAudio){return orig.call(navigator.mediaDevices,c);}var videoPart=wantVideo?orig.call(navigator.mediaDevices,{video:c.video,audio:false}):Promise.resolve(null);var audioPart=createNativeAudioStream();return Promise.all([videoPart,audioPart]).then(function(parts){var tracks=[];if(parts[0]){parts[0].getTracks().forEach(function(t){tracks.push(t);});}if(parts[1]){parts[1].getTracks().forEach(function(t){tracks.push(t);});}return new MediaStream(tracks);});};}
+if(navigator.mediaDevices&&typeof navigator.mediaDevices.getUserMedia==='function'){navigator.mediaDevices.getUserMedia=patchGum(navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices));}
+if(typeof navigator.getUserMedia==='function'){var legacy=navigator.getUserMedia.bind(navigator);navigator.getUserMedia=function(c,ok,err){patchGum(function(x){return new Promise(function(res,rej){legacy(x,res,rej);});})(c).then(ok).catch(err);};}
+}catch(e){}})();`
+}

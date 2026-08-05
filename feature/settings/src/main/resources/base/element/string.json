@@ -1,0 +1,120 @@
+{
+  "string": [
+    {
+      "name": "profile_page_title",
+      "value": "管理"
+    },
+    {
+      "name": "bookmarks",
+      "value": "书签"
+    },
+    {
+      "name": "history",
+      "value": "历史"
+    },
+    {
+      "name": "downloads",
+      "value": "下载"
+    },
+    {
+      "name": "common_services",
+      "value": "常用服务"
+    },
+    {
+      "name": "incognito",
+      "value": "无痕"
+    },
+    {
+      "name": "dark_mode",
+      "value": "深色"
+    },
+    {
+      "name": "settings",
+      "value": "设置"
+    },
+    {
+      "name": "about_browser",
+      "value": "关于浏览器"
+    },
+    {
+      "name": "cancel",
+      "value": "取消"
+    },
+    {
+      "name": "share_wechat",
+      "value": "微信"
+    },
+    {
+      "name": "share_qq",
+      "value": "QQ"
+    },
+    {
+      "name": "share_sms",
+      "value": "短信"
+    },
+    {
+      "name": "copy_link",
+      "value": "复制链接"
+    },
+    {
+      "name": "share_clipboard_subtitle",
+      "value": "分享内容已经复制到剪贴板，如果对应应用不支持预填请手动粘贴"
+    },
+    {
+      "name": "toast_link_copied",
+      "value": "链接已复制"
+    },
+    {
+      "name": "share_one_item",
+      "value": "分享 1 项"
+    },
+    {
+      "name": "image_label",
+      "value": "图片"
+    },
+    {
+      "name": "harmony_share",
+      "value": "华为分享"
+    },
+    {
+      "name": "wecom",
+      "value": "企业微信"
+    },
+    {
+      "name": "douyin",
+      "value": "抖音"
+    },
+    {
+      "name": "bluetooth",
+      "value": "蓝牙"
+    },
+    {
+      "name": "copy",
+      "value": "复制"
+    },
+    {
+      "name": "add_to_transfer",
+      "value": "添加至中转站"
+    },
+    {
+      "name": "print",
+      "value": "打印"
+    },
+    {
+      "name": "save_as",
+      "value": "另存为"
+    },
+    {
+      "name": "toast_copied",
+      "value": "已复制"
+    },
+    {
+      "name": "system_share",
+      "value": "系统分享"
+    },
+    {
+      "name": "share_failed",
+      "value": "分享失败"
+    }
+  ]
+}
