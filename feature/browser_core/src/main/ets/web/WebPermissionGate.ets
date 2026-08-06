@@ -37,8 +37,8 @@ const RESOURCE_VIDEO_CAPTURE: string = 'TYPE_VIDEO_CAPTURE'
 const RESOURCE_AUDIO_CAPTURE: string = 'TYPE_AUDIO_CAPTURE'
 
 /** 解析网页侧 resource 列表，映射到本端 camera/microphone（可同时包含两者） */
-function collectPermIdsFromResources(resources: Array<string>): SitePermissionId[] {
-  const list: Array<string> = Array.isArray(resources) ? resources : []
+function collectPermIdsFromResources(resources: string[]): SitePermissionId[] {
+  const list: string[] = Array.isArray(resources) ? resources : []
   const result: SitePermissionId[] = []
   if (list.indexOf(RESOURCE_VIDEO_CAPTURE) >= 0) {
     result.push('camera')
@@ -50,7 +50,7 @@ function collectPermIdsFromResources(resources: Array<string>): SitePermissionId
 }
 
 /** 解析网页侧 resource 列表，映射到本端 4 类之一（兼容旧调用：优先 video） */
-export function mapResourcesToPermId(resources: Array<string>): SitePermissionId | null {
+export function mapResourcesToPermId(resources: string[]): SitePermissionId | null {
   const ids = collectPermIdsFromResources(resources)
   if (ids.length === 0) {
     return null
@@ -251,7 +251,7 @@ export class WebPermissionGate {
    * UI 层将 event.request 拆解为 origin / resources / grant / deny 传入，
    * 避免直接传递 web PermissionRequest 类型（ArkTS 不允许 structural typing）。
    */
-  async handlePermissionRequest(origin: string, resources: Array<string>, grant: () => void, deny: () => void): Promise<WebPermissionDecision> {
+  async handlePermissionRequest(origin: string, resources: string[], grant: () => void, deny: () => void): Promise<WebPermissionDecision> {
     const permIds = collectPermIdsFromResources(resources)
     if (permIds.length === 0) {
       BrowserLog.info(`[WebPerm] deny unsupported resources origin=${origin} res=${JSON.stringify(resources)}`)

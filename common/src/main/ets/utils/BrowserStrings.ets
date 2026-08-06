@@ -7,7 +7,7 @@ import { SitePermissionId } from '../model/BrowserSettings'
  */
 export class BrowserStrings {
   /** 将 $r() 资源解析为当前语言的 plain string（不可使用 Resource.toString()） */
-  static txt(res: Resource, ...args: Array<string | number>): string {
+  static txt(res: Resource, ...args: (string | number)[]): string {
     const ctx = getBrowserContext()
     if (ctx === null) {
       return ''

@@ -901,8 +901,8 @@
       "value": "图片"
     },
     {
-      "name": "harmony_share",
-      "value": "华为分享"
+      "name": "share",
+      "value": "分享"
     },
     {
       "name": "wecom",
@@ -1014,7 +1014,7 @@
     },
     {
       "name": "system_share",
-      "value": "系统分享"
+      "value": "分享"
     },
     {
       "name": "share_failed",

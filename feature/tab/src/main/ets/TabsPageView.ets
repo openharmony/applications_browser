@@ -128,8 +128,8 @@ export struct TabsPageView {
     return this.vm.isIncognitoMode ? BrowserTheme.INCOGNITO_NAV_BG : BrowserTheme.bg(this.isDark())
   }
 
-  private tabsSurfaceBg(): string {
-    return this.vm.isIncognitoMode ? BrowserTheme.INCOGNITO_ADDRESS_BG : BrowserTheme.surface(this.isDark())
+  private tabsPanelBg(): string {
+    return this.vm.isIncognitoMode ? BrowserTheme.INCOGNITO_ADDRESS_BG : BrowserTheme.panelBg(this.isDark())
   }
 
   private onTabsStorageChanged(): void {
@@ -1037,7 +1037,7 @@ export struct TabsPageView {
         .padding({ top: 8, bottom: 8 })
         .justifyContent(FlexAlign.Center)
         .borderRadius(999)
-        .backgroundColor(this.vm.isIncognitoMode ? Color.Transparent : BrowserTheme.surface(this.isDark()))
+        .backgroundColor(this.vm.isIncognitoMode ? Color.Transparent : BrowserTheme.panelBg(this.isDark()))
         .shadow(this.vm.isIncognitoMode ? undefined : {
           radius: 4,
           color: 'rgba(0, 0, 0, 0.08)',
@@ -1068,7 +1068,7 @@ export struct TabsPageView {
         .justifyContent(FlexAlign.Center)
         .alignItems(VerticalAlign.Center)
         .borderRadius(999)
-        .backgroundColor(!this.vm.isIncognitoMode ? Color.Transparent : BrowserTheme.surface(this.isDark()))
+        .backgroundColor(!this.vm.isIncognitoMode ? Color.Transparent : BrowserTheme.panelBg(this.isDark()))
         .shadow(!this.vm.isIncognitoMode ? undefined : {
           radius: 4,
           color: 'rgba(0, 0, 0, 0.08)',
@@ -1400,7 +1400,7 @@ export struct TabsPageView {
       })
     }
     .width('100%')
-    .backgroundColor(this.tabsSurfaceBg())
+    .backgroundColor(this.tabsPanelBg())
     .borderRadius(14)
     .translate(lifted ? { x: 0, y: 0 } : { x: this.tabCardDragOffset(tab.id) })
     .border({
@@ -1472,7 +1472,7 @@ export struct TabsPageView {
       Column() {
         TabsBottomTrashIcon({
           canUse: this.vm.canCloseAllTabs(this.partitionTabList.length),
-          darkSurface: this.tabsUiDark()
+          darkPanel: this.tabsUiDark()
         })
       }
       .width(28)

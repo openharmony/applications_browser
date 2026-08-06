@@ -2,7 +2,7 @@ import { BrowserTheme } from 'browser_core'
 import { AppStorageKeys } from 'common'
 
 /**
- * 鸿蒙系统弹窗视觉 token（对齐系统 AlertDialog 外观，不改业务回调）。
+ * OpenHarmony 系统弹窗视觉 token（对齐系统 AlertDialog 外观，不改业务回调）。
  * 颜色均取 sys.color，随深浅色自动适配。
  */
 export class HarmonyDialogStyle {

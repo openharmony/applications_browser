@@ -10,7 +10,7 @@ export interface ShareAppsAvailability {
   sms: boolean
   wecom: boolean
   douyin: boolean
-  huaweiShare: boolean
+  systemShare: boolean
   bluetooth: boolean
   transfer: boolean
 }
@@ -21,7 +21,7 @@ export const DEFAULT_SHARE_APPS: ShareAppsAvailability = {
   sms: false,
   wecom: false,
   douyin: false,
-  huaweiShare: false,
+  systemShare: false,
   bluetooth: true,
   transfer: false
 }
@@ -35,8 +35,8 @@ export class ShareAppAvailability {
   static readonly BUNDLE_TRANSFER: string[] = ['com.huawei.distributedpasteboard', 'com.ohos.superhub']
   /** 系统短信应用包名 */
   static readonly BUNDLE_MMS: string[] = ['com.ohos.mms']
-  /** 华为分享包名候选（HarmonyOS 各版本） */
-  static readonly BUNDLE_HUAWEI_SHARE: string[] = [
+  /** 系统近场分享包名候选（各产品版本） */
+  static readonly BUNDLE_SYSTEM_SHARE: string[] = [
     'com.huawei.hmos.sharedialog',
     'com.huawei.android.instantshare',
     'com.ohos.sharepanel'
@@ -64,13 +64,13 @@ export class ShareAppAvailability {
       sms: await ShareAppAvailability.isSmsShareAvailable(),
       wecom: await ShareAppAvailability.isAnyBundleInstalled(ShareAppAvailability.BUNDLE_WECOM),
       douyin: await ShareAppAvailability.isAnyBundleInstalled(ShareAppAvailability.BUNDLE_DOUYIN),
-      huaweiShare: await ShareAppAvailability.isAnyBundleInstalled(ShareAppAvailability.BUNDLE_HUAWEI_SHARE),
+      systemShare: await ShareAppAvailability.isAnyBundleInstalled(ShareAppAvailability.BUNDLE_SYSTEM_SHARE),
       bluetooth: true,
       transfer: await ShareAppAvailability.isAnyBundleInstalled(ShareAppAvailability.BUNDLE_TRANSFER)
     }
     ShareAppAvailability.publishAvailability(result)
     BrowserLog.info(`[ShareAvail] wechat=${result.wechat} qq=${result.qq} sms=${result.sms} ` +
-      `wecom=${result.wecom} douyin=${result.douyin} huaweiShare=${result.huaweiShare} transfer=${result.transfer}`)
+      `wecom=${result.wecom} douyin=${result.douyin} systemShare=${result.systemShare} transfer=${result.transfer}`)
     return result
   }
 
@@ -82,7 +82,7 @@ export class ShareAppAvailability {
       sms: result.sms,
       wecom: result.wecom,
       douyin: result.douyin,
-      huaweiShare: result.huaweiShare,
+      systemShare: result.systemShare,
       bluetooth: result.bluetooth,
       transfer: result.transfer
     })

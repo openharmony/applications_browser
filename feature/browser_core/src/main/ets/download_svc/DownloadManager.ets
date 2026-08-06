@@ -1869,7 +1869,7 @@ interface MmsContactInfo {
   telephone: number
 }
 
-/** 系统分享能力封装 */
+/** 分享能力封装 */
 export class ShareService {
   private static instance: ShareService | null = null
 
@@ -1891,7 +1891,7 @@ export class ShareService {
     return safeTitle.length > 0 ? safeTitle : safeUrl
   }
 
-  /** 构造 sendData Want（系统分享选择器） */
+  /** 构造 sendData Want（分享选择器） */
   private buildSendDataWant(title: string, url: string, mimeType: string = 'text/plain'): Want {
     const body = this.shareBody(title, url)
     const safeTitle = title.trim()
@@ -1909,7 +1909,7 @@ export class ShareService {
     }
   }
 
-  /** 拉起系统分享选择器 */
+  /** 拉起分享选择器 */
   private async shareViaSendData(title: string, url: string, mimeType: string = 'text/plain'): Promise<void> {
     const ctx = BrowserStore.getContext()
     if (!ctx) {
@@ -1960,7 +1960,7 @@ export class ShareService {
     return false
   }
 
-  /** 优先直达目标应用，失败则回退系统分享选择器 */
+  /** 优先直达目标应用，失败则回退分享选择器 */
   private async shareLinkToBundles(title: string, url: string, bundleCandidates: string[]): Promise<void> {
     const ctx = BrowserStore.getContext()
     if (!ctx) {
@@ -2259,7 +2259,7 @@ export class ShareService {
     await this.shareLinkToBundles(title, url, ShareAppAvailability.BUNDLE_DOUYIN)
   }
 
-  /** 调用系统分享选择器分享链接 */
+  /** 调用分享选择器分享链接 */
   async shareLinkViaSystem(title: string, url: string): Promise<void> {
     await this.shareViaSendData(title, url)
   }
@@ -2283,7 +2283,7 @@ export class ShareService {
     BrowserStore.showToast(BrowserStrings.txt($r('app.string.toast_transfer')))
   }
 
-  /** 打印/蓝牙等场景：优先分享文件，否则走系统分享选择器 */
+  /** 打印/蓝牙等场景：优先分享文件，否则走分享选择器 */
   async shareForDeviceAction(title: string, url: string, localPath: string = ''): Promise<void> {
     if (localPath.length > 0) {
       const shared = await this.shareFileViaSendData(title, localPath)

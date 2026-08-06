@@ -69,8 +69,8 @@ export struct AddShortcutSheet {
     return this.isDarkMode() ? '#8e8e93' : BrowserTheme.TEXT_MUTED
   }
 
-  private listSurface(): string {
-    return this.isDarkMode() ? '#2c2c2e' : BrowserTheme.SURFACE
+  private listPanelBg(): string {
+    return this.isDarkMode() ? '#2c2c2e' : BrowserTheme.PANEL_BG
   }
 
   private listBorder(): string {
@@ -86,7 +86,7 @@ export struct AddShortcutSheet {
   }
 
   private iconBg(): string {
-    return this.isDarkMode() ? '#141414' : BrowserTheme.SURFACE
+    return this.isDarkMode() ? '#141414' : BrowserTheme.PANEL_BG
   }
 
   private iconBorder(): string {
@@ -462,7 +462,7 @@ export struct AddShortcutSheet {
         })
       }
       .width('100%')
-      .backgroundColor(this.listSurface())
+      .backgroundColor(this.listPanelBg())
       .borderRadius(12)
       .clip(true)
     }
@@ -502,7 +502,7 @@ export struct AddShortcutSheet {
         })
       }
       .width('100%')
-      .backgroundColor(this.listSurface())
+      .backgroundColor(this.listPanelBg())
       .borderRadius(12)
       .clip(true)
     }
@@ -581,7 +581,7 @@ export struct AddShortcutSheet {
     }
     .width('100%')
     .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-    .backgroundColor(this.listSurface())
+    .backgroundColor(this.listPanelBg())
     .borderRadius(14)
     .alignItems(VerticalAlign.Center)
   }
@@ -649,7 +649,7 @@ export struct AddShortcutSheet {
       }
     }
     .width('100%')
-    .backgroundColor(this.listSurface())
+    .backgroundColor(this.listPanelBg())
     .onClick(() => {
       this.bookmarkFolderId = folderId
     })
@@ -696,7 +696,7 @@ export struct AddShortcutSheet {
       }
     }
     .width('100%')
-    .backgroundColor(this.listSurface())
+    .backgroundColor(this.listPanelBg())
   }
 
   @Builder
@@ -741,7 +741,7 @@ export struct AddShortcutSheet {
       }
     }
     .width('100%')
-    .backgroundColor(this.listSurface())
+    .backgroundColor(this.listPanelBg())
   }
 
   @Builder

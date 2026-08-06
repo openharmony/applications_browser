@@ -30,7 +30,7 @@ export class BrowserUtils {
     if (!host) {
       return ''
     }
-    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`
+    return `https://${host}/favicon.ico`
   }
 
   /** 将 UI 文件大小文本解析为字节数（无法解析返回 0） */
@@ -104,7 +104,7 @@ export class BrowserUtils {
   }
 
   /**
-   * 是否为唤起原生应用的外部 scheme（store/hap/intent 等）。
+   * 是否为唤起原生应用的外部 scheme（store/hap/Want deeplink 等）。
    * 此类 URL 在 WebView 内加载会白屏，应在 onLoadIntercept 拦截。
    */
   static isExternalAppScheme(url: string): boolean {

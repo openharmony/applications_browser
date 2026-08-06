@@ -23,8 +23,9 @@ export class HistoryRepository {
 
   /** 删除旧版 seedDefaultsIfEmpty 写入的示例记录（按 url + visitedAt 精确匹配） */
   async removeLegacySeedHistory(): Promise<void> {
-    const legacySeeds: Array<CreateHistoryEntryInput> = [
+    const legacySeeds: CreateHistoryEntryInput[] = [
       { url: 'https://www.example.com/files', title: '', visitedAt: new Date('2025-05-24T10:30:00').getTime() },
+      // 历史 seed 精确匹配用，勿改 URL/时间，否则无法清掉已安装设备上的旧演示数据
       { url: 'https://developer.huawei.com', title: '', visitedAt: new Date('2025-05-24T09:15:00').getTime() },
       { url: 'https://www.baidu.com', title: '', visitedAt: new Date('2025-05-21T14:20:00').getTime() },
       { url: 'https://docs.openharmony.cn', title: '', visitedAt: new Date('2025-05-21T11:00:00').getTime() }

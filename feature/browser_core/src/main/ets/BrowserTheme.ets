@@ -7,8 +7,8 @@ import { FontScaleService } from './settings/FontScaleService'
 export class BrowserTheme {
   /** 浅色模式页面背景色 */
   static readonly LIGHT_BG: string = '#f4f5f7'
-  /** 浅色模式卡片/表面背景色 */
-  static readonly LIGHT_SURFACE: string = '#ffffff'
+  /** 浅色模式卡片/面板背景色 */
+  static readonly LIGHT_PANEL_BG: string = '#ffffff'
   /** 浅色模式主文字色 */
   static readonly LIGHT_TEXT: string = '#111827'
   /** 浅色模式次级文字色 */
@@ -34,8 +34,8 @@ export class BrowserTheme {
 
   /** 深色模式页面背景色 */
   static readonly DARK_BG: string = '#0f1117'
-  /** 深色模式卡片/表面背景色 */
-  static readonly DARK_SURFACE: string = '#1a1d26'
+  /** 深色模式卡片/面板背景色 */
+  static readonly DARK_PANEL_BG: string = '#1a1d26'
   /** 深色模式主文字色 */
   static readonly DARK_TEXT: string = '#f3f4f6'
   /** 深色模式次级文字色 */
@@ -138,9 +138,9 @@ export class BrowserTheme {
     return isDark ? BrowserTheme.DARK_BG : BrowserTheme.LIGHT_BG
   }
 
-  /** 当前主题下的卡片/表面背景色 */
-  static surface(isDark: boolean): string {
-    return isDark ? BrowserTheme.DARK_SURFACE : BrowserTheme.LIGHT_SURFACE
+  /** 当前主题下的卡片/面板背景色 */
+  static panelBg(isDark: boolean): string {
+    return isDark ? BrowserTheme.DARK_PANEL_BG : BrowserTheme.LIGHT_PANEL_BG
   }
 
   /** 当前主题下的主题色浅背景 */
@@ -150,7 +150,7 @@ export class BrowserTheme {
 
   /** 深色模式下快捷方式图标背景 */
   static shortcutIconBg(isDark: boolean): string {
-    return isDark ? BrowserTheme.SHORTCUT_ICON_BG_DARK : BrowserTheme.LIGHT_SURFACE
+    return isDark ? BrowserTheme.SHORTCUT_ICON_BG_DARK : BrowserTheme.LIGHT_PANEL_BG
   }
 
   /** 深色模式下快捷方式图标边框 */
@@ -177,9 +177,9 @@ export class BrowserTheme {
     return BrowserStore.isDarkMode() ? BrowserTheme.DARK_BG : BrowserTheme.LIGHT_BG
   }
 
-  /** 当前主题下的卡片/表面背景色 */
-  static get SURFACE(): string {
-    return BrowserStore.isDarkMode() ? BrowserTheme.DARK_SURFACE : BrowserTheme.LIGHT_SURFACE
+  /** 当前主题下的卡片/面板背景色 */
+  static get PANEL_BG(): string {
+    return BrowserStore.isDarkMode() ? BrowserTheme.DARK_PANEL_BG : BrowserTheme.LIGHT_PANEL_BG
   }
 
   /** 当前主题下的主文字色 */
@@ -207,7 +207,7 @@ export class BrowserTheme {
    * isDark 为可选入参——若传入，则用入参决定（与 build 中的 this.isDarkMode() 同源，触发响应式刷新）；
    * 若不传则回退到 BrowserStore.isDarkMode()（仅 build 外一次性调用使用）。
    */
-  static homeGradientColors(isDark?: boolean): Array<[ResourceColor, number]> {
+  static homeGradientColors(isDark?: boolean): [ResourceColor, number][] {
     const dark = isDark === undefined ? BrowserStore.isDarkMode() : isDark
     if (dark) {
       return [['#1a2744', 0.0], ['#161f36', 0.22], ['#121828', 0.52], [BrowserTheme.DARK_BG, 1.0]]
@@ -222,7 +222,7 @@ export class BrowserTheme {
   }
 
   /** 水面倒影区水色渐变：近水面透出倒影，向下溶入统一中段水色 */
-  static homeBgReflectionColors(isDark?: boolean): Array<[ResourceColor, number]> {
+  static homeBgReflectionColors(isDark?: boolean): [ResourceColor, number][] {
     const dark = isDark === undefined ? BrowserStore.isDarkMode() : isDark
     if (dark) {
       return [
@@ -242,7 +242,7 @@ export class BrowserTheme {
   /**
    * 深色倒影区内左右渐隐：边缘盖住硬白边，向中心透明透出倒影（更宽更柔）。
    */
-  static homeBgReflectionInAreaFadeColors(): Array<[ResourceColor, number]> {
+  static homeBgReflectionInAreaFadeColors(): [ResourceColor, number][] {
     const edge: string = 'rgba(18, 24, 40, 0.9)'
     const near: string = 'rgba(18, 24, 40, 0.55)'
     const mid: string = 'rgba(18, 24, 40, 0.22)'
@@ -261,7 +261,7 @@ export class BrowserTheme {
   }
 
   /** 深色倒影区内上下渐隐：近水面保留，向下加速溶入背景 */
-  static homeBgReflectionInAreaVerticalFadeColors(): Array<[ResourceColor, number]> {
+  static homeBgReflectionInAreaVerticalFadeColors(): [ResourceColor, number][] {
     return [
       ['rgba(18, 24, 40, 0)', 0.0],
       ['rgba(18, 24, 40, 0.04)', 0.25],
@@ -272,7 +272,7 @@ export class BrowserTheme {
   }
 
   /** 近水面高光：模拟光在水面上的反射带 */
-  static homeBgReflectionSheenColors(isDark?: boolean): Array<[ResourceColor, number]> {
+  static homeBgReflectionSheenColors(isDark?: boolean): [ResourceColor, number][] {
     const dark = isDark === undefined ? BrowserStore.isDarkMode() : isDark
     if (dark) {
       return [
@@ -289,7 +289,7 @@ export class BrowserTheme {
   }
 
   /** 倒影下部：轻柔溶入中段水色，避免截断处发灰发深 */
-  static homeBgReflectionDepthColors(isDark?: boolean): Array<[ResourceColor, number]> {
+  static homeBgReflectionDepthColors(isDark?: boolean): [ResourceColor, number][] {
     const dark = isDark === undefined ? BrowserStore.isDarkMode() : isDark
     if (dark) {
       return [
@@ -306,7 +306,7 @@ export class BrowserTheme {
   }
 
   /** 截断线附近短柔边：溶入统一中段色，消除硬边 */
-  static homeBgClipEdgeFadeColors(isDark?: boolean): Array<[ResourceColor, number]> {
+  static homeBgClipEdgeFadeColors(isDark?: boolean): [ResourceColor, number][] {
     const mid = BrowserTheme.homeMidFillColor(isDark)
     const dark = isDark === undefined ? BrowserStore.isDarkMode() : isDark
     if (dark) {
@@ -324,7 +324,7 @@ export class BrowserTheme {
   }
 
   /** 水面分界柔光：左右淡出，避免硬亮线突兀 */
-  static homeBgHorizonLineColors(isDark?: boolean): Array<[ResourceColor, number]> {
+  static homeBgHorizonLineColors(isDark?: boolean): [ResourceColor, number][] {
     const dark = isDark === undefined ? BrowserStore.isDarkMode() : isDark
     if (dark) {
       return [
@@ -369,7 +369,7 @@ export class BrowserTheme {
   }
 
   /** 获取无痕模式首页背景渐变色标 */
-  static incognitoHomeGradientColors(): Array<[ResourceColor, number]> {
+  static incognitoHomeGradientColors(): [ResourceColor, number][] {
     return [['#0f1a28', 0.0], ['#121820', 0.35], ['#0a0a0a', 1.0]]
   }
 

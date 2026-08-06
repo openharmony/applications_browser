@@ -62,7 +62,7 @@ export struct BrowseWebContextSheet {
             .onClick(() => this.onClose?.())
         }
         .width('100%')
-        .backgroundColor(BrowserTheme.surface(this.isDark()))
+        .backgroundColor(BrowserTheme.panelBg(this.isDark()))
         .borderRadius({ topLeft: 16, topRight: 16 })
         .zIndex(1)
       }

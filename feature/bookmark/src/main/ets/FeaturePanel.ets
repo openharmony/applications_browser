@@ -71,7 +71,7 @@ export struct FeaturePanel {
   }
 
   private cardBg(): string {
-    return this.isDark() ? BrowserTheme.DARK_SURFACE : BrowserTheme.LIGHT_SURFACE
+    return this.isDark() ? BrowserTheme.DARK_PANEL_BG : BrowserTheme.LIGHT_PANEL_BG
   }
 
   /** 书签/历史/下载全屏列表：整页白底，避免底部 safe area 露出灰色 pageBg */

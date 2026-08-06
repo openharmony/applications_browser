@@ -98,7 +98,7 @@ export struct HistoryContextMenuLayer {
     }
     .width(this.rowWidth)
     .padding({ left: 16, right: 16, top: 14, bottom: 14 })
-    .backgroundColor(BrowserTheme.SURFACE)
+    .backgroundColor(BrowserTheme.PANEL_BG)
     .borderRadius(12)
     .shadow({
       radius: 18,

@@ -344,7 +344,7 @@ export class ImageGalleryService {
     return 'jpg'
   }
 
-  /** 下载图片到缓存目录，供系统分享等 URI 场景使用 */
+  /** 下载图片到缓存目录，供分享等 URI 场景使用 */
   async writeImageToShareCache(sourceUrl: string): Promise<string | null> {
     const trimmed = sourceUrl.trim()
     if (!trimmed) {

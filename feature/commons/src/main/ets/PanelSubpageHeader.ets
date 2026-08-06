@@ -153,7 +153,7 @@ export struct PanelSubpageHeader {
   onSearchClear?: () => void
 
   private headerBg(): string {
-    return this.darkMode ? BrowserTheme.DARK_SURFACE : '#ffffff'
+    return this.darkMode ? BrowserTheme.DARK_PANEL_BG : '#ffffff'
   }
 
   private headerBorderColor(): string {
@@ -357,7 +357,7 @@ export struct PanelPopoverMenu {
   onDismiss?: () => void
 
   private menuBg(): string {
-    return this.darkMode ? BrowserTheme.DARK_SURFACE : '#ffffff'
+    return this.darkMode ? BrowserTheme.DARK_PANEL_BG : '#ffffff'
   }
 
   private menuBorderColor(): string {

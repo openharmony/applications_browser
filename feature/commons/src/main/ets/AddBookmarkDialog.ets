@@ -134,7 +134,7 @@ export struct AddBookmarkDialog {
 
   private cardBg(): string {
 
-    return BrowserTheme.surface(this.isDark())
+    return BrowserTheme.panelBg(this.isDark())
 
   }
 
@@ -148,7 +148,7 @@ export struct AddBookmarkDialog {
 
 
 
-  private listSurface(): string {
+  private listPanelBg(): string {
 
     return this.isDark() ? '#2c2c2e' : '#eef0f3'
 

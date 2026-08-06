@@ -21,7 +21,7 @@ export type AppPermissionStatus = 'granted' | 'denied' | 'unknown'
 const ALL_CATEGORIES: SitePermissionId[] = ['location', 'camera', 'microphone', 'notification']
 const WRITE_IMAGE_VIDEO: Permissions = 'ohos.permission.WRITE_IMAGEVIDEO'
 const READ_IMAGE_VIDEO: Permissions = 'ohos.permission.READ_IMAGEVIDEO'
-/** 系统设置应用（OpenHarmony / HarmonyOS NEXT 兼容） */
+/** 系统设置应用（OpenHarmony 与兼容产品包名） */
 interface SettingsAbilityTarget {
   bundleName: string
   abilityName: string
@@ -231,7 +231,7 @@ export class AppPermissionService {
 
   /**
    * 打开系统「应用信息」页，用户可在其中管理相机/麦克风等权限。
-   * 兼容 OpenHarmony（com.ohos.settings）与 HarmonyOS NEXT 设置包名。
+   * 兼容 OpenHarmony（com.ohos.settings）与产品侧设置包名候选。
    */
   async openAppDetailInSystemSettings(): Promise<boolean> {
     const ctx = BrowserStore.getContext()

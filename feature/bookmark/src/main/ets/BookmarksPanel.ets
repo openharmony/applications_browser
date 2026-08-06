@@ -636,7 +636,7 @@ export struct BookmarksPanel {
       .width('100%')
       .height('100%')
       .justifyContent(FlexAlign.Start)
-      .backgroundColor(BrowserTheme.SURFACE)
+      .backgroundColor(BrowserTheme.PANEL_BG)
       .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
 
       if (this.showPlusMenu) {
@@ -695,7 +695,7 @@ export struct BookmarksPanel {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(BrowserTheme.SURFACE)
+    .backgroundColor(BrowserTheme.PANEL_BG)
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
   }
 
@@ -862,7 +862,7 @@ export struct BookmarksPanel {
           }
           .width('100%')
           .constraintSize({ minHeight: '100%' })
-          .backgroundColor(BrowserTheme.SURFACE)
+          .backgroundColor(BrowserTheme.PANEL_BG)
           .borderRadius(12)
           .clip(true)
         }
@@ -881,7 +881,7 @@ export struct BookmarksPanel {
     .width('100%')
     .align(Alignment.Top)
     .scrollBar(BarState.Off)
-    .backgroundColor(BrowserTheme.SURFACE)
+    .backgroundColor(BrowserTheme.PANEL_BG)
     .onAreaChange((_old, area) => {
       const globalPos = area.globalPosition
       if (globalPos) {
@@ -928,7 +928,7 @@ export struct BookmarksPanel {
       .width('100%')
       .editMode(true)
       .scrollBar(BarState.Off)
-      .backgroundColor(BrowserTheme.SURFACE)
+      .backgroundColor(BrowserTheme.PANEL_BG)
       .borderRadius(12)
       .clip(true)
       .margin({
@@ -1038,7 +1038,7 @@ export struct BookmarksPanel {
     }
     .width('100%')
     .backgroundColor(this.isSelected(this.folderKey(folderId)) ?
-      BrowserTheme.PRIMARY_LIGHT : BrowserTheme.SURFACE)
+      BrowserTheme.PRIMARY_LIGHT : BrowserTheme.PANEL_BG)
     .id(this.bookmarkRowMeasureId(this.folderKey(folderId)))
     .onAreaChange((_old, area) => {
       this.updateBookmarkRowHitArea(this.folderKey(folderId), area)
@@ -1086,7 +1086,7 @@ export struct BookmarksPanel {
       }
     }
     .width('100%')
-    .backgroundColor(BrowserTheme.SURFACE)
+    .backgroundColor(BrowserTheme.PANEL_BG)
     .onClick(() => {
       this.currentFolderId = folderId
     })
@@ -1168,7 +1168,7 @@ export struct BookmarksPanel {
       }
     }
     .width('100%')
-    .backgroundColor(this.isSelected(item.id) ? BrowserTheme.PRIMARY_LIGHT : BrowserTheme.SURFACE)
+    .backgroundColor(this.isSelected(item.id) ? BrowserTheme.PRIMARY_LIGHT : BrowserTheme.PANEL_BG)
     .id(this.bookmarkRowMeasureId(item.id))
     .onAreaChange((_old, area) => {
       this.updateBookmarkRowHitArea(item.id, area)
@@ -1229,7 +1229,7 @@ export struct BookmarksPanel {
       top: 14,
       bottom: 14
     })
-    .backgroundColor(BrowserTheme.SURFACE)
+    .backgroundColor(BrowserTheme.PANEL_BG)
   }
 
   private openDeleteConfirm(ids: string[]): void {
@@ -1317,7 +1317,7 @@ export struct BookmarksPanel {
     }
     .width('100%')
     .padding({ bottom: BrowserSafeAreaInsets.batchBarBottomPadding() })
-    .backgroundColor(BrowserTheme.SURFACE)
+    .backgroundColor(BrowserTheme.PANEL_BG)
     .border({ width: { top: 1 }, color: BrowserTheme.BORDER })
     .onAppear(() => {
       this.logBatchButtonState('bar-appear')
@@ -1521,7 +1521,7 @@ export struct BookmarksPanel {
         })
       }
       .width('100%')
-      .backgroundColor(BrowserTheme.SURFACE)
+      .backgroundColor(BrowserTheme.PANEL_BG)
       .borderRadius({ topLeft: 16, topRight: 16 })
       .padding({ bottom: 12 + this.safeAreaBottom })
       .onClick(() => {
@@ -1577,7 +1577,7 @@ export struct BookmarksPanel {
       }
       .width('85%')
       .padding(24)
-      .backgroundColor(BrowserTheme.SURFACE)
+      .backgroundColor(BrowserTheme.PANEL_BG)
       .borderRadius(16)
     }
     .width('100%')
@@ -1679,7 +1679,7 @@ export struct BookmarksPanel {
       }
       .width('85%')
       .padding(24)
-      .backgroundColor(BrowserTheme.SURFACE)
+      .backgroundColor(BrowserTheme.PANEL_BG)
       .borderRadius(16)
     }
     .width('100%')
@@ -1734,7 +1734,7 @@ export struct BookmarksPanel {
         top: PanelHeaderStyle.V_PADDING + this.safeAreaTop,
         bottom: PanelHeaderStyle.V_PADDING
       })
-      .backgroundColor(BrowserTheme.SURFACE)
+      .backgroundColor(BrowserTheme.PANEL_BG)
       .border({ width: { bottom: 1 }, color: BrowserTheme.BORDER })
 
       Scroll() {
@@ -1781,7 +1781,7 @@ export struct BookmarksPanel {
         top: 12,
         bottom: 12 + this.safeAreaBottom
       })
-      .backgroundColor(BrowserTheme.SURFACE)
+      .backgroundColor(BrowserTheme.PANEL_BG)
       .border({ width: { top: 1 }, color: BrowserTheme.BORDER })
     }
     .width('100%')
@@ -1838,7 +1838,7 @@ export struct BookmarksPanel {
     }
     .width('100%')
     .backgroundColor(this.movePickFolder === row.id && !this.isInvalidMoveTarget(row.id) ?
-      BrowserTheme.PRIMARY_LIGHT : BrowserTheme.SURFACE)
+      BrowserTheme.PRIMARY_LIGHT : BrowserTheme.PANEL_BG)
     .opacity(this.isInvalidMoveTarget(row.id) ? 0.55 : 1)
     .onClick(() => {
       if (this.isInvalidMoveTarget(row.id)) {
@@ -1917,7 +1917,7 @@ export struct BookmarksPanel {
         top: PanelHeaderStyle.V_PADDING + this.safeAreaTop,
         bottom: PanelHeaderStyle.V_PADDING
       })
-      .backgroundColor(BrowserTheme.SURFACE)
+      .backgroundColor(BrowserTheme.PANEL_BG)
       .border({ width: { bottom: 1 }, color: BrowserTheme.BORDER })
 
       Scroll() {
@@ -1960,7 +1960,7 @@ export struct BookmarksPanel {
         top: 12,
         bottom: 12 + this.safeAreaBottom
       })
-      .backgroundColor(BrowserTheme.SURFACE)
+      .backgroundColor(BrowserTheme.PANEL_BG)
       .border({ width: { top: 1 }, color: BrowserTheme.BORDER })
     }
     .width('100%')
@@ -2016,7 +2016,7 @@ export struct BookmarksPanel {
     }
     .width('100%')
     .backgroundColor(this.locationPickFolder === row.id && !this.isInvalidRenameLocation(row.id) ?
-      BrowserTheme.PRIMARY_LIGHT : BrowserTheme.SURFACE)
+      BrowserTheme.PRIMARY_LIGHT : BrowserTheme.PANEL_BG)
     .opacity(this.isInvalidRenameLocation(row.id) ? 0.55 : 1)
     .onClick(() => {
       if (this.isInvalidRenameLocation(row.id)) {

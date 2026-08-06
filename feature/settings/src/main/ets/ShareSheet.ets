@@ -73,7 +73,7 @@ export struct ShareSheet {
           }
         }
         .width('100%')
-        .backgroundColor(BrowserTheme.surface(this.isDark()))
+        .backgroundColor(BrowserTheme.panelBg(this.isDark()))
         .borderRadius({ topLeft: 20, topRight: 20 })
       }
     }
@@ -240,8 +240,8 @@ export struct ShareSheet {
 
       Scroll() {
         Row({ space: 16 }) {
-          if (this.shareApps.huaweiShare) {
-            this.HarmonyApp('⎘', '#2563eb', BrowserStrings.txt($r('app.string.harmony_share')), () => {
+          if (this.shareApps.systemShare) {
+            this.HarmonyApp('⎘', '#2563eb', BrowserStrings.txt($r('app.string.share')), () => {
               if (this.previewImage) {
                 this.shareImage()
               } else {

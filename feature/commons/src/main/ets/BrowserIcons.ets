@@ -893,12 +893,12 @@ const TABS_BOTTOM_ICON_SIZE: number = 22
 
 @Component
 export struct TabsBottomTrashIcon {
-  /** 可点 / 不可点；颜色随底栏表面深浅（无痕深色底不能用浅色主题的系统文字色） */
+  /** 可点 / 不可点；颜色随底栏面板深浅（无痕深色底不能用浅色主题的系统文字色） */
   @Prop canUse: boolean = true
-  @Prop darkSurface: boolean = false
+  @Prop darkPanel: boolean = false
 
   private iconColor(): ResourceColor {
-    if (this.darkSurface) {
+    if (this.darkPanel) {
       return this.canUse ? BrowserTheme.text(true) : BrowserTheme.textMuted(true)
     }
     return this.canUse ?

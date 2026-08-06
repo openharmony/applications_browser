@@ -35,7 +35,7 @@ export struct SettingsInlinePicker {
   }
 
   private menuBg(): string {
-    return this.isDark ? BrowserTheme.DARK_SURFACE : BrowserTheme.LIGHT_SURFACE
+    return this.isDark ? BrowserTheme.DARK_PANEL_BG : BrowserTheme.LIGHT_PANEL_BG
   }
 
   private triggerBg(): string {

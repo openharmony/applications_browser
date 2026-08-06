@@ -277,7 +277,7 @@ export struct BrowseAddressBar {
         }
         .width('100%')
         .padding({ left: 6, right: 6, top: 10, bottom: 10 })
-        .backgroundColor(BrowserTheme.SURFACE)
+        .backgroundColor(BrowserTheme.PANEL_BG)
         .borderRadius(10)
         .onClick((): void => {
           this.onDownloadRowTap(item)

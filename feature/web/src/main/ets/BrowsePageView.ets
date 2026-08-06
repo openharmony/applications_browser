@@ -51,19 +51,19 @@ import { HistoryEntry } from 'common'
 /** ArkWeb PermissionRequest 适配器：web.d.ts 未导出该类型，仅在 Web 组件内可见 */
 interface PermissionRequestAdapter {
   getOrigin(): string
-  getAccessibleResource(): Array<string>
-  grant(resources: Array<string>): void
+  getAccessibleResource(): string[]
+  grant(resources: string[]): void
   deny(): void
 }
 
 class PermissionRequestAdapterImpl implements PermissionRequestAdapter {
   private readonly getOriginFn: () => string
-  private readonly getResourceFn: () => Array<string>
-  private readonly grantFn: (r: Array<string>) => void
+  private readonly getResourceFn: () => string[]
+  private readonly grantFn: (r: string[]) => void
   private readonly denyFn: () => void
 
-  constructor(getOrigin: () => string, getResource: () => Array<string>,
-    grant: (r: Array<string>) => void, deny: () => void) {
+  constructor(getOrigin: () => string, getResource: () => string[],
+    grant: (r: string[]) => void, deny: () => void) {
     this.getOriginFn = getOrigin
     this.getResourceFn = getResource
     this.grantFn = grant
@@ -74,11 +74,11 @@ class PermissionRequestAdapterImpl implements PermissionRequestAdapter {
     return this.getOriginFn()
   }
 
-  getAccessibleResource(): Array<string> {
+  getAccessibleResource(): string[] {
     return this.getResourceFn()
   }
 
-  grant(resources: Array<string>): void {
+  grant(resources: string[]): void {
     this.grantFn(resources)
   }
 
@@ -98,8 +98,8 @@ function asPermissionRequest(obj: object): PermissionRequestAdapter | null {
   const host = obj as PermissionRequestAdapter
   return new PermissionRequestAdapterImpl(
     (): string => host.getOrigin(),
-    (): Array<string> => host.getAccessibleResource(),
-    (r: Array<string>): void => host.grant(r),
+    (): string[] => host.getAccessibleResource(),
+    (r: string[]): void => host.grant(r),
     (): void => host.deny()
   )
 }
@@ -192,7 +192,7 @@ export struct BrowsePageView {
   /**
    * 文档起始注入：getUserMedia 音频走原生旁路，规避 ArkWeb audioBus 丢帧无声。
    */
-  private micGumScripts: Array<ScriptItem> = [{
+  private micGumScripts: ScriptItem[] = [{
     script: buildMicGumPolyfillScript(),
     scriptRules: ['*']
   }]
@@ -528,8 +528,8 @@ export struct BrowsePageView {
     return this.isBrowseDark() ? BrowserTheme.DARK_BG : BrowserTheme.LIGHT_BG
   }
 
-  private browseSurfaceBg(): string {
-    return this.isBrowseDark() ? BrowserTheme.DARK_SURFACE : BrowserTheme.LIGHT_SURFACE
+  private browsePanelBg(): string {
+    return this.isBrowseDark() ? BrowserTheme.DARK_PANEL_BG : BrowserTheme.LIGHT_PANEL_BG
   }
 
   private browseText(): string {
@@ -1284,7 +1284,7 @@ export struct BrowsePageView {
             }
             .width('100%')
             .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-            .backgroundColor(this.browseSurfaceBg())
+            .backgroundColor(this.browsePanelBg())
             .onClick(() => {
               if (this.urlEditActive) {
                 this.cancelBrowseUrlEdit()
@@ -1332,7 +1332,7 @@ export struct BrowsePageView {
             })
           }
           .width('100%')
-          .backgroundColor(this.browseSurfaceBg())
+          .backgroundColor(this.browsePanelBg())
 
           if (this.progress < 100 && !this.webMediaFullscreen) {
             Row() {
@@ -1352,7 +1352,7 @@ export struct BrowsePageView {
           }
         }
         .width('100%')
-        .backgroundColor(this.browseSurfaceBg())
+        .backgroundColor(this.browsePanelBg())
         .border({ width: { bottom: 1 }, color: this.moreDividerColor() })
         .key(`browse-chrome-${this.fontUiRev}-${this.fontUiScale.toFixed(2)}`)
         .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
@@ -1453,7 +1453,7 @@ export struct BrowsePageView {
                 return
               }
               let reqOrigin = ''
-              let resources: Array<string> = []
+              let resources: string[] = []
               try {
                 reqOrigin = (req.getOrigin() ?? '').trim()
                 resources = req.getAccessibleResource() ?? []
@@ -1463,7 +1463,7 @@ export struct BrowsePageView {
               }
               const policyOrigin = WebPermissionGate.normalizeWebOrigin(
                 reqOrigin.length > 0 ? reqOrigin : WebPermissionGate.extractOriginFromUrl(this.currentUrl))
-              const grantResources: Array<string> = resources.slice()
+              const grantResources: string[] = resources.slice()
               BrowserLog.info(
                 `[WebPerm] onPermissionRequest origin=${policyOrigin.slice(0, 80)} res=${JSON.stringify(grantResources)}`)
               setTimeout((): void => {
@@ -1721,7 +1721,7 @@ export struct BrowsePageView {
         .key(`browse-nav-${this.navUiRev}-${this.windowRev}-${this.fontUiRev}-${this.fontUiScale.toFixed(2)}-${this.downloadsRev}`)
         .width('100%')
         .padding({ bottom: BrowserSafeAreaInsets.bottom(10) })
-        .backgroundColor(this.browseSurfaceBg())
+        .backgroundColor(this.browsePanelBg())
         .border({ width: { top: 1 }, color: this.moreDividerColor() })
         .visibility(this.webMediaFullscreen ? Visibility.None : Visibility.Visible)
       }
@@ -2036,7 +2036,7 @@ export struct BrowsePageView {
     if (this.isIncognito) {
       return this.isBrowseDark() ? BrowserTheme.INCOGNITO_ADDRESS_BG : BrowserTheme.INCOGNITO_NAV_BG
     }
-    return this.theme === 'dark' ? 'rgba(255, 255, 255, 0.04)' : BrowserTheme.LIGHT_SURFACE
+    return this.theme === 'dark' ? 'rgba(255, 255, 255, 0.04)' : BrowserTheme.LIGHT_PANEL_BG
   }
 
   /** 无痕模式下地址输入框内文字色（白色） */
@@ -2063,7 +2063,7 @@ export struct BrowsePageView {
     return this.browseTextSecondary()
   }
 
-  /** 地址栏右侧收藏星标色（星标在胶囊外 surface 上，无痕+浅色主题勿用纯白） */
+  /** 地址栏右侧收藏星标色（星标在胶囊外面板背景上，无痕+浅色主题勿用纯白） */
   private addressBarBookmarkColor(): string {
     if (this.isIncognito && !this.isBrowseDark()) {
       return BOOKMARK_STAR_COLOR
@@ -2192,7 +2192,7 @@ export struct BrowsePageView {
         .padding({ top: 8, bottom: 28 })
       }
       .width('100%')
-      .backgroundColor(this.browseSurfaceBg())
+      .backgroundColor(this.browsePanelBg())
       .borderRadius({ topLeft: 20, topRight: 20 })
     }
     .width('100%')

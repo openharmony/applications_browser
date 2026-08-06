@@ -738,7 +738,7 @@ export struct DownloadsPanel {
         }, (item: DownloadEntry) => this.downloadRowKey(item))
       }
       .width('100%')
-      .backgroundColor(BrowserTheme.SURFACE)
+      .backgroundColor(BrowserTheme.PANEL_BG)
       .borderRadius(12)
       .clip(true)
     }
@@ -811,7 +811,7 @@ export struct DownloadsPanel {
       }
     }
     .width('100%')
-    .backgroundColor(this.isSelected(item.id) ? BrowserTheme.PRIMARY_LIGHT : BrowserTheme.SURFACE)
+    .backgroundColor(this.isSelected(item.id) ? BrowserTheme.PRIMARY_LIGHT : BrowserTheme.PANEL_BG)
     .id(this.downloadRowMeasureId(item.id))
     .onAreaChange((_old, area) => {
       this.updateDownloadRowHitArea(item.id, area)
@@ -824,7 +824,7 @@ export struct DownloadsPanel {
       itemId: item.id,
       isLast: isLast,
       dividerLeft: BookmarkFolderTree.dividerStartDownload(),
-      rowBg: BrowserTheme.SURFACE,
+      rowBg: BrowserTheme.PANEL_BG,
       openRowId: $swipeOpenRowId,
       dragRowId: $swipeDragRowId,
       dragOffsetX: $swipeDragOffsetX,
@@ -893,7 +893,7 @@ export struct DownloadsPanel {
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 14, bottom: 14 })
-    .backgroundColor(BrowserTheme.SURFACE)
+    .backgroundColor(BrowserTheme.PANEL_BG)
   }
 
   @Builder
@@ -925,7 +925,7 @@ export struct DownloadsPanel {
     }
     .width('100%')
     .padding({ bottom: BrowserSafeAreaInsets.batchBarBottomPadding() })
-    .backgroundColor(BrowserTheme.SURFACE)
+    .backgroundColor(BrowserTheme.PANEL_BG)
     .border({ width: { top: 1 }, color: BrowserTheme.BORDER })
   }
 
@@ -1087,7 +1087,7 @@ export struct DownloadsPanel {
       }
       .width('85%')
       .padding(24)
-      .backgroundColor(BrowserTheme.SURFACE)
+      .backgroundColor(BrowserTheme.PANEL_BG)
       .borderRadius(16)
     }
     .width('100%')

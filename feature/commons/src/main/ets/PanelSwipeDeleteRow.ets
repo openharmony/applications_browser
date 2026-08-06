@@ -28,7 +28,7 @@ export struct PanelSwipeDeleteRow {
   @Prop dividerLeft: number = -1
   /** 分割线右侧外边距，默认与常见列表行右内边距一致 */
   @Prop dividerRight: number = 16
-  @Prop rowBg: ResourceColor = BrowserTheme.SURFACE
+  @Prop rowBg: ResourceColor = BrowserTheme.PANEL_BG
   @Link openRowId: string
   @Link dragRowId: string
   @Link dragOffsetX: number

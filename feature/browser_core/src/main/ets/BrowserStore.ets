@@ -593,7 +593,7 @@ export class BrowserStore {
     await ShareService.getInstance().copyText(text)
   }
 
-  /** 调用系统分享面板分享链接 */
+  /** 调用分享面板分享链接 */
   static async shareViaSystem(title: string, url: string): Promise<void> {
     await ShareService.getInstance().shareLinkViaSystem(title, url)
   }
@@ -1306,7 +1306,7 @@ export class BrowserStore {
       return 'invalid'
     }
     const target = parentId || BOOKMARK_ROOT_ID
-    const snapshot: Array<BookmarkItem> = []
+    const snapshot: BookmarkItem[] = []
     for (const id of candidates) {
       const item = all.find((b) => b.id === id)
       if (item) {

@@ -674,7 +674,7 @@ export struct HistoryPanel {
         .align(Alignment.Top)
         .scrollBar(BarState.Off)
         .enableScrollInteraction(!this.batchDragActive)
-        .backgroundColor(BrowserTheme.SURFACE)
+        .backgroundColor(BrowserTheme.PANEL_BG)
         .onAreaChange((_old, area) => {
           const globalPos = area.globalPosition
           if (globalPos) {
@@ -693,7 +693,7 @@ export struct HistoryPanel {
       .width('100%')
       .height('100%')
       .justifyContent(FlexAlign.Start)
-      .backgroundColor(BrowserTheme.SURFACE)
+      .backgroundColor(BrowserTheme.PANEL_BG)
       .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
 
       if (this.showMoreMenu) {
@@ -820,7 +820,7 @@ export struct HistoryPanel {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(BrowserTheme.SURFACE)
+    .backgroundColor(BrowserTheme.PANEL_BG)
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     .id(HistoryPanel.CTX_HOST_ID)
     .onAreaChange((_old, area) => {
@@ -889,7 +889,7 @@ export struct HistoryPanel {
         })
       }
       .width('100%')
-      .backgroundColor(BrowserTheme.SURFACE)
+      .backgroundColor(BrowserTheme.PANEL_BG)
       .borderRadius(12)
       .clip(true)
     }
@@ -953,7 +953,7 @@ export struct HistoryPanel {
       }
     }
     .width('100%')
-    .backgroundColor(this.isSelected(item.id) ? BrowserTheme.PRIMARY_LIGHT : BrowserTheme.SURFACE)
+    .backgroundColor(this.isSelected(item.id) ? BrowserTheme.PRIMARY_LIGHT : BrowserTheme.PANEL_BG)
     .id(this.historyRowMeasureId(item.id))
     .onAreaChange((_old, area) => {
       this.updateHistoryRowHitArea(item.id, area)
@@ -1012,7 +1012,7 @@ export struct HistoryPanel {
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 14, bottom: 14 })
-    .backgroundColor(BrowserTheme.SURFACE)
+    .backgroundColor(BrowserTheme.PANEL_BG)
   }
 
   @Builder
@@ -1045,7 +1045,7 @@ export struct HistoryPanel {
     }
     .width('100%')
     .padding({ bottom: BrowserSafeAreaInsets.batchBarBottomPadding() })
-    .backgroundColor(BrowserTheme.SURFACE)
+    .backgroundColor(BrowserTheme.PANEL_BG)
     .border({ width: { top: 1 }, color: BrowserTheme.BORDER })
   }
 
