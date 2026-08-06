@@ -36,6 +36,7 @@ import { AppStateSync } from './AppStateSync'
 import { TabThumbnailService } from './tab/TabThumbnailService'
 import { TabThumbnailRetryService } from './tab/TabThumbnailRetryService'
 import { WebStabilityGuard } from './web/WebStabilityGuard'
+import { WebPageController } from './web/WebPageController'
 import { BrowserWindowService } from './settings/BrowserWindowService'
 import { GalleryPermissionHelper } from './security/GalleryPermissionHelper'
 import { ImageClipboardService } from './web/ImageClipboardService'
@@ -1026,17 +1027,20 @@ export class BrowserStore {
       return
     }
     const hasUrl = patch.url !== undefined && patch.url.length > 0
+    const nextUrl = patch.url ?? tab.url
     const leavingHome = tab.isHome === true && (patch.isHome === false || hasUrl)
+    const urlChanged = hasUrl &&
+      BrowserUtils.normalizeHistoryUrl(patch.url ?? '') !== BrowserUtils.normalizeHistoryUrl(tab.url)
     let thumbnailPath = patch.thumbnailPath ?? tab.thumbnailPath
-    // 仅离开主页时清缩略图；URL 变更由 captureTabThumbnail 覆盖文件，避免 flush 后截图失败导致空白
-    if (leavingHome) {
+    // 离开主页或 URL 实质变化时失效旧缩略图，避免标题/网址已更新仍显示上一页画面
+    if (leavingHome || urlChanged) {
       TabThumbnailService.getInstance().deleteThumbnail(tab.thumbnailPath)
       thumbnailPath = ''
     }
     const updated: TabSession = {
       id: tab.id,
       title: patch.title ?? tab.title,
-      url: patch.url ?? tab.url,
+      url: nextUrl,
       isIncognito: tab.isIncognito,
       webState: tab.webState,
       thumbnailPath: thumbnailPath,
@@ -1051,20 +1055,59 @@ export class BrowserStore {
     await TabManager.getInstance().markActiveTab(tabId)
   }
 
+  /** 当前 Web 画面是否仍对应该页签（共享 WebView，禁止张冠李戴） */
+  private static isLiveWebMatchingTab(tab: TabSession): boolean {
+    if (!tab || tab.isHome === true || !(tab.url ?? '').trim()) {
+      return false
+    }
+    const liveUrl = BrowserUtils.normalizeHistoryUrl(WebPageController.getInstance().getCurrentUrl())
+    const tabUrl = BrowserUtils.normalizeHistoryUrl(tab.url)
+    if (!liveUrl || !tabUrl) {
+      return false
+    }
+    return liveUrl === tabUrl
+  }
+
+  /** 页签是否仍是可截首页缩略图的主页占位 */
+  private static isHomePlaceholderTab(tab: TabSession | undefined): boolean {
+    if (!tab) {
+      return false
+    }
+    return tab.isHome === true || !(tab.url ?? '').trim()
+  }
+
   /** 截取当前 Web 页面并更新标签缩略图 */
   static async captureTabThumbnail(tabId: string): Promise<boolean> {
     if (!tabId) {
       return false
     }
-    const path = await TabThumbnailService.getInstance().captureForTab(tabId)
-    if (path) {
-      TabThumbnailRetryService.getInstance().cancel(tabId)
-      await TabManager.getInstance().applyTabThumbnail(tabId, path)
-      BrowserLog.info(`captureTabThumbnail saved tabId=${tabId}`)
-      return true
+    await BrowserStore.whenReady()
+    const before = BrowserStore.getTabs().find((t) => t.id === tabId)
+    if (!before || before.isIncognito || BrowserStore.isHomePlaceholderTab(before)) {
+      return false
     }
-    TabThumbnailRetryService.getInstance().enqueue(tabId, 'web', true)
-    return false
+    if (!BrowserStore.isLiveWebMatchingTab(before)) {
+      BrowserLog.info(`captureTabThumbnail skip mismatch tab=${tabId} ` +
+        `tabUrl=${(before.url ?? '').slice(0, 48)} ` +
+        `live=${WebPageController.getInstance().getCurrentUrl().slice(0, 48)}`)
+      return false
+    }
+    const path = await TabThumbnailService.getInstance().captureForTab(tabId)
+    if (!path) {
+      TabThumbnailRetryService.getInstance().enqueue(tabId, 'web', true)
+      return false
+    }
+    const after = BrowserStore.getTabs().find((t) => t.id === tabId)
+    if (!after || !BrowserStore.isLiveWebMatchingTab(after)) {
+      TabThumbnailService.getInstance().deleteThumbnail(path)
+      BrowserLog.info(`captureTabThumbnail discard stale tab=${tabId}`)
+      TabThumbnailRetryService.getInstance().enqueue(tabId, 'web', true)
+      return false
+    }
+    TabThumbnailRetryService.getInstance().cancel(tabId)
+    await TabManager.getInstance().applyTabThumbnail(tabId, path)
+    BrowserLog.info(`captureTabThumbnail saved tabId=${tabId}`)
+    return true
   }
 
   /** 标签缺少缩略图时补抓（页签管理页在栈顶、BrowsePage 在后台时也可触发） */
@@ -1092,16 +1135,28 @@ export class BrowserStore {
     if (!tabId) {
       return false
     }
+    await BrowserStore.whenReady()
+    const before = BrowserStore.getTabs().find((t) => t.id === tabId)
+    if (!BrowserStore.isHomePlaceholderTab(before)) {
+      BrowserLog.info(`captureHomeTabThumbnail skip non-home tab=${tabId}`)
+      return false
+    }
     const path = await TabThumbnailService.getInstance().captureHomeFromComponent(
       tabId, TabThumbnailRetryService.MAIN_PAGE_SNAPSHOT_ID, uiContext)
-    if (path) {
-      TabThumbnailRetryService.getInstance().cancel(tabId)
-      await TabManager.getInstance().applyTabThumbnail(tabId, path)
-      BrowserLog.info(`captureHomeTabThumbnail saved tabId=${tabId}`)
-      return true
+    if (!path) {
+      BrowserLog.warn(`captureHomeTabThumbnail failed tabId=${tabId}`)
+      return false
     }
-    BrowserLog.warn(`captureHomeTabThumbnail failed tabId=${tabId}`)
-    return false
+    const after = BrowserStore.getTabs().find((t) => t.id === tabId)
+    if (!BrowserStore.isHomePlaceholderTab(after)) {
+      TabThumbnailService.getInstance().deleteThumbnail(path)
+      BrowserLog.info(`captureHomeTabThumbnail discard promoted tab=${tabId}`)
+      return false
+    }
+    TabThumbnailRetryService.getInstance().cancel(tabId)
+    await TabManager.getInstance().applyTabThumbnail(tabId, path)
+    BrowserLog.info(`captureHomeTabThumbnail saved tabId=${tabId}`)
+    return true
   }
 
   /** 进入页签管理前捕获当前主页缩略图（后台调用，不阻塞 UI） */

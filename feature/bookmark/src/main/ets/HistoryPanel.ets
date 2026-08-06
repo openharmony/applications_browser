@@ -1,4 +1,4 @@
-import { BrowserStrings } from 'common'
+import { BrowserStrings, BrowserUtils } from 'common'
 import { BrowserNavigation } from 'browser_core'
 import { getBrowserUIContext } from 'common'
 import { BrowserLog } from 'common'
@@ -884,8 +884,8 @@ export struct HistoryPanel {
         ForEach(group.items, (item: HistoryEntry) => {
           this.HistoryRow(item, this.isHistoryRowLast(group, item))
         }, (item: HistoryEntry) => {
-          // 不含选中态/selectionRevision，避免滑动多选时整行重建导致图标闪烁
-          return `${item.id}_${this.vm.batchMode ? 'batch' : 'normal'}_${this.searchFilter}_${item.iconUrl}`
+          // 含 url/title，避免复用串台；不含选中态以免滑动多选整行重建闪烁
+          return `${item.id}_${item.url}_${item.title}_${this.vm.batchMode ? 'batch' : 'normal'}_${this.searchFilter}_${item.iconUrl}`
         })
       }
       .width('100%')
@@ -912,10 +912,11 @@ export struct HistoryPanel {
     Column() {
       Row() {
         HistorySiteIcon({ url: item.url, iconUrl: item.iconUrl })
+          .key(`history-icon-${item.id}-${item.url}`)
           .margin({ right: 10 })
 
         Column({ space: 2 }) {
-          Text(item.title)
+          Text(BrowserUtils.historyDisplayTitle(item.title, item.url))
             .fontSize(15)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.isSelected(item.id) ? BrowserTheme.PRIMARY_COLOR : BrowserTheme.TEXT)
@@ -992,10 +993,11 @@ export struct HistoryPanel {
   HistoryNormalRowContent(item: HistoryEntry) {
     Row() {
       HistorySiteIcon({ url: item.url, iconUrl: item.iconUrl })
+        .key(`history-icon-${item.id}-${item.url}`)
         .margin({ right: 10 })
 
       Column({ space: 2 }) {
-        Text(item.title)
+        Text(BrowserUtils.historyDisplayTitle(item.title, item.url))
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
           .fontColor(BrowserTheme.TEXT)

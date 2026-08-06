@@ -39,10 +39,11 @@ export class IncognitoPolicy {
       return
     }
     try {
-      const historyInput: CreateHistoryEntryInput = { title: title || url, url }
+      const safeTitle = BrowserUtils.historyDisplayTitle(title || url, url)
+      const historyInput: CreateHistoryEntryInput = { title: safeTitle, url }
       await HistoryRepository.getInstance().insert(createHistoryEntry(historyInput))
       await AppStateSync.refreshHistory()
-      BrowserLog.info(`[History] recorded url=${url} title=${title}`)
+      BrowserLog.info(`[History] recorded url=${url} title=${safeTitle}`)
     } catch (err) {
       BrowserLog.error(`[History] record failed url=${url}: ${JSON.stringify(err)}`)
     }

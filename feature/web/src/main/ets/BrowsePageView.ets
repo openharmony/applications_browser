@@ -181,6 +181,8 @@ export struct BrowsePageView {
   /** 当前导航是否已写入历史（每次 onPageBegin 重置） */
   private historyCommittedForNavigation: boolean = false
   private lastCommittedHistoryUrl: string = ''
+  /** 仅在该 URL 的 onPageEnd 之后接受 favicon，避免上一页图标写入当前页 */
+  private faviconAcceptUrl: string = ''
   private screenPaintReady: boolean = false
   /** 上次已同步到标签页元数据的标题，用于跳过重复 syncBrowseTab */
   private lastSyncedTitle: string = ''
@@ -205,6 +207,8 @@ export struct BrowsePageView {
   private browseWebActive: boolean = true
   /** 离页截图防抖定时器 */
   private static readonly HIDE_THUMB_DEFER_MS: number = 900
+  /** flushThumbnailCapture 的 resolve，销毁时用于立即收尾避免悬挂 */
+  private hideThumbCaptureResolve: (() => void) | null = null
   /** 已应用的字体 rev，避免重复刷新 Web */
   private lastAppliedFontRev: number = -1
   private lastAppliedFontKey: string = ''
@@ -254,43 +258,72 @@ export struct BrowsePageView {
       clearTimeout(this.thumbCaptureTimer)
       this.thumbCaptureTimer = -1
     }
+    const tabId = this.browseTabId
     return new Promise((resolve) => {
+      this.hideThumbCaptureResolve = resolve
       this.thumbCaptureTimer = setTimeout(() => {
         this.thumbCaptureTimer = -1
-        if (!this.browseTabId || !this.screenPaintReady) {
-          resolve()
-          return
-        }
-        const thumbSvc = TabThumbnailService.getInstance()
-        thumbSvc.beginCaptureWindow()
-        void BrowserStore.captureTabThumbnail(this.browseTabId).finally(() => {
-          thumbSvc.endCaptureWindow()
-          resolve()
-        })
+        this.runLeaveBrowseThumbCapture(tabId)
       }, BrowsePageView.HIDE_THUMB_DEFER_MS) as number
     })
   }
 
-  /** 立即进入标签管理：先截图再落盘元数据，避免 flush 清空缩略图后截图失败 */
+  /** 执行离页截图；关闭包 tabId，避免延时期间切换导致张冠李戴 */
+  private runLeaveBrowseThumbCapture(tabId: string): void {
+    const finish = (): void => {
+      const resolve = this.hideThumbCaptureResolve
+      this.hideThumbCaptureResolve = null
+      if (resolve) {
+        resolve()
+      }
+    }
+    if (!tabId || tabId !== this.browseTabId || !this.screenPaintReady) {
+      finish()
+      return
+    }
+    const thumbSvc = TabThumbnailService.getInstance()
+    thumbSvc.beginCaptureWindow()
+    void BrowserStore.captureTabThumbnail(tabId).finally(() => {
+      thumbSvc.endCaptureWindow()
+      finish()
+    })
+  }
+
+  /** 销毁前若离页截图仍在延时：立即截一次，避免 Promise 悬挂与缩略图丢失 */
+  private settlePendingHideThumbCapture(): void {
+    if (this.thumbCaptureTimer < 0) {
+      return
+    }
+    clearTimeout(this.thumbCaptureTimer)
+    this.thumbCaptureTimer = -1
+    this.runLeaveBrowseThumbCapture(this.browseTabId)
+  }
+
+  /** 立即进入标签管理：先落盘元数据再截图，避免首页缩略图残留到网页标签 */
   private openTabsWithThumbnail(): void {
     const tabId = this.browseTabId
-    BrowserLog.info(`openTabsWithThumbnail tabId=${tabId} paintReady=${this.screenPaintReady}`)
+    const paintReady = this.screenPaintReady
+    BrowserLog.info(`openTabsWithThumbnail tabId=${tabId} paintReady=${paintReady}`)
     void BrowserStore.whenReady().then(async () => {
       if (tabId) {
-        const thumbSvc = TabThumbnailService.getInstance()
-        thumbSvc.beginCaptureWindow()
-        try {
-          const ok = await BrowserStore.captureTabThumbnail(tabId)
-          BrowserLog.info(`openTabsWithThumbnail capture ok=${ok} tab=${tabId} paintReady=${this.screenPaintReady}`)
-          if (!ok && !this.screenPaintReady) {
-            TabThumbnailRetryService.getInstance().enqueue(tabId, 'web', true)
-            BrowserLog.info(`openTabsWithThumbnail defer thumb until paintReady tab=${tabId}`)
+        await BrowserStore.flushSyncBrowseTab(tabId)
+        if (paintReady) {
+          const thumbSvc = TabThumbnailService.getInstance()
+          thumbSvc.beginCaptureWindow()
+          try {
+            const ok = await BrowserStore.captureTabThumbnail(tabId)
+            BrowserLog.info(`openTabsWithThumbnail capture ok=${ok} tab=${tabId}`)
+            if (!ok) {
+              TabThumbnailRetryService.getInstance().enqueue(tabId, 'web', true)
+            }
+          } finally {
+            thumbSvc.endCaptureWindow()
           }
-        } finally {
-          thumbSvc.endCaptureWindow()
+        } else {
+          TabThumbnailRetryService.getInstance().enqueue(tabId, 'web', true)
+          BrowserLog.info(`openTabsWithThumbnail defer thumb until paintReady tab=${tabId}`)
         }
       }
-      await BrowserStore.flushSyncBrowseTab(tabId)
       BrowserNavigation.openTabs()
     })
   }
@@ -432,10 +465,7 @@ export struct BrowsePageView {
       BrowserStore.closeImagePreview()
     }
     this.flushBrowseHistoryIfNeeded()
-    if (this.thumbCaptureTimer >= 0) {
-      clearTimeout(this.thumbCaptureTimer)
-      this.thumbCaptureTimer = -1
-    }
+    this.settlePendingHideThumbCapture()
     this.clearEntrySettleTimer()
     const captureTask = this.hideThumbCaptureTask
     this.hideThumbCaptureTask = null
@@ -478,6 +508,11 @@ export struct BrowsePageView {
     if (this.thumbCaptureTimer >= 0) {
       clearTimeout(this.thumbCaptureTimer)
       this.thumbCaptureTimer = -1
+    }
+    const pendingResolve = this.hideThumbCaptureResolve
+    this.hideThumbCaptureResolve = null
+    if (pendingResolve) {
+      pendingResolve()
     }
     bindBrowserPageContext(this.getUIContext())
     TabThumbnailService.getInstance().setBrowsePageForeground(true)
@@ -1162,9 +1197,18 @@ export struct BrowsePageView {
       return
     }
     this.currentUrl = resolved
-    const pageTitle = (title ?? this.pageTitle).trim() || tabHostname(resolved)
+    let pageTitle = (title ?? this.pageTitle).trim()
+    // 加载中占位标题（如「请稍候」）不落库，改用主机名
+    if (!BrowserUtils.isValidPageTitle(pageTitle)) {
+      pageTitle = tabHostname(resolved)
+    }
+    if (!pageTitle) {
+      pageTitle = tabHostname(resolved)
+    }
     if (this.historyCommittedForNavigation && resolved === this.lastCommittedHistoryUrl) {
-      void BrowserStore.updateHistoryTitle(resolved, pageTitle)
+      if (BrowserUtils.isValidPageTitle(pageTitle) && pageTitle !== tabHostname(resolved)) {
+        void BrowserStore.updateHistoryTitle(resolved, pageTitle)
+      }
       return
     }
     this.historyCommittedForNavigation = true
@@ -1172,17 +1216,44 @@ export struct BrowsePageView {
     void BrowserStore.addHistoryEntry(pageTitle, resolved)
   }
 
-  /** 将 Web favicon 写入历史记录（本地缓存 + DB） */
+  /** 将 Web favicon 写入历史记录（本地缓存 + DB）；仅当仍停留在目标页时落盘 */
   private persistHistoryFavicon(pageUrl: string, favicon: image.PixelMap): void {
     const resolved = BrowserUtils.normalizeHistoryUrl(pageUrl)
     if (!BrowserUtils.isRecordableHistoryUrl(resolved)) {
       return
     }
-    void HistorySiteIconService.getInstance().saveFavicon(resolved, favicon).then((path) => {
-      if (path) {
-        void BrowserStore.updateHistoryIcon(resolved, path)
+    if (!this.isFaviconStillForPage(resolved)) {
+      BrowserLog.warn(`[HistoryIcon] drop stale favicon url=${resolved.slice(0, 80)}`)
+      return
+    }
+    const targetUrl = resolved
+    void HistorySiteIconService.getInstance().saveFavicon(targetUrl, favicon).then((path) => {
+      if (!path) {
+        return
       }
+      if (!this.isFaviconStillForPage(targetUrl)) {
+        BrowserLog.warn(`[HistoryIcon] drop late favicon write url=${targetUrl.slice(0, 80)}`)
+        HistorySiteIconService.getInstance().removeLocalIcon(targetUrl)
+        return
+      }
+      void BrowserStore.updateHistoryIcon(targetUrl, path)
     })
+  }
+
+  /** favicon 是否仍对应当前已结束加载的页面（防快速切换串台） */
+  private isFaviconStillForPage(pageUrl: string): boolean {
+    const accept = BrowserUtils.normalizeHistoryUrl(this.faviconAcceptUrl)
+    if (!accept) {
+      return false
+    }
+    const pageKey = BrowserUtils.historySiteKey(pageUrl)
+    const acceptKey = BrowserUtils.historySiteKey(accept)
+    if (!pageKey || pageKey !== acceptKey) {
+      return false
+    }
+    const live = BrowserUtils.normalizeHistoryUrl(this.resolvePageUrl())
+    const liveKey = BrowserUtils.historySiteKey(live)
+    return liveKey.length > 0 && liveKey === pageKey
   }
 
   /** 页面加载完成后尝试从 WebView 读取 favicon */
@@ -1534,6 +1605,7 @@ export struct BrowsePageView {
               this.screenPaintReady = false
               this.historyCommittedForNavigation = false
               this.lastCommittedHistoryUrl = ''
+              this.faviconAcceptUrl = ''
               this.webMediaFullscreen = false
               if (this.imagePreviewVisible) {
                 BrowserStore.closeImagePreview()
@@ -1569,6 +1641,7 @@ export struct BrowsePageView {
               this.scheduleEntrySessionFinalize(loadedUrl)
               this.syncTabMeta(this.pageTitle, this.currentUrl)
               this.recordPageHistory(loadedUrl)
+              this.faviconAcceptUrl = loadedUrl
               this.tryPersistHistoryFaviconFromController(loadedUrl)
               this.onWebPageLoaded(loadedUrl)
               this.scheduleRefreshNavActions()
@@ -1613,7 +1686,12 @@ export struct BrowsePageView {
               if (!favicon) {
                 return
               }
-              this.persistHistoryFavicon(this.resolvePageUrl(), favicon)
+              // 仅接受当前已 pageEnd 页面的图标；用 acceptUrl 落盘，不用瞬时 resolve（防串台）
+              const accept = BrowserUtils.normalizeHistoryUrl(this.faviconAcceptUrl)
+              if (!accept) {
+                return
+              }
+              this.persistHistoryFavicon(accept, favicon)
             })
             .onSslErrorEvent((event: SslErrorEvent) => {
               this.onWebSslError(event)

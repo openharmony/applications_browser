@@ -118,13 +118,74 @@ export class BrowserUtils {
     return u.includes('://')
   }
 
-  /** 页面标题是否合法（排除误把 store:// 等写入标题的情况） */
+  /** 加载中占位标题（Cloudflare「Just a moment…」/「请稍候...」等），不应写入历史与标签 */
+  static isTransientPageTitle(title: string): boolean {
+    const raw = title.trim()
+    if (!raw) {
+      return true
+    }
+    // 去掉末尾省略号（. … …）与空白后再判断
+    const stripped = raw.replace(/[\s.。…⋯]+$/g, '').trim()
+    const lower = stripped.toLowerCase()
+    if (lower === 'just a moment' || lower === 'please wait' || lower === 'please wait a moment' ||
+      lower === 'loading' || lower === 'one moment' || lower === 'one moment please' ||
+      lower === 'checking your browser' || lower === 'attention required') {
+      return true
+    }
+    if (stripped === '请稍候' || stripped === '请稍后' || stripped === '请稍等' ||
+      stripped === '加载中' || stripped === '正在加载' || stripped === '稍候' || stripped === '稍后' ||
+      stripped.startsWith('请稍候') || stripped.startsWith('请稍后') || stripped.startsWith('请稍等')) {
+      return true
+    }
+    // 原文以占位词开头也视为临时标题（如「请稍候...」未剥净时）
+    if (raw.startsWith('请稍候') || raw.startsWith('请稍后') || raw.startsWith('请稍等') ||
+      lower.startsWith('just a moment') || lower.startsWith('please wait')) {
+      return true
+    }
+    return false
+  }
+
+  /** 历史展示用标题：临时占位文案回退为主机名；纯主机名且与当前页不符时也回退 */
+  static historyDisplayTitle(title: string, url: string): string {
+    const host = BrowserUtils.tabHostname(url).trim()
+    const t = title.trim()
+    if (BrowserUtils.isValidPageTitle(t)) {
+      // 标题若是「其它站点的裸主机名」，视为错绑，改用本页主机名
+      if (BrowserUtils.looksLikeBareHostname(t)) {
+        const titleHost = t.toLowerCase()
+        const pageHost = host.toLowerCase()
+        if (pageHost.length > 0 && titleHost !== pageHost &&
+          !pageHost.endsWith(`.${titleHost}`) && !titleHost.endsWith(`.${pageHost}`)) {
+          return host.length > 0 ? host : t
+        }
+      }
+      return t
+    }
+    return host.length > 0 ? host : (t.length > 0 ? t : url.trim())
+  }
+
+  /** 是否像裸主机名（无空格、含点、无路径）——用于识别错绑的历史标题 */
+  static looksLikeBareHostname(text: string): boolean {
+    const t = text.trim().toLowerCase()
+    if (!t || t.includes(' ') || t.includes('/') || t.includes(':')) {
+      return false
+    }
+    if (!t.includes('.')) {
+      return false
+    }
+    return /^[a-z0-9.-]+$/.test(t)
+  }
+
+  /** 页面标题是否合法（排除外链 scheme、加载占位文案） */
   static isValidPageTitle(title: string): boolean {
     const t = title.trim()
     if (!t) {
       return false
     }
     if (BrowserUtils.isExternalAppScheme(t)) {
+      return false
+    }
+    if (BrowserUtils.isTransientPageTitle(t)) {
       return false
     }
     return true

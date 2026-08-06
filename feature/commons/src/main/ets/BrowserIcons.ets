@@ -1,5 +1,6 @@
 import { BrowserTheme } from 'browser_core'
 import { HistorySiteIconService } from 'browser_core'
+import { BrowserUtils } from 'common'
 import { TabSession } from 'common'
 import { TAB_LIMIT_DISPLAY } from 'common'
 
@@ -672,25 +673,41 @@ export struct ShortcutEngineIcon {
   }
 }
 
-/** 历史/书签/标签卡片左侧站点预览图标（本地 favicon → worldclock 兜底） */
+/** 历史/书签/标签卡片左侧站点预览图标：本地 → 本站 /favicon.ico → 地球 */
 @Component
 export struct HistorySiteIcon {
   @Prop @Watch('onIconPropsChanged') url: string = ''
   @Prop @Watch('onIconPropsChanged') iconUrl: string = ''
   @Prop boxSize: number = 32
-  @State private useFallback: boolean = false
+  /**
+   * 无 iconUrl 时是否按站点缓存文件名兜底。
+   * 历史列表保持 false（磁盘脏文件易串台）；标签页可开。
+   */
+  @Prop @Watch('onIconPropsChanged') useSiteFileFallback: boolean = false
+  /** 绑定世代：props 变化时递增，用于 Image key 强制重建 */
+  @State private bindGen: number = 0
+  /** 本地可读且归属当前 url 的图标 URI */
+  @State private localUri: string = ''
+  /** 无本地时探测的本站 favicon 地址 */
+  @State private remoteUri: string = ''
+  /** 远程图标已成功加载，可替换地球 */
+  @State private remoteReady: boolean = false
 
-  private onIconPropsChanged(): void {
-    this.useFallback = false
+  aboutToAppear(): void {
+    this.refreshIconSources()
   }
 
-  private localDisplayUri(): string {
-    const svc: HistorySiteIconService = HistorySiteIconService.getInstance()
-    const fromStored: string = svc.resolveLocalDisplayUri(this.iconUrl)
-    if (fromStored.length > 0) {
-      return fromStored
-    }
-    return svc.resolveLocalByPageUrl(this.url)
+  private onIconPropsChanged(): void {
+    this.refreshIconSources()
+  }
+
+  private refreshIconSources(): void {
+    this.bindGen = this.bindGen + 1
+    this.remoteReady = false
+    const nextLocal = HistorySiteIconService.getInstance()
+      .resolveLocalIconForPage(this.iconUrl, this.url, this.useSiteFileFallback)
+    this.localUri = nextLocal
+    this.remoteUri = nextLocal.length > 0 ? '' : BrowserUtils.remoteFaviconUrl(this.url)
   }
 
   private iconInnerSize(): number {
@@ -705,6 +722,39 @@ export struct HistorySiteIcon {
     return this.boxSize >= 28 ? 8 : 4
   }
 
+  private onLocalImageError(): void {
+    this.localUri = ''
+    this.remoteReady = false
+    this.remoteUri = BrowserUtils.remoteFaviconUrl(this.url)
+  }
+
+  private onRemoteImageError(): void {
+    this.remoteUri = ''
+    this.remoteReady = false
+  }
+
+  private onRemoteProbeComplete(): void {
+    // 仅当仍绑定同一探测地址时升级，防止 List 复用后过期回调串台
+    if (this.localUri.length > 0) {
+      return
+    }
+    if (this.remoteUri.length === 0) {
+      return
+    }
+    if (this.remoteUri !== BrowserUtils.remoteFaviconUrl(this.url)) {
+      return
+    }
+    this.remoteReady = true
+  }
+
+  private onRemoteProbeError(): void {
+    if (this.remoteUri !== BrowserUtils.remoteFaviconUrl(this.url)) {
+      return
+    }
+    this.remoteUri = ''
+    this.remoteReady = false
+  }
+
   @Builder
   FallbackIcon() {
     SymbolGlyph($r('sys.symbol.worldclock'))
@@ -713,26 +763,52 @@ export struct HistorySiteIcon {
   }
 
   build() {
-    Column() {
-      if (!this.useFallback && this.localDisplayUri().length > 0) {
-        Image(this.localDisplayUri())
-          .key(`history-site-icon-${this.iconUrl}-${this.url}`)
+    Stack({ alignContent: Alignment.Center }) {
+      if (this.localUri.length > 0) {
+        Image(this.localUri)
+          .key(`hsi-local-${this.url}-${this.iconUrl}-${this.bindGen}`)
           .width(this.iconInnerSize())
           .height(this.iconInnerSize())
           .objectFit(ImageFit.Contain)
           .borderRadius(Math.max(2, this.tileRadius() - 2))
           .onError(() => {
-            this.useFallback = true
+            this.onLocalImageError()
+          })
+      } else if (this.remoteReady && this.remoteUri.length > 0) {
+        Image(this.remoteUri)
+          .key(`hsi-remote-${this.url}-${this.remoteUri}-${this.bindGen}`)
+          .width(this.iconInnerSize())
+          .height(this.iconInnerSize())
+          .objectFit(ImageFit.Contain)
+          .borderRadius(Math.max(2, this.tileRadius() - 2))
+          .onError(() => {
+            this.onRemoteImageError()
           })
       } else {
         this.FallbackIcon()
       }
+      if (this.localUri.length === 0 && this.remoteUri.length > 0 && !this.remoteReady) {
+        Image(this.remoteUri)
+          .key(`hsi-probe-${this.url}-${this.remoteUri}-${this.bindGen}`)
+          .width(this.iconInnerSize())
+          .height(this.iconInnerSize())
+          .objectFit(ImageFit.Contain)
+          .opacity(0)
+          .hitTestBehavior(HitTestMode.None)
+          .onComplete(() => {
+            this.onRemoteProbeComplete()
+          })
+          .onError(() => {
+            this.onRemoteProbeError()
+          })
+      }
     }
+    .key(`hsi-root-${this.url}-${this.iconUrl}-${this.bindGen}`)
     .width(this.boxSize)
     .height(this.boxSize)
     .borderRadius(this.tileRadius())
     .backgroundColor(BrowserTheme.PRIMARY_LIGHT)
-    .justifyContent(FlexAlign.Center)
+    .clip(true)
     .flexShrink(0)
   }
 }

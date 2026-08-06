@@ -172,6 +172,12 @@ export class TabThumbnailRetryService {
       entry.nextAt = Date.now() + 800
       return
     }
+    // 共享 WebView：仅允许补抓「当前已就绪」的页签，避免把 A 的画面写入 B
+    if (kind === 'web' && this.webReadyTabId.length > 0 && this.webReadyTabId !== tabId) {
+      BrowserLog.info(`[TabThumbnailRetry] skip non-ready tab=${tabId} ready=${this.webReadyTabId}`)
+      entry.nextAt = Date.now() + 2500
+      return
+    }
     if (WebStabilityGuard.isGpuHeavyWorkSuspended()) {
       entry.nextAt = Date.now() + 1200
       return

@@ -1363,7 +1363,8 @@ export struct TabsPageView {
           HistorySiteIcon({
             url: tab.url,
             iconUrl: '',
-            boxSize: 18
+            boxSize: 18,
+            useSiteFileFallback: true
           })
         }
 

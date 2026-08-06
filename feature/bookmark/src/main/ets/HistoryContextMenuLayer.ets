@@ -1,5 +1,6 @@
 import { BrowserTheme } from 'browser_core'
 import { HistoryEntry } from 'browser_core'
+import { BrowserUtils } from 'common'
 import { HistorySiteIcon } from 'commons'
 import { HistoryContextMenu } from './HistoryContextMenu'
 
@@ -78,10 +79,11 @@ export struct HistoryContextMenuLayer {
   LiftRow(item: HistoryEntry) {
     Row() {
       HistorySiteIcon({ url: item.url, iconUrl: item.iconUrl })
+        .key(`history-ctx-icon-${item.id}-${item.url}`)
         .margin({ right: 10 })
 
       Column({ space: 2 }) {
-        Text(item.title)
+        Text(BrowserUtils.historyDisplayTitle(item.title, item.url))
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
           .fontColor(BrowserTheme.TEXT)

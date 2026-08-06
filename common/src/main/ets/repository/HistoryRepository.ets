@@ -62,11 +62,15 @@ export class HistoryRepository {
   async insert(entry: HistoryEntry): Promise<void> {
     const store = BrowserDatabase.getInstance().getStore()
     entry.url = BrowserUtils.normalizeHistoryUrl(entry.url)
+    entry.title = BrowserUtils.historyDisplayTitle(entry.title, entry.url)
     const existing = await this.findBySiteOnDay(entry.url, entry.visitedAt)
     if (existing) {
       existing.url = entry.url
-      if (entry.title.trim()) {
+      // 仅用有效标题覆盖；临时「请稍候...」不覆盖已有标题，已有脏标题则清洗
+      if (BrowserUtils.isValidPageTitle(entry.title)) {
         existing.title = entry.title.trim()
+      } else if (BrowserUtils.isTransientPageTitle(existing.title)) {
+        existing.title = BrowserUtils.historyDisplayTitle(existing.title, entry.url)
       }
       if (entry.iconUrl.trim()) {
         existing.iconUrl = entry.iconUrl.trim()
@@ -91,6 +95,10 @@ export class HistoryRepository {
     if (!trimmedTitle || !normalizedUrl) {
       return
     }
+    // 临时占位标题（请稍候 / Just a moment）禁止写入
+    if (!BrowserUtils.isValidPageTitle(trimmedTitle)) {
+      return
+    }
     const existing = await this.findBySiteOnDay(normalizedUrl, Date.now())
     if (!existing || existing.title === trimmedTitle) {
       return
@@ -104,6 +112,15 @@ export class HistoryRepository {
     const normalizedIcon = iconUrl.trim()
     const normalizedUrl = BrowserUtils.normalizeHistoryUrl(url)
     if (!normalizedIcon || !normalizedUrl) {
+      return
+    }
+    const siteKey = BrowserUtils.historySiteKey(normalizedUrl)
+    const expectedName = `${siteKey.replace(/[^a-z0-9.-]/gi, '_')}.png`.toLowerCase()
+    const iconNorm = normalizedIcon.replace(/\\/g, '/').toLowerCase()
+    const slash = iconNorm.lastIndexOf('/')
+    const iconName = slash >= 0 ? iconNorm.substring(slash + 1) : iconNorm
+    // 禁止把其它站点的图标路径写到本条历史
+    if (siteKey.length > 0 && iconName !== expectedName) {
       return
     }
     const existing = await this.findBySiteOnDay(normalizedUrl, Date.now())
@@ -190,14 +207,37 @@ export class HistoryRepository {
 
   /** 将查询结果行映射为历史记录模型 */
   private rowToEntry(rs: relationalStore.ResultSet): HistoryEntry {
+    const url = rs.getString(rs.getColumnIndex('url')) ?? ''
+    const rawTitle = rs.getString(rs.getColumnIndex('title')) ?? ''
+    const rawIcon = rs.getString(rs.getColumnIndex('icon_url')) ?? ''
     const entryInput: CreateHistoryEntryInput = {
       id: rs.getLong(rs.getColumnIndex('id')),
-      url: rs.getString(rs.getColumnIndex('url')),
-      title: rs.getString(rs.getColumnIndex('title')),
+      url: url,
+      title: BrowserUtils.historyDisplayTitle(rawTitle, url),
       visitedAt: rs.getLong(rs.getColumnIndex('visited_at')),
-      iconUrl: rs.getString(rs.getColumnIndex('icon_url')) ?? '',
+      iconUrl: this.sanitizeStoredIconUrl(url, rawIcon),
       visitCount: rs.getLong(rs.getColumnIndex('visit_count'))
     }
     return createHistoryEntry(entryInput)
+  }
+
+  /** 丢弃与当前站点文件名不符的 icon_url（历史错绑自愈） */
+  private sanitizeStoredIconUrl(pageUrl: string, iconUrl: string): string {
+    const local = iconUrl.trim()
+    if (!local) {
+      return ''
+    }
+    const siteKey = BrowserUtils.historySiteKey(pageUrl)
+    if (!siteKey) {
+      return ''
+    }
+    const expected = `${siteKey.replace(/[^a-z0-9.-]/gi, '_')}.png`.toLowerCase()
+    const normalized = local.replace(/\\/g, '/').toLowerCase()
+    const slash = normalized.lastIndexOf('/')
+    const name = slash >= 0 ? normalized.substring(slash + 1) : normalized
+    if (name !== expected && !name.startsWith(`${expected}.`)) {
+      return ''
+    }
+    return local
   }
 }

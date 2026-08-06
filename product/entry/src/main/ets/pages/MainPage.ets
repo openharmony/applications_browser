@@ -139,7 +139,8 @@ struct MainPage {
     const pageCtx = this.getUIContext()
     void BrowserStore.whenReady().then(async () => {
       const home = await BrowserStore.ensureHomeTab(BrowserStore.isIncognito())
-      if (home) {
+      // 首页占位已晋升为网页标签时不再截首页 UI，避免缩略图张冠李戴
+      if (home && (home.isHome === true || !(home.url ?? '').trim())) {
         await BrowserStore.captureHomeTabThumbnailForTab(home.id, pageCtx)
       }
     })
