@@ -1,0 +1,10 @@
+{
+  "module": {
+    "name": "browser_core",
+    "type": "har",
+    "deviceTypes": [
+      "default",
+      "tablet"
+    ]
+  }
+}

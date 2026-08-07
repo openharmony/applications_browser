@@ -1,0 +1,13 @@
+{
+  "name": "download",
+  "version": "1.0.0",
+  "description": "Browser download feature module",
+  "main": "index.ets",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "common": "file:../../common",
+    "browser_core": "file:../browser_core",
+    "commons": "file:../commons"
+  }
+}

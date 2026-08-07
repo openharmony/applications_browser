@@ -1,0 +1,240 @@
+{
+  "string": [
+    {
+      "name": "new_tab_failed",
+      "value": "新建窗口失败，请重试"
+    },
+    {
+      "name": "cancel",
+      "value": "取消"
+    },
+    {
+      "name": "incognito_enabled",
+      "value": "已开启无痕模式"
+    },
+    {
+      "name": "font_size",
+      "value": "字体大小"
+    },
+    {
+      "name": "download_started",
+      "value": "已开始下载"
+    },
+    {
+      "name": "download_failed",
+      "value": "下载失败"
+    },
+    {
+      "name": "download_publish_failed",
+      "value": "推送至文件管理失败"
+    },
+    {
+      "name": "download_error_storage",
+      "value": "存储空间不足或无法写入"
+    },
+    {
+      "name": "download_error_network",
+      "value": "网络异常，请稍后重试"
+    },
+    {
+      "name": "download_error_ssl",
+      "value": "安全证书校验失败"
+    },
+    {
+      "name": "download_ssl_confirm_message",
+      "value": "该下载地址的安全证书存在问题，继续下载可能存在风险，是否仍要继续？"
+    },
+    {
+      "name": "download_ssl_continue",
+      "value": "继续下载"
+    },
+    {
+      "name": "download_error_file_missing",
+      "value": "下载文件丢失"
+    },
+    {
+      "name": "download_paused",
+      "value": "已暂停"
+    },
+    {
+      "name": "download_resumed",
+      "value": "继续下载"
+    },
+    {
+      "name": "download_paused_network",
+      "value": "网络已断开，下载已暂停；恢复网络后将自动续传"
+    },
+    {
+      "name": "download_resumed_network",
+      "value": "网络已恢复，下载已自动继续"
+    },
+    {
+      "name": "download_resume_need_network",
+      "value": "当前无网络连接，无法继续下载"
+    },
+    {
+      "name": "download_resume_failed",
+      "value": "无法继续下载，请稍后重试"
+    },
+    {
+      "name": "download_already_running",
+      "value": "下载任务已在进行中"
+    },
+    {
+      "name": "bookmark_limit_title",
+      "value": "书签已满"
+    },
+    {
+      "name": "toast_bookmark_added",
+      "value": "已添加书签"
+    },
+    {
+      "name": "toast_bookmark_removed",
+      "value": "已取消收藏"
+    },
+    {
+      "name": "download_redownload_no_source",
+      "value": "缺少下载来源，无法重新下载"
+    },
+    {
+      "name": "image_saved_to_gallery",
+      "value": "图片已保存到相册"
+    },
+    {
+      "name": "image_save_gallery_failed",
+      "value": "保存到相册失败，请稍后重试"
+    },
+    {
+      "name": "download_permission_denied",
+      "value": "需要「下载目录」权限，请在弹窗中允许"
+    },
+    {
+      "name": "image_permission_denied",
+      "value": "未授予相册权限，无法保存图片。可在系统设置中为浏览器开启「图片和视频」权限"
+    },
+    {
+      "name": "notification_permission_open_settings",
+      "value": "请在系统设置中开启浏览器通知，以便接收下载进度等提醒"
+    },
+    {
+      "name": "download_space_insufficient",
+      "value": "本地存储空间不足，下载已取消。需要 %1$s，可用 %2$s"
+    },
+    {
+      "name": "download_complete_notification_title",
+      "value": "下载完成"
+    },
+    {
+      "name": "download_progress_notification_title",
+      "value": "正在下载"
+    },
+    {
+      "name": "download_notification_pause",
+      "value": "暂停"
+    },
+    {
+      "name": "download_notification_resume",
+      "value": "继续"
+    },
+    {
+      "name": "download_no_notification_started",
+      "value": "没有通知权限，建议到设置中开启，下载任务已开始"
+    },
+    {
+      "name": "scan_no_valid_link",
+      "value": "未识别到有效网页链接"
+    },
+    {
+      "name": "scan_failed",
+      "value": "扫码失败，请重试"
+    },
+    {
+      "name": "download_open_failed",
+      "value": "无法打开文件，请安装对应类型的应用"
+    },
+    {
+      "name": "download_open_not_ready",
+      "value": "文件尚未下载完成"
+    },
+    {
+      "name": "toast_image_copy_success",
+      "value": "复制成功"
+    },
+    {
+      "name": "perm_location",
+      "value": "位置权限"
+    },
+    {
+      "name": "web_location_loading_hint",
+      "value": "位置获取中，请稍后"
+    },
+    {
+      "name": "web_location_retry_failed_hint",
+      "value": "浏览器无法获取你的位置信息，请稍后重试"
+    },
+    {
+      "name": "web_location_fetch_failed_hint",
+      "value": "位置获取失败，开启【系统设置→定位服务】可以有效避免无法获取位置信息的情况"
+    },
+    {
+      "name": "perm_camera",
+      "value": "相机"
+    },
+    {
+      "name": "perm_microphone",
+      "value": "麦克风"
+    },
+    {
+      "name": "perm_notification",
+      "value": "通知权限"
+    },
+    {
+      "name": "toast_transfer",
+      "value": "已添加至中转站"
+    },
+    {
+      "name": "image_less_on",
+      "value": "已开启无图模式"
+    },
+    {
+      "name": "image_less_off",
+      "value": "已关闭无图模式"
+    },
+    {
+      "name": "clear_data_done",
+      "value": "已清理 Cookie 和缓存"
+    },
+    {
+      "name": "clear_data_failed",
+      "value": "清理失败，请稍后重试"
+    },
+    {
+      "name": "download_queued_toast",
+      "value": "下载任务已达上限，「%s」已加入排队，空闲时自动开始"
+    },
+    {
+      "name": "download_status_deleted",
+      "value": "已删除"
+    },
+    {
+      "name": "share_failed",
+      "value": "分享失败"
+    },
+    {
+      "name": "copy_failed",
+      "value": "复制失败"
+    },
+    {
+      "name": "perm_denied_toast",
+      "value": "网站权限已被禁止"
+    },
+    {
+      "name": "perm_global_switch_off_toast",
+      "value": "系统%1$s功能未开启，请在弹框或系统设置中打开后再试"
+    },
+    {
+      "name": "ssl_error_title",
+      "value": "安全连接问题"
+    }
+  ]
+}

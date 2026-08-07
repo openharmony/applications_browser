@@ -1,0 +1,90 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "material": {
+          "certpath": "./signature/OpenHarmony.cer",
+          "keyAlias": "OpenHarmony Application Release",
+          "keyPassword": "0000001696A73317A4CE1FF8B3C82962CCD3AB504ED8C0E13827FE36A555D1615D76E6580E8C",
+          "profile": "./signature/browser.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "./signature/OpenHarmony.p12",
+          "storePassword": "00000016EB4B28C8846EADCAB313D44703AEDEDCFE4DE73B5A91AFFE4402E67324F7AEC5896A"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compileSdkVersion": 23,
+        "compatibleSdkVersion": 23,
+        "targetSdkVersion": 23,
+        "runtimeOS": "OpenHarmony"
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug",
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "common",
+      "srcPath": "./common"
+    },
+    {
+      "name": "browser_core",
+      "srcPath": "./feature/browser_core"
+    },
+    {
+      "name": "commons",
+      "srcPath": "./feature/commons"
+    },
+    {
+      "name": "home",
+      "srcPath": "./feature/home"
+    },
+    {
+      "name": "tab",
+      "srcPath": "./feature/tab"
+    },
+    {
+      "name": "web",
+      "srcPath": "./feature/web"
+    },
+    {
+      "name": "bookmark",
+      "srcPath": "./feature/bookmark"
+    },
+    {
+      "name": "download",
+      "srcPath": "./feature/download"
+    },
+    {
+      "name": "settings",
+      "srcPath": "./feature/settings"
+    },
+    {
+      "name": "security",
+      "srcPath": "./feature/security"
+    },
+    {
+      "name": "entry",
+      "srcPath": "./product/entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,243 @@
+import { relationalStore } from '@kit.ArkData'
+import { BrowserUtils } from '../utils/BrowserUtils'
+import { BrowserDatabase } from './BrowserDatabase'
+import { HistoryEntry, createHistoryEntry, CreateHistoryEntryInput } from '../model/HistoryEntry'
+import { HistoryGrouper } from '../utils/HistoryGrouper'
+
+/** 浏览历史持久化，对应 history_entries 表 */
+export class HistoryRepository {
+  private static instance: HistoryRepository | null = null
+
+  /** 获取历史记录仓库单例实例 */
+  static getInstance(): HistoryRepository {
+    if (HistoryRepository.instance === null) {
+      HistoryRepository.instance = new HistoryRepository()
+    }
+    return HistoryRepository.instance
+  }
+
+  /** 不再写入示例历史；清理旧版内置测试记录 */
+  async seedDefaultsIfEmpty(): Promise<void> {
+    await this.removeLegacySeedHistory()
+  }
+
+  /** 删除旧版 seedDefaultsIfEmpty 写入的示例记录（按 url + visitedAt 精确匹配） */
+  async removeLegacySeedHistory(): Promise<void> {
+    const legacySeeds: CreateHistoryEntryInput[] = [
+      { url: 'https://www.example.com/files', title: '', visitedAt: new Date('2025-05-24T10:30:00').getTime() },
+      // 历史 seed 精确匹配用，勿改 URL/时间，否则无法清掉已安装设备上的旧演示数据
+      { url: 'https://developer.huawei.com', title: '', visitedAt: new Date('2025-05-24T09:15:00').getTime() },
+      { url: 'https://www.baidu.com', title: '', visitedAt: new Date('2025-05-21T14:20:00').getTime() },
+      { url: 'https://docs.openharmony.cn', title: '', visitedAt: new Date('2025-05-21T11:00:00').getTime() }
+    ]
+    const all = await this.findAll()
+    for (let i = 0; i < all.length; i++) {
+      const entry = all[i]
+      for (let j = 0; j < legacySeeds.length; j++) {
+        const seed = legacySeeds[j]
+        if (entry.url === seed.url && entry.visitedAt === seed.visitedAt) {
+          await this.deleteById(entry.id)
+          break
+        }
+      }
+    }
+  }
+
+  /** 查询全部历史记录并按访问时间降序返回 */
+  async findAll(): Promise<HistoryEntry[]> {
+    const store = BrowserDatabase.getInstance().getStore()
+    const rs = await store.querySql('SELECT * FROM history_entries ORDER BY visited_at DESC')
+    const list: HistoryEntry[] = []
+    try {
+      while (rs.goToNextRow()) {
+        list.push(this.rowToEntry(rs))
+      }
+    } finally {
+      rs.close()
+    }
+    return list
+  }
+
+  /** 插入历史：同站点同一天仅更新访问时间与排序，跨日新增一条 */
+  async insert(entry: HistoryEntry): Promise<void> {
+    const store = BrowserDatabase.getInstance().getStore()
+    entry.url = BrowserUtils.normalizeHistoryUrl(entry.url)
+    entry.title = BrowserUtils.historyDisplayTitle(entry.title, entry.url)
+    const existing = await this.findBySiteOnDay(entry.url, entry.visitedAt)
+    if (existing) {
+      existing.url = entry.url
+      // 仅用有效标题覆盖；临时「请稍候...」不覆盖已有标题，已有脏标题则清洗
+      if (BrowserUtils.isValidPageTitle(entry.title)) {
+        existing.title = entry.title.trim()
+      } else if (BrowserUtils.isTransientPageTitle(existing.title)) {
+        existing.title = BrowserUtils.historyDisplayTitle(existing.title, entry.url)
+      }
+      if (entry.iconUrl.trim()) {
+        existing.iconUrl = entry.iconUrl.trim()
+      }
+      existing.visitedAt = entry.visitedAt
+      await this.update(existing)
+      return
+    }
+    await store.insert('history_entries', {
+      url: entry.url,
+      title: entry.title,
+      visited_at: entry.visitedAt,
+      icon_url: entry.iconUrl || null,
+      visit_count: entry.visitCount
+    })
+  }
+
+  /** 更新当天已有记录的标题（不新增、不改动访问时间） */
+  async updateTitleForUrl(url: string, title: string): Promise<void> {
+    const trimmedTitle = title.trim()
+    const normalizedUrl = BrowserUtils.normalizeHistoryUrl(url)
+    if (!trimmedTitle || !normalizedUrl) {
+      return
+    }
+    // 临时占位标题（请稍候 / Just a moment）禁止写入
+    if (!BrowserUtils.isValidPageTitle(trimmedTitle)) {
+      return
+    }
+    const existing = await this.findBySiteOnDay(normalizedUrl, Date.now())
+    if (!existing || existing.title === trimmedTitle) {
+      return
+    }
+    existing.title = trimmedTitle
+    await this.update(existing)
+  }
+
+  /** 更新当天已有记录的站点图标（不新增、不改动访问时间） */
+  async updateIconForUrl(url: string, iconUrl: string): Promise<void> {
+    const normalizedIcon = iconUrl.trim()
+    const normalizedUrl = BrowserUtils.normalizeHistoryUrl(url)
+    if (!normalizedIcon || !normalizedUrl) {
+      return
+    }
+    const siteKey = BrowserUtils.historySiteKey(normalizedUrl)
+    const expectedName = `${siteKey.replace(/[^a-z0-9.-]/gi, '_')}.png`.toLowerCase()
+    const iconNorm = normalizedIcon.replace(/\\/g, '/').toLowerCase()
+    const slash = iconNorm.lastIndexOf('/')
+    const iconName = slash >= 0 ? iconNorm.substring(slash + 1) : iconNorm
+    // 禁止把其它站点的图标路径写到本条历史
+    if (siteKey.length > 0 && iconName !== expectedName) {
+      return
+    }
+    const existing = await this.findBySiteOnDay(normalizedUrl, Date.now())
+    if (!existing || existing.iconUrl === normalizedIcon) {
+      return
+    }
+    existing.iconUrl = normalizedIcon
+    await this.update(existing)
+  }
+
+  /** 更新已有历史记录 */
+  async update(entry: HistoryEntry): Promise<void> {
+    const store = BrowserDatabase.getInstance().getStore()
+    const predicates = new relationalStore.RdbPredicates('history_entries')
+    predicates.equalTo('id', entry.id)
+    await store.update({
+      url: entry.url,
+      title: entry.title,
+      visited_at: entry.visitedAt,
+      icon_url: entry.iconUrl || null,
+      visit_count: entry.visitCount
+    }, predicates)
+  }
+
+  /** 按 ID 删除单条历史记录 */
+  async deleteById(id: number): Promise<void> {
+    const store = BrowserDatabase.getInstance().getStore()
+    const predicates = new relationalStore.RdbPredicates('history_entries')
+    predicates.equalTo('id', id)
+    await store.delete(predicates)
+  }
+
+  /** 批量删除多条历史记录 */
+  async deleteByIds(ids: number[]): Promise<void> {
+    for (const id of ids) {
+      await this.deleteById(id)
+    }
+  }
+
+  /** 清空全部浏览历史 */
+  async clearAll(): Promise<void> {
+    const store = BrowserDatabase.getInstance().getStore()
+    const predicates = new relationalStore.RdbPredicates('history_entries')
+    await store.delete(predicates)
+  }
+
+  /** 按标题或 URL 关键词搜索历史记录 */
+  async search(keyword: string): Promise<HistoryEntry[]> {
+    const q = keyword.trim().toLowerCase()
+    if (!q) {
+      return this.findAll()
+    }
+    const all = await this.findAll()
+    return all.filter((h) =>
+      h.title.toLowerCase().includes(q) || h.url.toLowerCase().includes(q)
+    )
+  }
+
+  /** 按站点 + 自然日查询历史记录，不存在则返回 null */
+  private async findBySiteOnDay(url: string, visitedAt: number): Promise<HistoryEntry | null> {
+    const siteKey = BrowserUtils.historySiteKey(url)
+    if (!siteKey) {
+      return null
+    }
+    const dayStart = HistoryGrouper.historyDayStart(visitedAt)
+    const dayEnd = HistoryGrouper.historyDayEnd(visitedAt)
+    const store = BrowserDatabase.getInstance().getStore()
+    const rs = await store.querySql(
+      'SELECT * FROM history_entries WHERE visited_at >= ? AND visited_at < ? ORDER BY visited_at DESC',
+      [dayStart, dayEnd]
+    )
+    try {
+      while (rs.goToNextRow()) {
+        const entry = this.rowToEntry(rs)
+        if (BrowserUtils.historySiteKey(entry.url) === siteKey) {
+          return entry
+        }
+      }
+      return null
+    } finally {
+      rs.close()
+    }
+  }
+
+  /** 将查询结果行映射为历史记录模型 */
+  private rowToEntry(rs: relationalStore.ResultSet): HistoryEntry {
+    const url = rs.getString(rs.getColumnIndex('url')) ?? ''
+    const rawTitle = rs.getString(rs.getColumnIndex('title')) ?? ''
+    const rawIcon = rs.getString(rs.getColumnIndex('icon_url')) ?? ''
+    const entryInput: CreateHistoryEntryInput = {
+      id: rs.getLong(rs.getColumnIndex('id')),
+      url: url,
+      title: BrowserUtils.historyDisplayTitle(rawTitle, url),
+      visitedAt: rs.getLong(rs.getColumnIndex('visited_at')),
+      iconUrl: this.sanitizeStoredIconUrl(url, rawIcon),
+      visitCount: rs.getLong(rs.getColumnIndex('visit_count'))
+    }
+    return createHistoryEntry(entryInput)
+  }
+
+  /** 丢弃与当前站点文件名不符的 icon_url（历史错绑自愈） */
+  private sanitizeStoredIconUrl(pageUrl: string, iconUrl: string): string {
+    const local = iconUrl.trim()
+    if (!local) {
+      return ''
+    }
+    const siteKey = BrowserUtils.historySiteKey(pageUrl)
+    if (!siteKey) {
+      return ''
+    }
+    const expected = `${siteKey.replace(/[^a-z0-9.-]/gi, '_')}.png`.toLowerCase()
+    const normalized = local.replace(/\\/g, '/').toLowerCase()
+    const slash = normalized.lastIndexOf('/')
+    const name = slash >= 0 ? normalized.substring(slash + 1) : normalized
+    if (name !== expected && !name.startsWith(`${expected}.`)) {
+      return ''
+    }
+    return local
+  }
+}

@@ -1,0 +1,6 @@
+export { DownloadDeleteDialog } from './src/main/ets/DownloadDeleteDialog.ets'
+export { DownloadFileIcon } from './src/main/ets/DownloadFileIcon.ets'
+export { DownloadFlowDialog } from './src/main/ets/DownloadFlowDialog.ets'
+export { DownloadsPanel } from './src/main/ets/DownloadsPanel.ets'
+export { DownloadsViewModel } from './src/main/ets/DownloadsViewModel.ets'
+export { PanelDownloadAction } from './src/main/ets/PanelDownloadAction.ets'

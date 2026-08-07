@@ -1,0 +1,10 @@
+{
+  "module": {
+    "name": "download",
+    "type": "har",
+    "deviceTypes": [
+      "default",
+      "tablet"
+    ]
+  }
+}

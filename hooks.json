@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "./.cursor/scripts/format-harmony.sh",
+        "timeout": 8000,
+        "failClosed": false
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File ./.cursor/scripts/danger-guard.ps1",
+        "timeout": 5000,
+        "failClosed": false
+      },
+      {
+        "command": "./.cursor/scripts/pre-build-check.sh",
+        "timeout": 15000,
+        "failClosed": false,
+        "matcher": "(hvigor|ace|build.sh|repo|gn|ninja)"
+      }
+    ]
+  }
+}
+

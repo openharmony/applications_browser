@@ -1,0 +1,112 @@
+{
+  "string": [
+    {
+      "name": "search_placeholder",
+      "value": "搜索、提问或输入网址"
+    },
+    {
+      "name": "common_functions",
+      "value": "常用功能"
+    },
+    {
+      "name": "dark_mode",
+      "value": "深色"
+    },
+    {
+      "name": "settings",
+      "value": "设置"
+    },
+    {
+      "name": "about_browser",
+      "value": "关于浏览器"
+    },
+    {
+      "name": "cancel",
+      "value": "取消"
+    },
+    {
+      "name": "incognito_enabled",
+      "value": "已开启无痕模式"
+    },
+    {
+      "name": "incognito_mode_title",
+      "value": "无痕模式"
+    },
+    {
+      "name": "no_downloads",
+      "value": "没有下载"
+    },
+    {
+      "name": "shortcut_bookmarks",
+      "value": "书签收藏"
+    },
+    {
+      "name": "shortcut_history",
+      "value": "历史记录"
+    },
+    {
+      "name": "shortcut_downloads",
+      "value": "下载管理"
+    },
+    {
+      "name": "toast_refreshing",
+      "value": "正在刷新"
+    },
+    {
+      "name": "find_in_page",
+      "value": "页面内搜索"
+    },
+    {
+      "name": "find_in_page_placeholder",
+      "value": "在页面中查找…"
+    },
+    {
+      "name": "web_image_share_title",
+      "value": "网页图片"
+    },
+    {
+      "name": "share_action",
+      "value": "分享"
+    },
+    {
+      "name": "web_link_open_in_new_window",
+      "value": "在新窗口中打开"
+    },
+    {
+      "name": "web_link_copy",
+      "value": "复制超链接"
+    },
+    {
+      "name": "toast_link_copied",
+      "value": "链接已复制"
+    },
+    {
+      "name": "ssl_error_title",
+      "value": "安全连接问题"
+    },
+    {
+      "name": "ssl_error_message",
+      "value": "该网站的安全证书存在问题，是否继续访问？"
+    },
+    {
+      "name": "ssl_continue",
+      "value": "继续访问"
+    },
+    {
+      "name": "web_error_title_general",
+      "value": "无法访问此网站"
+    },
+    {
+      "name": "web_error_title_offline",
+      "value": "网络无法连接"
+    },
+    {
+      "name": "web_error_desc_general",
+      "value": "网址为 %s 的网页可能暂时无法连接，或者它已永久性地移动到了新网址。"
+    },
+    {
+      "name": "web_error_desc_offline",
+      "value": "请检查您的网络设置，确认设备已连接网络后重试。"
+    }
+  ]
+}

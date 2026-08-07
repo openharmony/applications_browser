@@ -1,0 +1,11 @@
+{
+  "name": "browser_core",
+  "version": "1.0.0",
+  "description": "Browser core services: tabs, settings, data sync",
+  "main": "index.ets",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "common": "file:../../common"
+  }
+}

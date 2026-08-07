@@ -1,0 +1,112 @@
+{
+  "string": [
+    {
+      "name": "search_placeholder",
+      "value": "Search or enter URL"
+    },
+    {
+      "name": "common_functions",
+      "value": "Common"
+    },
+    {
+      "name": "dark_mode",
+      "value": "Dark"
+    },
+    {
+      "name": "settings",
+      "value": "Settings"
+    },
+    {
+      "name": "about_browser",
+      "value": "About Browser"
+    },
+    {
+      "name": "cancel",
+      "value": "Cancel"
+    },
+    {
+      "name": "incognito_enabled",
+      "value": "Incognito mode enabled"
+    },
+    {
+      "name": "incognito_mode_title",
+      "value": "Incognito"
+    },
+    {
+      "name": "no_downloads",
+      "value": "No downloads"
+    },
+    {
+      "name": "shortcut_bookmarks",
+      "value": "Bookmarks"
+    },
+    {
+      "name": "shortcut_history",
+      "value": "History"
+    },
+    {
+      "name": "shortcut_downloads",
+      "value": "Downloads"
+    },
+    {
+      "name": "toast_refreshing",
+      "value": "Refreshing"
+    },
+    {
+      "name": "find_in_page",
+      "value": "Find in page"
+    },
+    {
+      "name": "find_in_page_placeholder",
+      "value": "Find in page…"
+    },
+    {
+      "name": "web_image_share_title",
+      "value": "Web image"
+    },
+    {
+      "name": "share_action",
+      "value": "Share"
+    },
+    {
+      "name": "web_link_open_in_new_window",
+      "value": "Open in new window"
+    },
+    {
+      "name": "web_link_copy",
+      "value": "Copy hyperlink"
+    },
+    {
+      "name": "toast_link_copied",
+      "value": "Link copied"
+    },
+    {
+      "name": "ssl_error_title",
+      "value": "Security warning"
+    },
+    {
+      "name": "ssl_error_message",
+      "value": "This site's certificate has problems. Continue?"
+    },
+    {
+      "name": "ssl_continue",
+      "value": "Continue"
+    },
+    {
+      "name": "web_error_title_general",
+      "value": "This site can't be reached"
+    },
+    {
+      "name": "web_error_title_offline",
+      "value": "No internet connection"
+    },
+    {
+      "name": "web_error_desc_general",
+      "value": "The webpage at %s might be temporarily down or it may have moved permanently to a new web address."
+    },
+    {
+      "name": "web_error_desc_offline",
+      "value": "Check your network settings and make sure your device is connected to the internet, then try again."
+    }
+  ]
+}

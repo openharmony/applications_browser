@@ -1,0 +1,136 @@
+{
+  "string": [
+    {
+      "name": "home_title",
+      "value": "Home"
+    },
+    {
+      "name": "profile_nav_title",
+      "value": "Me"
+    },
+    {
+      "name": "search_placeholder",
+      "value": "Search or enter URL"
+    },
+    {
+      "name": "search_history",
+      "value": "Search history"
+    },
+    {
+      "name": "search_history_empty",
+      "value": "No search history"
+    },
+    {
+      "name": "add_shortcut",
+      "value": "Add"
+    },
+    {
+      "name": "shortcut_status_added",
+      "value": "Added"
+    },
+    {
+      "name": "common_functions",
+      "value": "Common"
+    },
+    {
+      "name": "cancel",
+      "value": "Cancel"
+    },
+    {
+      "name": "confirm",
+      "value": "OK"
+    },
+    {
+      "name": "save",
+      "value": "Save"
+    },
+    {
+      "name": "renamed",
+      "value": "Renamed"
+    },
+    {
+      "name": "bookmark_name_label",
+      "value": "Name"
+    },
+    {
+      "name": "bookmark_url_label",
+      "value": "URL"
+    },
+    {
+      "name": "shortcut_already_on_home",
+      "value": "Already on home screen"
+    },
+    {
+      "name": "shortcut_removed",
+      "value": "Shortcut removed"
+    },
+    {
+      "name": "shortcut_remove",
+      "value": "Remove"
+    },
+    {
+      "name": "add_to_home_title",
+      "value": "Add to home"
+    },
+    {
+      "name": "shortcut_tab_recommend",
+      "value": "Recommended"
+    },
+    {
+      "name": "shortcut_tab_bookmarks",
+      "value": "Bookmarks"
+    },
+    {
+      "name": "shortcut_tab_history",
+      "value": "History"
+    },
+    {
+      "name": "custom_shortcut",
+      "value": "Custom shortcut"
+    },
+    {
+      "name": "custom_shortcut_title",
+      "value": "Add custom URL"
+    },
+    {
+      "name": "custom_shortcut_name_hint",
+      "value": "Enter a name"
+    },
+    {
+      "name": "custom_shortcut_url_hint",
+      "value": "Enter URL"
+    },
+    {
+      "name": "custom_shortcut_name_required",
+      "value": "Please enter a name"
+    },
+    {
+      "name": "shortcut_empty_bookmarks",
+      "value": "No bookmarks yet"
+    },
+    {
+      "name": "shortcut_empty_history",
+      "value": "No history yet"
+    },
+    {
+      "name": "shortcut_limit_reached",
+      "value": "Shortcut limit reached. Cannot add more."
+    },
+    {
+      "name": "clear_search_history_confirm",
+      "value": "Clear search history?"
+    },
+    {
+      "name": "edit",
+      "value": "Edit"
+    },
+    {
+      "name": "browser_name",
+      "value": "Browser"
+    },
+    {
+      "name": "search_suggestions",
+      "value": "Suggestions"
+    }
+  ]
+}

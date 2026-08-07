@@ -1,0 +1,20 @@
+{
+  "name": "entry",
+  "version": "1.0.0",
+  "description": "Browser application entry module",
+  "main": "",
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "common": "file:../../common",
+    "browser_core": "file:../../feature/browser_core",
+    "commons": "file:../../feature/commons",
+    "home": "file:../../feature/home",
+    "tab": "file:../../feature/tab",
+    "web": "file:../../feature/web",
+    "bookmark": "file:../../feature/bookmark",
+    "download": "file:../../feature/download",
+    "settings": "file:../../feature/settings",
+    "security": "file:../../feature/security"
+  }
+}

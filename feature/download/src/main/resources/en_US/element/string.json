@@ -1,0 +1,112 @@
+{
+  "string": [
+    {
+      "name": "cancel",
+      "value": "Cancel"
+    },
+    {
+      "name": "confirm",
+      "value": "OK"
+    },
+    {
+      "name": "save",
+      "value": "Save"
+    },
+    {
+      "name": "rename",
+      "value": "Rename"
+    },
+    {
+      "name": "none_selected",
+      "value": "None selected"
+    },
+    {
+      "name": "no_search_results",
+      "value": "No matching results"
+    },
+    {
+      "name": "download_manage",
+      "value": "Downloads"
+    },
+    {
+      "name": "no_downloads",
+      "value": "No downloads"
+    },
+    {
+      "name": "delete_history_confirm",
+      "value": "Delete this history item?"
+    },
+    {
+      "name": "renamed",
+      "value": "Renamed"
+    },
+    {
+      "name": "download_file_missing_redownload",
+      "value": "File not found or deleted. Re-download?"
+    },
+    {
+      "name": "continue_action",
+      "value": "Resume"
+    },
+    {
+      "name": "search_downloads_placeholder",
+      "value": "Search downloads"
+    },
+    {
+      "name": "delete_download_local",
+      "value": "Task and file deleted"
+    },
+    {
+      "name": "delete_download_task_only",
+      "value": "Task deleted only"
+    },
+    {
+      "name": "download_file_title",
+      "value": "Download file"
+    },
+    {
+      "name": "file_exists_title",
+      "value": "File already exists"
+    },
+    {
+      "name": "overwrite_file",
+      "value": "Overwrite"
+    },
+    {
+      "name": "delete_task_and_file",
+      "value": "Delete task and file"
+    },
+    {
+      "name": "delete_task_only",
+      "value": "Delete task only"
+    },
+    {
+      "name": "download_status_done",
+      "value": "Completed"
+    },
+    {
+      "name": "download_action_open",
+      "value": "Open"
+    },
+    {
+      "name": "download_status_failed",
+      "value": "Failed"
+    },
+    {
+      "name": "download_status_queued",
+      "value": "Queued"
+    },
+    {
+      "name": "download_status_deleted",
+      "value": "Deleted"
+    },
+    {
+      "name": "download_failed_retry_confirm",
+      "value": "Download failed. Retry?"
+    },
+    {
+      "name": "retry_download",
+      "value": "Retry"
+    }
+  ]
+}

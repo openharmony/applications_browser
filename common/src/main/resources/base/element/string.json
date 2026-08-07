@@ -1,0 +1,256 @@
+{
+  "string": [
+    {
+      "name": "batch_multi_select",
+      "value": "多选"
+    },
+    {
+      "name": "bookmark_count",
+      "value": "%d个书签"
+    },
+    {
+      "name": "bookmark_limit_message",
+      "value": "书签数量已达上限（%d 条），请删除部分书签后再添加。"
+    },
+    {
+      "name": "bookmark_root",
+      "value": "书签"
+    },
+    {
+      "name": "browse_page_title_default",
+      "value": "浏览器"
+    },
+    {
+      "name": "content_count",
+      "value": "%d个内容"
+    },
+    {
+      "name": "copy",
+      "value": "复制"
+    },
+    {
+      "name": "copy_link",
+      "value": "复制链接"
+    },
+    {
+      "name": "delete",
+      "value": "删除"
+    },
+    {
+      "name": "download_complete_toast",
+      "value": "【%1$s】下载已完成"
+    },
+    {
+      "name": "download_notification_done_text",
+      "value": "%1$s · 已完成"
+    },
+    {
+      "name": "download_notification_progress_text",
+      "value": "%1$s · %2$d%%"
+    },
+    {
+      "name": "edit",
+      "value": "编辑"
+    },
+    {
+      "name": "file_exists_message",
+      "value": "「%s」已下载过，如何处理？"
+    },
+    {
+      "name": "font_size_large",
+      "value": "大"
+    },
+    {
+      "name": "font_size_medium",
+      "value": "中"
+    },
+    {
+      "name": "font_size_small",
+      "value": "小"
+    },
+    {
+      "name": "font_size_system",
+      "value": "跟随系统"
+    },
+    {
+      "name": "history_date_section",
+      "value": "%1$d月%2$d日"
+    },
+    {
+      "name": "history_date_section_full",
+      "value": "%1$d年%2$d月%3$d日"
+    },
+    {
+      "name": "input_too_long",
+      "value": "输入内容长度超出限制"
+    },
+    {
+      "name": "more",
+      "value": "更多"
+    },
+    {
+      "name": "move_to_label",
+      "value": "移动至"
+    },
+    {
+      "name": "moved_to",
+      "value": "已移动到「%s」"
+    },
+    {
+      "name": "new_bookmark",
+      "value": "新书签"
+    },
+    {
+      "name": "new_folder",
+      "value": "新建文件夹"
+    },
+    {
+      "name": "new_tab",
+      "value": "新标签页"
+    },
+    {
+      "name": "open_in_new_tab",
+      "value": "在新页签打开"
+    },
+    {
+      "name": "opened_in_n_tabs",
+      "value": "已在 %d 个新页签打开"
+    },
+    {
+      "name": "opened_in_new_tab",
+      "value": "已在新页签打开"
+    },
+    {
+      "name": "perm_allow",
+      "value": "允许"
+    },
+    {
+      "name": "perm_app_missing_cannot_allow_fmt",
+      "value": "浏览器没有%1$s，无法允许网站使用"
+    },
+    {
+      "name": "perm_camera",
+      "value": "相机"
+    },
+    {
+      "name": "perm_deny",
+      "value": "禁止"
+    },
+    {
+      "name": "perm_location",
+      "value": "位置权限"
+    },
+    {
+      "name": "perm_microphone",
+      "value": "麦克风"
+    },
+    {
+      "name": "perm_notification",
+      "value": "通知权限"
+    },
+    {
+      "name": "perm_site_denied_fmt",
+      "value": "当前不允许网站获取%1$s，请到浏览器设置中修改"
+    },
+    {
+      "name": "rename",
+      "value": "重命名"
+    },
+    {
+      "name": "rename_save_with",
+      "value": "重命名保存 (%s)"
+    },
+    {
+      "name": "save_image",
+      "value": "保存图片"
+    },
+    {
+      "name": "select_all",
+      "value": "全选"
+    },
+    {
+      "name": "selected_count",
+      "value": "已选择 %d 项"
+    },
+    {
+      "name": "share_action",
+      "value": "分享"
+    },
+    {
+      "name": "share_image",
+      "value": "分享图片"
+    },
+    {
+      "name": "shortcut_360",
+      "value": "360搜索"
+    },
+    {
+      "name": "shortcut_added_to_home",
+      "value": "已添加「%1$s」到首页"
+    },
+    {
+      "name": "shortcut_baidu",
+      "value": "百度"
+    },
+    {
+      "name": "shortcut_bing",
+      "value": "必应"
+    },
+    {
+      "name": "shortcut_bookmarks",
+      "value": "书签收藏"
+    },
+    {
+      "name": "shortcut_downloads",
+      "value": "下载管理"
+    },
+    {
+      "name": "shortcut_history",
+      "value": "历史记录"
+    },
+    {
+      "name": "shortcut_quark",
+      "value": "夸克"
+    },
+    {
+      "name": "shortcut_sogou",
+      "value": "搜狗"
+    },
+    {
+      "name": "tab_limit_reached",
+      "value": "标签页已达到数量上限"
+    },
+    {
+      "name": "theme_mode_dark",
+      "value": "深色模式"
+    },
+    {
+      "name": "theme_mode_light",
+      "value": "浅色模式"
+    },
+    {
+      "name": "theme_mode_system",
+      "value": "跟随系统"
+    },
+    {
+      "name": "today",
+      "value": "今天"
+    },
+    {
+      "name": "url_format_invalid",
+      "value": "网址格式不正确"
+    },
+    {
+      "name": "url_input_required",
+      "value": "请输入网址"
+    },
+    {
+      "name": "url_too_long",
+      "value": "网址长度超出限制"
+    },
+    {
+      "name": "yesterday",
+      "value": "昨天"
+    }
+  ]
+}
