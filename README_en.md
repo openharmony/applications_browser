@@ -4,7 +4,7 @@
 
 **Browser** (bundle name: `com.ohos.browser`) is a pre-installed **system application** in OpenHarmony. Built with ArkUI and ArkWeb, it provides home navigation, multi-tab browsing, bookmarks and history, download management, settings and privacy, and system interaction capabilities, and adapts to phone and tablet form factors.
 
-This application is a system preset app. Users can open it from the desktop icon; other apps can also launch it via `http` / `https` `viewData` Want to open web pages. Window and system-bar behavior coordinates with **SceneBoard**.
+This application is a system preset app. Users can open it from the desktop icon; external apps can also launch it via `http` / `https` `viewData` Want to open web pages. Window and system-bar behavior coordinates with **SceneBoard**.
 
 ### Core Capabilities
 
@@ -15,7 +15,7 @@ This application is a system preset app. Users can open it from the desktop icon
 - **HTTP / SOCKS proxy**: not supported. There is no proxy settings UI and no in-app proxy configuration API; networking uses the system default path.
 
 **Site permissions (two-layer model)**
-- Same idea as Chrome / Safari: holding a system permission in the browser app does **not** mean every web page can use it; each site is still decided by **origin**.
+- Same as mainstream browsers: holding a system permission in the browser app does **not** mean every web page can use it; each site is still decided by **origin**.
 - **App-level permissions**: the browser must declare and obtain system grants (e.g. `LOCATION`, `CAMERA`, `MICROPHONE`) via `module.json5` and user consent.
 - **Site-level permissions**: when a page requests access through ArkWeb, the decision uses global site policy + per-origin policy. Users can allow / deny per site in Settings. The same permission is independent across different origins by default.
 - In incognito mode, sensitive site permissions are denied by default; short session caching avoids repeated prompts for the same origin.
@@ -39,18 +39,18 @@ This application is a system preset app. Users can open it from the desktop icon
 
 ## Comparison with Mainstream Browsers
 
-The table below compares common capabilities of Chrome / Edge / Safari and typical mobile browsers with this repository’s current implementation.  
+The table below compares common capabilities of mainstream desktop and mobile browsers with this repository’s current implementation.  
 “Supported” means the app has a usable product path; “Not supported” means not implemented, explicitly trimmed, or engine-only without an app integration path.
 
 | Capability | This browser | Notes / reason if unsupported |
 |------------|--------------|-------------------------------|
 | HTTP/HTTPS browsing | Supported | ArkWeb load and render |
 | Back / forward / refresh | Supported | App stack + Web history |
-| Multi-tab management | Supported | In-app tabs and routing; not Chromium multi-process isolation |
+| Multi-tab management | Supported | In-app tabs and routing; not multi-process render isolation |
 | Bookmarks / history | Supported | Local RDB; bookmark tree CRUD (cap 100); history merged by site/day |
-| Downloads | Supported | Queue, progress, system Download dir, notification deep-link; no BT / advanced scheduling |
+| Downloads | Supported | Queue, progress, system Download dir, notification deep-link; no P2P download / speed-limit scheduling |
 | Incognito | Supported | Separate partition; no history/bookmarks/download list; Web data cleared on exit |
-| Search engine switch & navigate | Supported | Baidu / Bing / Sogou / 360; no Google option |
+| Search engine switch & navigate | Supported | Built-in Baidu, Bing, Sogou, and 360 |
 | Find in page | Supported | ArkWeb find |
 | SSL error confirmation | Supported | Deny by default; user may trust host (persisted); not a full certificate manager |
 | Site permissions (location/camera/mic/notification) | Supported | App permission + per-origin policy (two-layer model, same as mainstream browsers) |
@@ -63,22 +63,22 @@ The table below compares common capabilities of Chrome / Edge / Safari and typic
 | HTTP / SOCKS proxy | Not supported | No proxy settings UI or in-app configuration API |
 | Extensions / plugins | Not supported | No extension framework or management UI; positioned as a system basic browser |
 | Account sync (bookmarks/history/passwords) | Not supported | Local storage only; no account system |
-| Password manager / autofill | Not supported | No password vault or Autofill product integration |
+| Password manager / autofill | Not supported | No system password vault or form autofill integration |
 | Translate / reader mode | Not supported | No translation or reader-mode service |
 | Ad block / advanced tracking protection | Not supported | No rule engine; only site permissions and incognito |
 | PWA install / add to Home | Not supported | No Web App Manifest / install flow |
-| Developer tools | Not supported | No DevTools UI |
+| Developer tools | Not supported | No web page inspect / debug UI |
 | Print page | Not supported | Printing depends on the system print framework, which is not available on the current system |
 | Web media in system media session (AVSession) | Not supported | No AVSession reporting; `AVInputCast` syscap removed at build |
-| Picture-in-Picture for web video | Not supported | Fullscreen enter/exit hooks only; no PiP product path |
-| Server-side search suggestions | Not supported | Local history/bookmark match only; no Suggest API |
-| Safe Browsing / malware URL list | Not supported | No Safe Browsing service |
+| Picture-in-Picture for web video | Not supported | Fullscreen enter/exit hooks only; no picture-in-picture product path |
+| Server-side search suggestions | Not supported | Local history/bookmark match only; no search-suggestion API |
+| Malicious URL blocking | Not supported | No malware URL blocking service |
 | Open via local schemes (`file://`, etc.) | Not supported | External Want and runtime checks accept `http`/`https` only |
-| Chromium-style multi-process render isolation | Not supported | Single main process + in-process ArkWeb; tabs are not separate OS processes |
+| Multi-process render isolation | Not supported | Single main process + in-process ArkWeb; tabs are not separate OS processes |
 
 ## Architecture
 
-Browser uses a layered and modular design organized by product form, business features, and common capabilities, and collaborates with SceneBoard and other system capabilities, as shown below:
+Browser uses a layered and modular design organized by product form, business features, and common capabilities, and collaborates with SceneBoard and related system capabilities, as shown below:
 ![Architecture](./docs/figures/Browser_en.png)
 
 ### Application Layered Design
@@ -101,11 +101,11 @@ The overall structure is divided into product, feature, and common layers:
 | Settings / privacy | ProfileView, SettingsStore, SslHandler, IncognitoPolicy | Profile page, theme/font, trusted SSL hosts, incognito write policy |
 | System interaction | BrowserWindowService, MainAbility Want, ScanQrService | SceneBoard / system-bar coordination, external Want, scan |
 
-### Relationship with Other Applications
+### Relationship with External Applications
 
 | Item | Description |
 |------|-------------|
-| Can other apps call it? | Yes. MainAbility declares `exported=true` and can be started via Want |
+| Can external apps call it? | Yes. MainAbility declares `exported=true` and can be started via Want |
 | Who can call | apps via `entity.system.browsable` + `http`/`https` URI |
 | When | After install; site location / camera / microphone still require user grants |
 | Supported Want | Home: `ohos.want.action.home`; browse: `ohos.want.action.viewData` with `http`/`https` `uri` |
@@ -233,7 +233,7 @@ Applicable scenarios: add a full-screen routed page, extend browsing features, e
 5. **Verify**  
    Cover cold start, navigation from home/browse, system back / edge back, orientation and system bars (`BrowserWindowService`), and incognito partition switching.
 
-**Other common extensions** (same flow, different touchpoints):
+**Additional common extensions** (same flow, different touchpoints):
 - Bookmark features: `feature/bookmark` + `BookmarkRepository` (respect `BOOKMARK_LIMIT`).  
 - Download confirm flow: `feature/download` + `DownloadManager`.  
 - Extra site permission types: `WebPermissionGate` + settings UI.
