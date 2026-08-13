@@ -14,7 +14,7 @@ This application is a system preset app. Users can open it from the desktop icon
 - **SSL certificate errors**: loading is denied by default. After the user confirms, the host is added to a local trusted-host list (persisted); later visits to the same host can proceed. When the main frame host is trusted, same-page subresources are allowed as well. This is not a full system certificate manager—no import / full chain viewing—only “error confirmation + trust by host”.
 - **HTTP / SOCKS proxy**: not supported. There is no proxy settings UI and no in-app proxy configuration API; networking uses the system default path.
 
-**Site permissions (industry-standard two-layer model)**
+**Site permissions (two-layer model)**
 - Same idea as Chrome / Safari: holding a system permission in the browser app does **not** mean every web page can use it; each site is still decided by **origin**.
 - **App-level permissions**: the browser must declare and obtain system grants (e.g. `LOCATION`, `CAMERA`, `MICROPHONE`) via `module.json5` and user consent.
 - **Site-level permissions**: when a page requests access through ArkWeb, the decision uses global site policy + per-origin policy. Users can allow / deny per site in Settings. The same permission is independent across different origins by default.
