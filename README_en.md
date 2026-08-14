@@ -8,17 +8,10 @@ This application is a system preset app. Users can open it from the desktop icon
 
 ### Core Capabilities
 
-**Web Browsing**
-- Loads HTTPS/HTTP pages via ArkWeb (`WebviewController` + download delegate).
-- Supports back, forward, refresh, text / link / image context menus, image preview / save, edge gesture back, and tab thumbnail snapshots.
-- **SSL certificate errors**: loading is denied by default. After the user confirms, the host is added to a local trusted-host list (persisted); later visits to the same host can proceed. When the main frame host is trusted, same-page subresources are allowed as well. This is not a full system certificate manager—no import / full chain viewing—only “error confirmation + trust by host”.
-- **HTTP / SOCKS proxy**: not supported. There is no proxy settings UI and no in-app proxy configuration API; networking uses the system default path.
-
-**Site permissions (two-layer model)**
-- Same as mainstream browsers: holding a system permission in the browser app does **not** mean every web page can use it; each site is still decided by **origin**.
-- **App-level permissions**: the browser must declare and obtain system grants (e.g. `LOCATION`, `CAMERA`, `MICROPHONE`) via `module.json5` and user consent.
-- **Site-level permissions**: when a page requests access through ArkWeb, the decision uses global site policy + per-origin policy. Users can allow / deny per site in Settings. The same permission is independent across different origins by default.
-- In incognito mode, sensitive site permissions are denied by default; short session caching avoids repeated prompts for the same origin.
+**Web browsing**
+- Loads HTTPS/HTTP pages via ArkWeb (WebviewController + download delegate).
+- Supports back, forward, refresh, SSL certificate handling, text / link / image context menus, image preview / save, edge gesture back, and tab thumbnail snapshots.
+- Supports edge gesture back and tab thumbnail snapshots.
 
 **Multi-tab and Navigation**
 - Supports three routed pages: home (`MainPage`), tab manager (`TabsPage`), and browse (`BrowsePage`).
@@ -42,8 +35,8 @@ This application is a system preset app. Users can open it from the desktop icon
 The table below compares common capabilities of mainstream desktop and mobile browsers with this repository’s current implementation.  
 “Supported” means the app has a usable product path; “Not supported” means not implemented, explicitly trimmed, or engine-only without an app integration path.
 
-| Capability | This browser | Notes / reason if unsupported |
-|------------|--------------|-------------------------------|
+| Capability | This browser | Description |
+|------------|--------------|-------------|
 | HTTP/HTTPS browsing | Supported | ArkWeb load and render |
 | Back / forward / refresh | Supported | App stack + Web history |
 | Multi-tab management | Supported | In-app tabs and routing; not multi-process render isolation |
@@ -52,8 +45,8 @@ The table below compares common capabilities of mainstream desktop and mobile br
 | Incognito | Supported | Separate partition; no history/bookmarks/download list; Web data cleared on exit |
 | Search engine switch & navigate | Supported | Built-in Baidu, Bing, Sogou, and 360 |
 | Find in page | Supported | ArkWeb find |
-| SSL error confirmation | Supported | Deny by default; user may trust host (persisted); not a full certificate manager |
-| Site permissions (location/camera/mic/notification) | Supported | App permission + per-origin policy (two-layer model, same as mainstream browsers) |
+| SSL error confirmation | Supported | When an HTTPS certificate is bad (expired, host mismatch, intranet self-signed, and so on), the browser blocks first. After the user chooses “continue”, the browser remembers the host, does not prompt again next time, and also allows subresources on the page |
+| Site permissions (location/camera/mic/notification) | Supported | Same idea as mainstream browsers: notification granted to the browser can be used for all pages; after the browser is granted location / camera / microphone, each site must still be allowed (denied by default); denied by default in incognito |
 | Image preview / save / share | Supported | Context menus and gallery write |
 | PDF / JSON / XML / TXT preview | Supported | Preview via ArkWeb built-in capability |
 | Scan QR to open URL | Supported | Depends on `com.ohos.scanservice` |
@@ -91,26 +84,26 @@ The overall structure is divided into product, feature, and common layers:
 | Feature | `feature/browser_core`, `feature/home`, `feature/tab`, `feature/web`, `feature/bookmark`, `feature/download`, `feature/settings`, `feature/security`, `feature/commons` | Browsing, tabs/navigation, bookmarks/history/downloads, settings/privacy, system interaction |
 | Common | `common` | Models, RDB persistence, router bridge, logging, and utilities |
 
-**Feature module description**:
+**Feature module description** (expanded to L3 capability points):
 
-| Capability | Modules | Description |
-|------------|---------|-------------|
-| Web browsing | BrowsePageView, WebPageController, WebBrowseViewModel, WebPermissionGate, SslHandler | ArkWeb loading, context menus, error pages, image preview; SSL confirmation; two-layer site permission gate |
-| Tabs / navigation | TabsPageView, TabManager, BrowserNavigation, NavigationController | Tab CRUD, page routing, back/forward stack |
-| Bookmarks / history / downloads | FeaturePanel, BookmarkRepository, HistoryRepository, DownloadManager | Bookmark tree CRUD/move/folders (cap 100); history http(s) only, skipped in incognito, merged by site/day; download queue |
-| Settings / privacy | ProfileView, SettingsStore, SslHandler, IncognitoPolicy | Profile page, theme/font, trusted SSL hosts, incognito write policy |
-| System interaction | BrowserWindowService, MainAbility Want, ScanQrService | SceneBoard / system-bar coordination, external Want, scan |
+| Capability | Module area | Description (functions covered) |
+|------------|-------------|----------------------------------|
+| Web browsing | Browse page UI, web control, site permissions, certificate handling | Page load and render; back / forward / refresh; link and image menus; error pages; image preview and save. Certificate error confirmation (block by default; remember trust by host after confirm). Site permissions (location / camera / microphone / notification: browser has permission ≠ every page has it; each site must ask again) |
+| Tabs / navigation | Tab manager page, tab service, page navigation | Tab management (create / close / switch / reorder; normal and incognito partitions each capped at 100). Page routing (home / tabs manager / browse). Back-forward stack; can restore last active tab on launch |
+| Bookmarks / history / downloads | Feature panels, bookmark and history data, download service | Bookmark management (add / edit / delete / move / create folder; bookmark cap 100). History (http/https only; skipped in incognito; same site same day merges; grouped by date; delete / clear; persisted locally, no day-based auto purge). Downloads (queue and progress; system download directory; cancel / retry; auto suffix on name conflict) |
+| Settings / privacy | Profile page, settings store, certificate and incognito policy | Profile page; theme and font scale. Search-engine switch. Per-site allow / deny for site permissions. Trusted-host management. Incognito policy (no history / bookmarks / download list; clear web data on exit) |
+| System interaction | Window service, app-entry launch, scan service | Desktop window / system-bar coordination (including immersive browsing). External app launch to open pages. Scan QR to open URL. Download-complete notification deep-link |
 
 ### Relationship with External Applications
 
 | Item | Description |
 |------|-------------|
 | Can external apps call it? | Yes. MainAbility declares `exported=true` and can be started via Want |
-| Who can call | apps via `entity.system.browsable` + `http`/`https` URI |
+| Who can call | Apps via `entity.system.browsable` + `http`/`https` URI |
 | When | After install; site location / camera / microphone still require user grants |
 | Supported Want | Home: `ohos.want.action.home`; browse: `ohos.want.action.viewData` with `http`/`https` `uri` |
 | SceneBoard | Depends on SceneBoard for launcher entry and window scenes; `BrowserWindowService` coordinates system bars and safe areas with SceneBoard / SystemUI |
-| Cross-process | Scan depends on `com.ohos.scanservice`; rendering depends on ArkWeb |
+| Cross-process | Scan depends on `com.ohos.scanservice` (`module.json5` dependencies); rendering depends on ArkWeb |
 
 ## Build
 
@@ -192,11 +185,11 @@ Applicable scenarios: add a full-screen routed page, extend browsing features, e
 
 **Example: add a navigation page (e.g. `NavGuidePage`)**
 
-1. **Implement UI / ViewModel in a Feature HAR**  
+1. **Implement UI / ViewModel in a Feature module**  
    For example under `feature/home` (or a new `feature/nav`):
-   - `src/main/ets/NavGuidePageView.ets` — layout and interaction  
-   - `src/main/ets/NavGuideViewModel.ets` — state and logic  
-   If persistence is needed (e.g. “guide completed”), extend `common/src/main/ets/model/` and `repository/`, and read/write via `SettingsStore` / Repository.
+   - `src/main/ets/NavGuidePageView.ets`: page layout and interaction  
+   - `src/main/ets/NavGuideViewModel.ets`: state and business logic  
+   If persistence is needed (e.g. “guide completed”), extend fields in `common/src/main/ets/model/` and `repository/`, and read/write via `SettingsStore` / Repository.
 
 2. **Add a product-layer page shell and register it**  
    - Add `product/entry/src/main/ets/pages/NavGuidePage.ets` that composes the Feature view.  
@@ -208,7 +201,7 @@ Applicable scenarios: add a full-screen routed page, extend browsing features, e
    - If returning from the tabs manager must restore the correct partition, follow the existing `openTabs` / `returnFromTabsManager` handling of `incognito`.
 
 4. **Confirm Ability / permissions / dependencies**  
-   Entry Ability is already declared in `product/entry/src/main/module.json5`. For a new page, usually confirm whether new permissions, skills, or HAR dependencies are required (`build-profile.json5` and `product/entry/oh-package.json5`).
+   Entry Ability is already declared in `product/entry/src/main/module.json5`. For a new page, usually confirm whether new permissions, skills, or module dependencies are required (`build-profile.json5` and `product/entry/oh-package.json5`).
 
 ```json
 {
@@ -234,59 +227,57 @@ Applicable scenarios: add a full-screen routed page, extend browsing features, e
    Cover cold start, navigation from home/browse, system back / edge back, orientation and system bars (`BrowserWindowService`), and incognito partition switching.
 
 **Additional common extensions** (same flow, different touchpoints):
-- Bookmark features: `feature/bookmark` + `BookmarkRepository` (respect `BOOKMARK_LIMIT`).  
-- Download confirm flow: `feature/download` + `DownloadManager`.  
-- Extra site permission types: `WebPermissionGate` + settings UI.
+- Bookmark features: change `feature/bookmark` + `BookmarkRepository`; respect `BOOKMARK_LIMIT`.  
+- Download confirm flow: change `feature/download` + `DownloadManager`.  
+- Extra site permission types: change `WebPermissionGate` + settings UI.
 
 ## Directory
 
-The project is organized as product entry / feature HARs / common capabilities. Key paths:
+The project is organized as product entry / feature modules / common capabilities.
 
 ```text
 applications_browser
-├─AppScope                                      # App-level config and resources
-│  ├─app.json5                                  # bundleName, version, etc.
-│  └─resources/                                 # Global strings / icons
-│     ├─base/
-│     └─en_US/
-├─common                                        # Common capabilities (HAR)
+├─AppScope                                      # App-level config: bundle id, version, global strings and icons
+│  ├─app.json5                                  # App identity and version
+│  └─resources/                                 # Localized strings, icons, and other global resources
+├─common                                        # Shared capabilities: data and helpers used by multiple features
 │  └─src/main/ets/
-│     ├─model/                                  # BookmarkItem, HistoryEntry, constants (BOOKMARK_LIMIT)
-│     ├─repository/                             # RDB: bookmarks / history / downloads / tabs / settings
-│     └─utils/                                  # Logging, router bridge, BrowserUtils, strings
-├─feature                                       # Feature layer (multiple HARs)
-│  ├─browser_core/                              # Facade and core services
+│     ├─model/                                  # Data models and limits for bookmarks, history, downloads, tabs
+│     ├─repository/                             # Local database access: bookmarks / history / downloads / tabs / settings
+│     └─utils/                                  # Logging, page-routing bridge, helpers, and string assembly
+├─feature                                       # Feature layer: business modules by capability
+│  ├─browser_core/                              # Browse core: facade, navigation, and backend services
 │  │  └─src/main/ets/
-│  │     ├─BrowserStore.ets / BrowserNavigation.ets / BrowserApp.ets
-│  │     ├─tab/                                 # TabManager, thumbnails
-│  │     ├─web/                                 # WebPageController, WebPermissionGate
-│  │     ├─download_svc/                        # DownloadManager, notifications / paths
-│  │     ├─security/                            # SslHandler, IncognitoPolicy
-│  │     ├─settings/                            # BrowserWindowService, SettingsStore
-│  │     ├─navigation/                          # ScanQr, NavigationController
-│  │     └─system/                              # Gallery, share bridges
-│  ├─commons/                                   # Shared UI widgets (dialogs, icons)
-│  ├─home/                                      # Home / search / shortcuts
-│  ├─tab/                                       # Tab manager UI
-│  ├─web/                                       # Browse page UI (BrowsePageView)
-│  ├─bookmark/                                  # Bookmarks / history panels (FeaturePanel)
-│  ├─download/                                  # Download list UI
-│  ├─settings/                                  # Profile / settings UI
-│  └─security/                                  # Security and privacy UI
-├─product                                       # Product layer
-│  └─entry/                                     # Entry HAP
+│  │     ├─BrowserStore.ets / BrowserNavigation.ets / BrowserApp.ets   # Unified store facade, page routing, app startup init
+│  │     ├─tab/                                 # Multi-tab: create / close / switch / reorder, thumbnails
+│  │     ├─web/                                 # Web control: load control, site-permission decisions
+│  │     ├─download_svc/                        # Download service: queue, progress, notifications, save paths
+│  │     ├─security/                            # Security and privacy: certificate error confirm, incognito write guard
+│  │     ├─settings/                            # Settings and window: preferences, system-bar / immersive sync
+│  │     ├─navigation/                          # Navigation helpers: scan-to-open URL, route control
+│  │     └─system/                              # System bridges: gallery write, share availability, etc.
+│  ├─commons/                                   # Shared UI pieces: dialogs, icons, toasts
+│  ├─home/                                      # Home: search entry, shortcuts
+│  ├─tab/                                       # Tab manager page UI
+│  ├─web/                                       # Browse page UI: web content and action bar
+│  ├─bookmark/                                  # Bookmark and history panels: CRUD, group by date
+│  ├─download/                                  # Download list UI: progress and task actions
+│  ├─settings/                                  # Profile / settings UI: engines, permissions, theme
+│  └─security/                                  # Security and privacy related UI
+├─product                                       # Product layer: installable app entry
+│  └─entry/                                     # Entry package: Ability, page shells, permission declarations
 │     └─src/main/
 │        ├─ets/
-│        │  ├─MainAbility/                      # MainAbility, backup extension
-│        │  └─pages/                            # MainPage / BrowsePage / TabsPage shells
-│        ├─module.json5                         # Permissions, Ability, skills, dependencies
-│        └─resources/                           # Page registry (main_pages.json), strings, icons
-├─docs/figures/                                 # Architecture diagrams (includes SceneBoard)
-├─lib/                                          # Local HAR
-├─hvigor/                                       # Build tooling
-├─signature/                                    # Signing certs and profile
-├─build-profile.json5                           # config
-├─oh-package.json5
+│        │  ├─MainAbility/                      # App entry lifecycle, backup extension
+│        │  └─pages/                            # Page shells for home / browse / tabs
+│        ├─module.json5                         # Permissions, entry components, skills, inter-app deps
+│        └─resources/                           # Page registry, strings, and icons
+├─docs/figures/                                 # Doc figures: architecture diagrams, etc.
+├─lib/                                          # Local dependent libraries
+├─hvigor/                                       # Build tooling config
+├─signature/                                    # Signing certificates and profile
+├─build-profile.json5                           # Project-level config
+├─oh-package.json5                              # Package dependency declarations
 ├─README.md                                     # Chinese docs
 └─README_en.md                                  # English docs
 ```
@@ -295,7 +286,7 @@ applications_browser
 - **Language**: ArkTS
 - **Runtime**: preinstalled system app (`com.ohos.browser`); depends on ArkWeb, network, file, media library, SceneBoard / window capabilities
 - **Device types**: entry `deviceTypes` is `default`; Feature HARs declare `default`, `tablet`
-- **Permissions**: main permissions (see `product/entry/src/main/module.json5`). App grants do not auto-enable site access; sites still need per-origin approval—see “Site permissions” above.
+- **Permissions**: main permissions required by the browser are as follows (see `product/entry/src/main/module.json5`). Note: these are system permissions for the **browser app**; a web page that needs location / camera / microphone must still request per site—see “Site permissions” above.
 
   | Permission | Grant mode | Scenario |
   |------------|------------|----------|
@@ -303,9 +294,9 @@ applications_browser
   | ohos.permission.GET_NETWORK_INFO | system | Network awareness (e.g. downloads) |
   | ohos.permission.WRITE_IMAGEVIDEO | user | Save images to gallery |
   | ohos.permission.READ_WRITE_DOWNLOAD_DIRECTORY | user | Write downloads to system Download dir |
-  | ohos.permission.APPROXIMATELY_LOCATION / LOCATION | user | Site location (app layer) |
-  | ohos.permission.CAMERA | user | Site camera (app layer) |
-  | ohos.permission.MICROPHONE | user | Site microphone (app layer) |
+  | ohos.permission.APPROXIMATELY_LOCATION / LOCATION | user | Grants location to the browser app; each page must still ask |
+  | ohos.permission.CAMERA | user | Grants camera to the browser app; each page must still ask |
+  | ohos.permission.MICROPHONE | user | Grants microphone to the browser app; each page must still ask |
 
 - **System coordination**: window and system-bar behavior depends on SceneBoard / SystemUI; validate cold start, resume, and multitasking when changing `BrowserWindowService`
 
