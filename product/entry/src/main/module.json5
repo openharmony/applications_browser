@@ -6,7 +6,7 @@
     "mainElement": "MainAbility",
     "deviceTypes": [
       "default",
-      "pad"
+      "tablet"
     ],
     "deliveryWithInstall": true,
     "installationFree": false,

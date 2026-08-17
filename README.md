@@ -210,7 +210,7 @@ hvigorw assembleHap
     "mainElement": "MainAbility",
     "deviceTypes": [
       "default",
-      "pad"
+      "tablet"
     ],
     "abilities": [
       {
@@ -285,7 +285,7 @@ applications_browser
 ## 约束
 - **语言版本**：ArkTS
 - **运行形态**：系统预置应用（`com.ohos.browser`），依赖 ArkWeb、网络、文件、媒体库、SceneBoard / 窗口等系统能力
-- **设备类型**：入口模块 `deviceTypes` 与各 Feature HAR 均声明为 `default`、`pad`
+- **设备类型**：入口模块 `deviceTypes` 与各 Feature HAR 均声明为 `default`、`tablet`
 - **权限**：浏览器所需的主要权限如下（见 `product/entry/src/main/module.json5`）。注意：这里列的是给**浏览器应用**的系统权限；网页要用定位 / 相机 / 麦克风等，还须按站点再申请，详见上文「网页权限」。
 
   | 权限 | 授权方式 | 使用场景 |

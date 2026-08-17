@@ -5,7 +5,7 @@ export class BrowserDeviceProfile {
   /** 是否为 Pad 形态：地址栏展示下载快捷入口 */
   static isPadFormFactor(): boolean {
     const type = deviceInfo.deviceType
-    return type === 'pad' || type === '2in1'
+    return type === 'tablet' || type === '2in1'
   }
 
   /**
