@@ -2,7 +2,7 @@
 
 ## Introduction
 
-**Browser** (bundle name: `com.ohos.browser`) is a pre-installed **system application** in OpenHarmony. Built with ArkUI and ArkWeb, it provides home navigation, multi-tab browsing, bookmarks and history, download management, settings and privacy, and system interaction capabilities, and adapts to phone and tablet form factors.
+**Browser** (bundle name: `com.ohos.browser`) is a pre-installed **system application** in OpenHarmony. Built with ArkUI and ArkWeb, it provides home navigation, multi-tab browsing, bookmarks and history, download management, settings and privacy, and system interaction capabilities, and adapts to phone and pad form factors.
 
 This application is a system preset app. Users can open it from the desktop icon; external apps can also launch it via `http` / `https` `viewData` Want to open web pages. Window and system-bar behavior coordinates with **SceneBoard**.
 
@@ -11,7 +11,6 @@ This application is a system preset app. Users can open it from the desktop icon
 **Web browsing**
 - Loads HTTPS/HTTP pages via ArkWeb (WebviewController + download delegate).
 - Supports back, forward, refresh, SSL certificate handling, text / link / image context menus, image preview / save, edge gesture back, and tab thumbnail snapshots.
-- Supports edge gesture back and tab thumbnail snapshots.
 
 **Multi-tab and Navigation**
 - Supports three routed pages: home (`MainPage`), tab manager (`TabsPage`), and browse (`BrowsePage`).
@@ -80,7 +79,7 @@ The overall structure is divided into product, feature, and common layers:
 
 | Layer | Main Directories / Components | Description |
 |------| ----------------------------- |-------------|
-| Product | `product/entry` | Phone / tablet entry HAP; Ability, page shells, permissions, and resources |
+| Product | `product/entry` | Phone / Pad entry HAP; Ability, page shells, permissions, and resources |
 | Feature | `feature/browser_core`, `feature/home`, `feature/tab`, `feature/web`, `feature/bookmark`, `feature/download`, `feature/settings`, `feature/security`, `feature/commons` | Browsing, tabs/navigation, bookmarks/history/downloads, settings/privacy, system interaction |
 | Common | `common` | Models, RDB persistence, router bridge, logging, and utilities |
 
@@ -110,7 +109,7 @@ The overall structure is divided into product, feature, and common layers:
 This project is a multi-module HAP application built with Hvigor. The output is the `com.ohos.browser` system application package.
 
 ### Environment Requirements
-- OpenHarmony SDK (this project uses compileSdkVersion "26.0.0", compatibleSdkVersion 23)
+- OpenHarmony SDK (this project uses compileSdkVersion "26.0.0", compatibleSdkVersion and targetSdkVersion 23)
 - DevEco Studio or the command-line Hvigor toolchain
 - System signing certificates (see `signature/`)
 
@@ -210,7 +209,8 @@ Applicable scenarios: add a full-screen routed page, extend browsing features, e
     "type": "entry",
     "mainElement": "MainAbility",
     "deviceTypes": [
-      "default"
+      "default",
+      "pad"
     ],
     "abilities": [
       {
@@ -285,7 +285,7 @@ applications_browser
 ## Constraints
 - **Language**: ArkTS
 - **Runtime**: preinstalled system app (`com.ohos.browser`); depends on ArkWeb, network, file, media library, SceneBoard / window capabilities
-- **Device types**: entry `deviceTypes` is `default`; Feature HARs declare `default`, `tablet`
+- **Device types**: entry `deviceTypes` and Feature HARs both declare `default`, `pad`
 - **Permissions**: main permissions required by the browser are as follows (see `product/entry/src/main/module.json5`). Note: these are system permissions for the **browser app**; a web page that needs location / camera / microphone must still request per site—see “Site permissions” above.
 
   | Permission | Grant mode | Scenario |

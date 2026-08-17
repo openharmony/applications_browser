@@ -11,7 +11,6 @@
 **网页浏览**
 - 基于 ArkWeb（WebviewController + 下载委托）加载 HTTPS/HTTP 页面。
 - 支持前进、后退、刷新、SSL 证书处理、文本 / 链接 / 图片上下文菜单、图片预览与保存，以及边缘手势返回、页签缩略图快照。
-- 支持边缘手势返回、页签缩略图快照。
 
 **多标签与导航**
 - 支持首页（`MainPage`）、页签管理（`TabsPage`）、浏览页（`BrowsePage`）三页路由。
@@ -110,7 +109,7 @@
 本工程为多模块 HAP 应用工程，使用 Hvigor 构建，产物为 `com.ohos.browser` 系统应用包。
 
 ### 环境要求
-- OpenHarmony SDK（本工程 compileSdkVersion 为 "26.0.0"，compatibleSdkVersion 为 23）
+- OpenHarmony SDK（本工程 compileSdkVersion 为 "26.0.0"，compatibleSdkVersion和targetSdkVersion 为 23）
 - DevEco Studio 或命令行 Hvigor 工具链
 - 系统签名证书（见 `signature/`）
 
@@ -210,7 +209,8 @@ hvigorw assembleHap
     "type": "entry",
     "mainElement": "MainAbility",
     "deviceTypes": [
-      "default"
+      "default",
+      "pad"
     ],
     "abilities": [
       {
@@ -285,7 +285,7 @@ applications_browser
 ## 约束
 - **语言版本**：ArkTS
 - **运行形态**：系统预置应用（`com.ohos.browser`），依赖 ArkWeb、网络、文件、媒体库、SceneBoard / 窗口等系统能力
-- **设备类型**：入口模块 `deviceTypes` 为 `default`；各 Feature HAR 声明 `default`、`tablet`
+- **设备类型**：入口模块 `deviceTypes` 与各 Feature HAR 均声明为 `default`、`pad`
 - **权限**：浏览器所需的主要权限如下（见 `product/entry/src/main/module.json5`）。注意：这里列的是给**浏览器应用**的系统权限；网页要用定位 / 相机 / 麦克风等，还须按站点再申请，详见上文「网页权限」。
 
   | 权限 | 授权方式 | 使用场景 |

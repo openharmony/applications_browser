@@ -15,7 +15,7 @@ export class DownloadPermissionHelper {
   static usesMobileDownloadStrategy(): boolean {
     const type = deviceInfo.deviceType
     BrowserLog.info(`[DownloadPermission] deviceType=${type}`)
-    return type === 'phone' || type === 'tablet' || type === 'default' || type === 'wearable'
+    return type === 'phone' || type === 'pad' || type === 'default' || type === 'wearable'
   }
 
   /** 设备是否支持 Environment.getUserDownloadDir + 运行时授权（2in1 等） */

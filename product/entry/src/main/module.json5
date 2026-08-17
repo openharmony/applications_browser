@@ -5,7 +5,8 @@
     "description": "$string:module_desc",
     "mainElement": "MainAbility",
     "deviceTypes": [
-      "default"
+      "default",
+      "pad"
     ],
     "deliveryWithInstall": true,
     "installationFree": false,
