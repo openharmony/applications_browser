@@ -210,7 +210,7 @@ Applicable scenarios: add a full-screen routed page, extend browsing features, e
     "mainElement": "MainAbility",
     "deviceTypes": [
       "default",
-      "pad"
+      "tablet"
     ],
     "abilities": [
       {
@@ -285,7 +285,7 @@ applications_browser
 ## Constraints
 - **Language**: ArkTS
 - **Runtime**: preinstalled system app (`com.ohos.browser`); depends on ArkWeb, network, file, media library, SceneBoard / window capabilities
-- **Device types**: entry `deviceTypes` and Feature HARs both declare `default`, `pad`
+- **Device types**: entry `deviceTypes` and Feature HARs both declare `default`, `tablet`
 - **Permissions**: main permissions required by the browser are as follows (see `product/entry/src/main/module.json5`). Note: these are system permissions for the **browser app**; a web page that needs location / camera / microphone must still request per site—see “Site permissions” above.
 
   | Permission | Grant mode | Scenario |
