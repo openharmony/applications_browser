@@ -22,7 +22,7 @@ This application is a system preset app. Users can open it from the desktop icon
 - **Downloads**: queue and progress UI; files go to the system Download directory with automatic `(1)`, `(2)`, … suffixes; images can be published to the system gallery.
 
 **Settings and Privacy**
-- Supports search-engine switching, site permissions, and incognito mode (no history / bookmarks / download list; Web data cleared on exit).
+- Supports search-engine switching, site permissions, and incognito mode (no history / search-keyword history; downloads stay out of the list and produce no notification; cookies and site data cleared on exit).
 - Supports light / dark theme synced with system color mode and font size.
 
 **System Interaction**
@@ -36,37 +36,34 @@ The table below compares common capabilities of mainstream desktop and mobile br
 
 | Capability | This browser | Description |
 |------------|--------------|-------------|
-| HTTP/HTTPS browsing | Supported | ArkWeb load and render |
-| Back / forward / refresh | Supported | App stack + Web history |
-| Multi-tab management | Supported | In-app tabs and routing; not multi-process render isolation |
-| Bookmarks / history | Supported | Local RDB; bookmark tree CRUD (cap 100); history merged by site/day |
-| Downloads | Supported | Queue, progress, system Download dir, notification deep-link; no P2P download / speed-limit scheduling |
-| Incognito | Supported | Separate partition; no history/bookmarks/download list; Web data cleared on exit |
-| Search engine switch & navigate | Supported | Built-in Baidu, Bing, Sogou, and 360 |
-| Find in page | Supported | ArkWeb find |
-| SSL error confirmation | Supported | When an HTTPS certificate is bad (expired, host mismatch, intranet self-signed, and so on), the browser blocks first. After the user chooses “continue”, the browser remembers the host, does not prompt again next time, and also allows subresources on the page |
+| HTTP/HTTPS browsing | Supported | Loads and renders pages through ArkWeb (WebviewController). The address bar distinguishes search keywords from URLs (bare domains get an automatic `https://` prefix), with mobile UA and viewport adaptation; custom error page with automatic reload retry after offline recovery |
+| Back / forward / refresh | Supported | A global app-level navigation stack stays in sync with the ArkWeb page history: when a page lands on a new URL, it is compared with the adjacent stack entries to decide push / step-back / step-forward, keeping the back and forward button states consistent with the web history. Back navigation uses a unified decision flow (app stack first, then web history), shared by the system back key and the edge swipe gesture; the toolbar refresh and stop actions are combined |
+| Multi-tab management | Supported | Normal and incognito partitions, each capped at 100 tabs; normal tabs are persisted to the local RDB while incognito tabs stay in memory only. Supports create / close / switch / drag-reorder / close-all and page thumbnails, and restores the last active tab on launch. Only the active tab holds a live Web instance at a time — switching tabs rebuilds the browse page via routing (inactive tabs are not kept alive; returning to one reloads its URL). Multi-process render isolation is not enabled (see the row below) |
+| Bookmarks / history | Supported | Both stored in the local RDB. Bookmarks form a tree (folders + items, nestable; add, edit, move, drag-reorder, recursive delete of subtrees), with a bookmark-link cap of 100 (folders excluded). History records `http`/`https` only; same site on the same calendar day merges into one entry (visit time / title / icon updated), grouped by date in the panel, with title / URL keyword search, single & batch delete, and clear all |
+| Downloads | Supported | Task queue (max 5 concurrent; excess tasks are queued and auto-promoted as slots free up), throttled progress reporting and list UI. Files go to the system Download directory with automatic `(1)`, `(2)` … suffixes on name conflict, and images can be published to the system gallery. All tasks share one unified notification (progress + pause / resume) that deep-links back to the download panel on tap. Failure classification and retry, HTTP Range resume after pause, auto-pause when offline / auto-resume when the network recovers; deleting a task can also delete the local file. No P2P download, speed limiting, or other advanced scheduling |
+| Incognito | Supported | Normal / incognito tab partitions. Pages load with ArkWeb `incognitoMode` and forced online cache mode (no disk cache), with form autofill disabled. History and search-keyword history are not written; downloads are kept out of the list and produce no notification (files are still saved locally). Closing the last incognito tab or exiting the app clears cookies, WebStorage data, geolocation grants, and cache |
+| Search engine switch & navigate | Supported | Built-in Baidu (default), Bing, Sogou, and 360, switchable in settings. When the address-bar input is not a URL, it is sent to the current engine as a percent-encoded search query |
+| Find in page | Supported | Uses ArkWeb `searchAllAsync` to highlight all matches and report the hit count, with previous / next stepping and clear-highlight support |
+| SSL error confirmation | Supported | Certificate problems (expired, host mismatch, intranet self-signed, etc.) are blocked by default with a confirmation dialog. Choosing “continue” stores the trust per host (persisted), so later visits to that host and its page subresources are no longer prompted; trusted hosts can be managed / cleared in settings |
 | Site permissions (location/camera/mic/notification) | Supported | Same idea as mainstream browsers: notification granted to the browser can be used for all pages; after the browser is granted location / camera / microphone, each site must still be allowed (denied by default); denied by default in incognito |
-| Image preview / save / share | Supported | Context menus and gallery write |
-| PDF / JSON / XML / TXT preview | Supported | Preview via ArkWeb built-in capability |
-| Scan QR to open URL | Supported | Depends on `com.ohos.scanservice` |
-| External Want to open pages | Supported | `http` / `https` only |
-| Dark mode / system font scale | Supported | Synced with system theme and font size |
-| In-page audio/video playback | Supported | ArkWeb HTML5 media; in-page play and fullscreen |
+| Image preview / save | Supported | Long-press an image for a context menu (copy / save) and a pinch-zoom fullscreen preview (0.35× to 5×). Saving writes to the system gallery via photoAccessHelper after a permission request |
+| PDF / JSON / XML / TXT preview | Supported | Previewed by ArkWeb built-in rendering; external `file://` / `datashare://` files are first copied into the app sandbox and then loaded. A `file` open capability (FileOpen) is registered, covering PDF, HTML, plain text, Markdown, JSON, XML, CSV, and more |
+| Scan QR to open URL | Supported | Launches the system scan service (`com.ohos.scanservice`, supports picking from the gallery and multi-code scanning; scan type is QR). An `http`/`https` result opens directly; otherwise the result is completed into a URL when possible |
+| External Want to open pages | Supported | Registered for `http`/`https` launches via `entity.system.browsable` + `viewData`. At runtime only `http`/`https` and previewable local-file URIs are accepted; other schemes are ignored |
+| Dark mode / system font scale | Supported | Theme preference: follow system / light / dark, synced from the system color mode; pages use darkMode + forceDarkAccess and are reloaded on theme change. Font scale: follow system (live-synced by observing the system font-scale setting) or three manual levels (85% / 100% / 115%), applied via textZoomRatio with a JS-injection fallback |
+| In-page audio/video playback | Supported | ArkWeb HTML5 media plays in-page. Entering fullscreen hides the address bar and toolbar, and they are restored on exit. No custom autoplay policy — the ArkWeb default applies |
 | HTTP / SOCKS proxy | Not supported | No proxy settings UI or in-app configuration API |
 | Extensions / plugins | Not supported | No extension framework or management UI; positioned as a system basic browser |
-| Account sync (bookmarks/history/passwords) | Not supported | Local storage only; no account system |
-| Password manager / autofill | Not supported | No system password vault or form autofill integration |
+| Account sync (bookmarks/history/passwords) | Not supported | Local RDB storage only; no account system or cloud sync |
+| Password manager / autofill | Not supported | No system password vault integration (no password save / sync); only ArkWeb built-in form autofill is enabled (disabled in incognito) |
 | Translate / reader mode | Not supported | No translation or reader-mode service |
-| Ad block / advanced tracking protection | Not supported | No rule engine; only site permissions and incognito |
-| PWA install / add to Home | Not supported | No Web App Manifest / install flow |
-| Developer tools | Not supported | No web page inspect / debug UI |
+| Ad block / advanced tracking protection | Not supported | No rule engine or tracking protection; only site permissions, incognito, and the image-less mode in settings |
+| Developer tools | Not supported | webDebuggingAccess is not enabled; no page inspect / debug UI |
 | Print page | Not supported | Printing depends on the system print framework, which is not available on the current system |
-| Web media in system media session (AVSession) | Not supported | No AVSession reporting; `AVInputCast` syscap removed at build |
-| Picture-in-Picture for web video | Not supported | Fullscreen enter/exit hooks only; no picture-in-picture product path |
-| Server-side search suggestions | Not supported | Local history/bookmark match only; no search-suggestion API |
-| Malicious URL blocking | Not supported | No malware URL blocking service |
-| Open via local schemes (`file://`, etc.) | Not supported | External Want and runtime checks accept `http`/`https` only |
-| Multi-process render isolation | Not supported | Single main process + in-process ArkWeb; tabs are not separate OS processes |
+| Web media in system media session | Not supported | Web video relies on ArkWeb streaming-media playback and is not integrated with AVSession, so the media control center is not supported |
+| Server-side search suggestions | Not supported | Local history / bookmark match only; no search-suggestion API |
+| Malicious URL blocking | Not supported | No malicious-URL blocking service |
+| Multi-process render isolation | Not supported | Single main process + in-process ArkWeb: all tabs share one render process and are not isolated into separate OS processes; the multiProcess mode is not configured |
 
 ## Architecture
 
@@ -83,15 +80,15 @@ The overall structure is divided into product, feature, and common layers:
 | Feature | `feature/browser_core`, `feature/home`, `feature/tab`, `feature/web`, `feature/bookmark`, `feature/download`, `feature/settings`, `feature/security`, `feature/commons` | Browsing, tabs/navigation, bookmarks/history/downloads, settings/privacy, system interaction |
 | Common | `common` | Models, RDB persistence, router bridge, logging, and utilities |
 
-**Feature module description** (expanded to L3 capability points):
+**Feature module description**:
 
-| Capability | Module area | Description (functions covered) |
-|------------|-------------|----------------------------------|
-| Web browsing | Browse page UI, web control, site permissions, certificate handling | Page load and render; back / forward / refresh; link and image menus; error pages; image preview and save. Certificate error confirmation (block by default; remember trust by host after confirm). Site permissions (location / camera / microphone / notification: browser has permission ≠ every page has it; each site must ask again) |
-| Tabs / navigation | Tab manager page, tab service, page navigation | Tab management (create / close / switch / reorder; normal and incognito partitions each capped at 100). Page routing (home / tabs manager / browse). Back-forward stack; can restore last active tab on launch |
-| Bookmarks / history / downloads | Feature panels, bookmark and history data, download service | Bookmark management (add / edit / delete / move / create folder; bookmark cap 100). History (http/https only; skipped in incognito; same site same day merges; grouped by date; delete / clear; persisted locally, no day-based auto purge). Downloads (queue and progress; system download directory; cancel / retry; auto suffix on name conflict) |
-| Settings / privacy | Profile page, settings store, certificate and incognito policy | Profile page; theme and font scale. Search-engine switch. Per-site allow / deny for site permissions. Trusted-host management. Incognito policy (no history / bookmarks / download list; clear web data on exit) |
-| System interaction | Window service, app-entry launch, scan service | Desktop window / system-bar coordination (including immersive browsing). External app launch to open pages. Scan QR to open URL. Download-complete notification deep-link |
+| Capability | Main modules & key classes | Description |
+|------------|---------------------------|-------------|
+| Web browsing | `feature/web`, `feature/browser_core/web/`<br>BrowsePageView / WebBrowseViewModel / WebPageController | <ul><li>ArkWeb-based page load and render</li><li>Address-bar keyword vs URL detection, UA and viewport adaptation</li><li>Back / forward / refresh (app navigation stack synced with the web history)</li><li>Find in page</li><li>Link / image context menus and pinch-zoom fullscreen image preview (0.35× to 5×)</li><li>Custom error page with offline retry</li><li>In-page audio/video playback and fullscreen</li></ul> |
+| Tabs / navigation | `feature/tab`, `feature/home`, `feature/browser_core/tab/`, `navigation/`<br>TabsPageView / TabManagementViewModel / HomeView / SearchViewModel / TabManager / BrowserNavigation / NavigationController | <ul><li>Normal and incognito tab partitions (create / close / switch / drag-reorder / close-all, each capped at 100; normal tabs persisted in RDB, incognito in memory only)</li><li>Home / tabs-manager / browse routing</li><li>Restores the last active tab on launch</li><li>Unified back decision for the system back key and edge swipe</li></ul> |
+| Bookmarks / history / downloads | `feature/bookmark`, `feature/download`, `feature/browser_core/download_svc/`, `common/repository/`<br>BookmarksPanel / HistoryPanel / DownloadsPanel / DownloadManager / DownloadNotificationService / BookmarkRepository / HistoryRepository | <ul><li>Bookmark tree CRUD (add / edit / move / create folder / recursive delete; bookmark cap 100)</li><li>History merged by site + calendar day, grouped by date, keyword search, delete and clear</li><li>Download task queue (max 5 concurrent), throttled progress and unified notification</li><li>Pause / retry / HTTP Range resume; files to the system Download directory and gallery publishing</li></ul> |
+| Settings / privacy | `feature/settings`, `feature/security`, `feature/bookmark`, `feature/browser_core/security/`, `settings/`, `web/WebPermissionGate.ets`<br>ProfileView / SecurityPrivacyViewModel / FeaturePanel / BrowseSettingsSection / SslHandler / IncognitoPolicy / IncognitoWebDataCleaner | <ul><li>Theme and system font-scale sync</li><li>Search-engine switch (Baidu / Bing / Sogou / 360)</li><li>Two-layer site permissions (app-level system permission + persisted per-origin site policy, denied by default; notification is a system-level switch)</li><li>SSL error confirmation and trusted-host management</li><li>Incognito policy (no history / search-keyword history; downloads kept out of the list; cookies, site storage, and geolocation grants cleared on exit)</li></ul> |
+| System interaction | `feature/browser_core/settings/` (BrowserWindowService), `navigation/` (ScanQrService), `download_svc/` (ShareService), `system/` (ImageGalleryService / ShareAppAvailability), `product/entry` (MainAbility) | <ul><li>SceneBoard / window / system-bar coordination (immersive browsing and edge-swipe back)</li><li>External Want launch (`http`/`https` links and `file` local-file preview)</li><li>Scan QR to open a URL</li><li>Download-complete notification deep-link back to the download panel</li><li>Gallery write and system-share bridges</li></ul> |
 
 ### Relationship with External Applications
 
