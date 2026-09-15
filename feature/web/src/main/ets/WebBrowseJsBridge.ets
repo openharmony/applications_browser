@@ -40,7 +40,7 @@ export class WebBrowseJsBridge {
    * @param maxBytes 最大字节数（字符串形式，JSBridge 传参兼容）
    */
   pullMicPcm(maxBytes: string): string {
-    const n = Number.parseInt(maxBytes, 10)
+    const n = /^\d+$/.test(maxBytes) ? Number.parseInt(maxBytes, 10) : NaN
     const limit = Number.isFinite(n) && n > 0 ? n : 4096
     return WebMicCaptureService.getInstance().pullPcmBase64(limit)
   }

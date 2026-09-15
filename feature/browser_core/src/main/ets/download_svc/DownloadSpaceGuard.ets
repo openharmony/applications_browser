@@ -124,8 +124,8 @@ export class DownloadSpaceGuard {
       if (code === 206 && rangeHeader.length > 0) {
         const contentRange = DownloadSpaceGuard.readHeaderValue(response.header as Record<string, string>, 'Content-Range')
         const match = contentRange.match(/\/(\d+)\s*$/)
-        if (match && match[1]) {
-          const total = parseInt(match[1], 10)
+        if (match && match[1] && /^\d+$/.test(match[1])) {
+          const total = Number.parseInt(match[1], 10)
           if (Number.isFinite(total) && total > 0) {
             return total
           }
@@ -145,7 +145,10 @@ export class DownloadSpaceGuard {
     if (raw.length === 0) {
       return 0
     }
-    const value = parseInt(raw, 10)
+    if (!/^\d+$/.test(raw)) {
+      return 0
+    }
+    const value = Number.parseInt(raw, 10)
     if (!Number.isFinite(value) || value <= 0) {
       return 0
     }
