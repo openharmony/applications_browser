@@ -2,7 +2,7 @@
 
 ## Introduction
 
-**Browser** (bundle name: `com.ohos.browser`) is a pre-installed **system application** in OpenHarmony. Built with ArkUI and ArkWeb, it provides home navigation, multi-tab browsing, bookmarks and history, download management, settings and privacy, and system interaction capabilities, and adapts to phone and pad form factors.
+**Browser** (bundle name: `com.ohos.browser`) is a pre-installed **system application** in OpenHarmony standard system. Built with ArkUI and ArkWeb, it provides home navigation, multi-tab browsing, bookmarks and history, download management, settings and privacy, and system interaction capabilities, and adapts to phone and pad form factors.
 
 This application is a system preset app. Users can open it from the desktop icon; external apps can also launch it via `http` / `https` `viewData` Want to open web pages. Window and system-bar behavior coordinates with **SceneBoard**.
 
@@ -273,6 +273,7 @@ applications_browser
 ├─lib/                                          # Local dependent libraries
 ├─hvigor/                                       # Build tooling config
 ├─signature/                                    # Signing certificates and profile
+├─bundle.json                                   # Component description: name, source path, system type, and build entry
 ├─build-profile.json5                           # Project-level config
 ├─oh-package.json5                              # Package dependency declarations
 ├─README.md                                     # Chinese docs

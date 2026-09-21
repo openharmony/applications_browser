@@ -2,13 +2,14 @@
 
 ## 简介
 
-**浏览器**（包名：`com.ohos.browser`）是 OpenHarmony 中预置的 **系统应用**，基于 ArkUI 与 ArkWeb 构建，提供主页导航、多标签浏览、书签与历史、下载管理、设置与隐私、系统交互等能力，并适配手机、平板等设备形态。
+**浏览器**（包名：`com.ohos.browser`）是 OpenHarmony 标准系统中预置的 **系统应用**，基于 ArkUI 与 ArkWeb 构建，提供主页导航、多标签浏览、书签与历史、下载管理、设置与隐私、系统交互等能力，并适配手机、平板等设备形态。
 
 本应用为系统预置应用，用户可从桌面图标进入；外部应用也可通过 `http` / `https` 的 `viewData` Want 拉起浏览器打开网页。应用窗口、系统栏等与 **SceneBoard** 协同。
 
 ### 核心能力
 
 **网页浏览**
+
 - 基于 ArkWeb（WebviewController + 下载委托）加载 HTTPS/HTTP 页面。
 - 支持前进、后退、刷新、SSL 证书处理、文本 / 链接 / 图片上下文菜单、图片预览与保存，以及边缘手势返回、页签缩略图快照。
 
@@ -273,6 +274,7 @@ applications_browser
 ├─lib/                                          # 本地依赖库
 ├─hvigor/                                       # 构建工具配置
 ├─signature/                                    # 签名证书与签名配置
+├─bundle.json                                   # 部件描述：组件名、源码路径、系统类型与构建入口
 ├─build-profile.json5                           # 工程级配置
 ├─oh-package.json5                              # 包依赖声明
 ├─README.md                                     # 中文说明文档
