@@ -1,6 +1,7 @@
 import { BrowserTheme } from 'browser_core'
 import { ShortcutFeature } from 'browser_core'
 import { ShortcutManager } from 'browser_core'
+import { ShortcutItem } from 'common'
 import { ShortcutMenuOverlayState } from 'common'
 import { AppStorageKeys } from 'common'
 import { ShortcutContextMenu } from './ShortcutContextMenu'
@@ -18,6 +19,19 @@ export struct ShortcutContextMenuLayer {
 
   private feature(): ShortcutFeature | undefined {
     return ShortcutManager.resolveDisplayEntry(this.state.featureId)
+  }
+
+  /**
+   * 仅来自「书签/历史」Tab 添加的快捷方式与自定义站点可编辑。
+   * 推荐目录（功能入口与站点型推荐）均为预置项，不可编辑。
+   */
+  private editable(): boolean {
+    const items = AppStorage.get<ShortcutItem[]>(AppStorageKeys.SHORTCUTS) ?? []
+    const item = items.find((s) => s.id === this.state.featureId)
+    if (item !== undefined) {
+      return !item.isPreset
+    }
+    return !ShortcutManager.isPresetId(this.state.featureId)
   }
 
   private iconBoxSize(feature: ShortcutFeature): number {
@@ -51,6 +65,7 @@ export struct ShortcutContextMenuLayer {
           posY: this.state.menuPosY,
           darkMode: this.isDarkMode(),
           menuWidth: this.menuWidth,
+          editable: this.editable(),
           onEdit: () => {
             AppStorage.set(AppStorageKeys.SHORTCUT_MENU_ACTION, 'edit')
           },

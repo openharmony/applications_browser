@@ -132,7 +132,8 @@ export struct BrowseAddressBar {
 
   private hasActiveDownloadTask(): boolean {
     const _rev = this.downloadsRev
-    if (_rev < 0) {
+    const _tick = this.downloadProgressRev
+    if (_rev < 0 && _tick < 0) {
       return false
     }
     for (let i = 0; i < this.downloads.length; i++) {
@@ -144,42 +145,41 @@ export struct BrowseAddressBar {
     return false
   }
 
+  /** 进行中下载的聚合进度（0–100）：多任务取算术平均，与系统浏览器通知进度一致 */
   private latestActiveDownloadProgress(): number {
     const _tick = this.downloadProgressRev
     if (_tick < 0) {
       return 0
     }
-    let pick: DownloadTask | null = null
+    let sum = 0
+    let count = 0
     for (let i = 0; i < this.downloads.length; i++) {
       const item = this.downloads[i]
       if (item.status !== 'running' && item.status !== 'queued') {
         continue
       }
-      if (pick === null || item.updatedAt > pick.updatedAt) {
-        pick = item
-      }
+      sum += Math.min(100, Math.max(0, item.progress))
+      count++
     }
-    if (pick === null) {
+    if (count === 0) {
       return 0
     }
-    return Math.min(100, Math.max(0, pick.progress))
+    return Math.min(100, Math.max(0, Math.floor(sum / count)))
   }
 
   private latestActiveDownloadIndeterminate(): boolean {
-    let pick: DownloadTask | null = null
+    let hasActive = false
     for (let i = 0; i < this.downloads.length; i++) {
       const item = this.downloads[i]
       if (item.status !== 'running' && item.status !== 'queued') {
         continue
       }
-      if (pick === null || item.updatedAt > pick.updatedAt) {
-        pick = item
+      hasActive = true
+      if (item.status === 'running' && item.progress > 0) {
+        return false
       }
     }
-    if (pick === null) {
-      return false
-    }
-    return pick.status === 'queued' || pick.progress <= 0
+    return hasActive
   }
 
   private latestFiveDownloads(): DownloadTask[] {

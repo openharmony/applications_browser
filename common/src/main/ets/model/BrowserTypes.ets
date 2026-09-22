@@ -155,6 +155,8 @@ export class AppStorageKeys {
   static readonly THEME_REV: string = 'browser_theme_rev'
   /** 深色模式选择弹层是否可见（MainPage 层绘制，避免底栏盖住遮罩） */
   static readonly DARK_MODE_PICKER_VISIBLE: string = 'browser_dark_mode_picker_visible'
+  /** 扫一扫全屏面板是否可见（MainPage 层绘制） */
+  static readonly SCAN_QR_VISIBLE: string = 'browser_scan_qr_visible'
   /** 无痕模式开关 */
   static readonly INCOGNITO: string = 'browser_incognito'
   /** 最近一次浏览页的无痕上下文（「我的」页同步用） */

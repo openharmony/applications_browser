@@ -171,9 +171,8 @@ export struct BrowsePageView {
   private sessionEntrySiteKey: string = ''
   /** 用户请求的入口 URL（搜索/直达），入口稳定后作为导航栈根 */
   private sessionEntryUrl: string = ''
-  /** 应用栈 programmatic 后退中：抑制 Web 历史同步撑栈 */
-  private appNavPending: boolean = false
-  private appNavTargetUrl: string = ''
+  /** 主动 loadUrl 的目标；加载完成前 reconcile 不得把地址栏打回旧文档 */
+  private pendingLoadTargetUrl: string = ''
   /** 用户触发刷新后，onPageEnd 清除 Web 内 refresh 累积的后退项 */
   private webRefreshPending: boolean = false
   /** onPageHide 触发的截图任务，aboutToDisappear 完成后再解绑 Web */
@@ -428,6 +427,7 @@ export struct BrowsePageView {
     WebTextMenuHelper.initTextMenuPolicy()
     this.webRenderKey++
     this.resetBrowsePageInteractionState('aboutToAppear')
+    this.pendingLoadTargetUrl = ''
     BrowseBackBridge.register(() => this.onBrowseBackPress())
     BrowserWindowService.getInstance().setGestureBackEnabled(true)
     BrowserWindowService.getInstance().setPageSwipeBackEnabled(this.getUIContext(), true)
@@ -534,6 +534,8 @@ export struct BrowsePageView {
     if (this.screenPaintReady) {
       void this.captureMissingThumbnailAfterPaint()
     }
+    // 多任务/弹层返回后：地址栏与 Web 实况对齐，避免「栏上是 A、画面仍是 B」
+    this.reconcileAddressWithWeb('onPageShow')
   }
 
   /** 主题切换后重载 Web，使 darkMode / forceDarkAccess 生效 */
@@ -542,7 +544,7 @@ export struct BrowsePageView {
     const url = this.webPage.getCurrentUrl() || this.currentUrl
     BrowserLog.info(`[Theme] BrowsePage theme=${this.theme} reload=${url.slice(0, 80)}`)
     if (url.length > 0) {
-      this.webPage.loadUrl(url)
+      this.loadWebDocument(url)
     }
   }
 
@@ -656,47 +658,66 @@ export struct BrowsePageView {
     return true
   }
 
-  /** 应用导航栈已在入口时，跳过 Web 内部重定向历史（如 360 首页） */
+  /**
+   * 华为链路：Web 不可后退时退出浏览回首页。
+   * 不再用应用栈「还能退」推迟回首页（应用栈仅镜像，不参与后退）。
+   */
   private shouldExitBrowseToHome(): boolean {
-    if (!BrowserStore.canBrowseBack()) {
-      return true
-    }
-    if (this.entrySessionPending &&
-      BrowserUtils.browseSiteKey(this.currentUrl) === this.sessionEntrySiteKey) {
-      return true
-    }
-    return false
+    return !this.webPage.canGoBack()
   }
 
   /** 入口重定向链稳定后：折叠导航栈并清除 Web 内部后退历史 */
-  private scheduleEntrySessionFinalize(loadedUrl: string): void {
+  private scheduleEntrySessionFinalize(_loadedUrl: string): void {
     if (!this.entrySessionPending) {
       return
     }
     if (this.entrySettleTimer >= 0) {
       clearTimeout(this.entrySettleTimer)
     }
+    // 收尾时再读 Web 实况，避免闭包里 450ms 前的 URL 把地址栏打回入口页
     this.entrySettleTimer = setTimeout(() => {
       this.entrySettleTimer = -1
-      this.finalizeEntrySession(loadedUrl)
+      this.finalizeEntrySession()
     }, BrowsePageView.ENTRY_SETTLE_MS) as number
   }
 
-  private finalizeEntrySession(loadedUrl: string): void {
+  private finalizeEntrySession(): void {
     if (!this.entrySessionPending) {
       return
     }
     this.entrySessionPending = false
-    const anchorUrl = this.resolveEntryStackAnchor(loadedUrl)
+    const liveUrl = this.resolvePageUrl()
+    const anchorUrl = this.resolveEntryStackAnchor(liveUrl)
+    const liveNorm = BrowserUtils.normalizeHistoryUrl(liveUrl)
+    const anchorNorm = BrowserUtils.normalizeHistoryUrl(anchorUrl)
+    const diverged = liveNorm.length > 0 && anchorNorm.length > 0 && liveNorm !== anchorNorm
+
     if (this.shouldTrackNavUrl(anchorUrl)) {
       BrowserStore.resetNavStack(anchorUrl)
     }
+    if (diverged) {
+      // 稳定窗口内用户已点进子页：地址栏/栈跟 Web，且不清历史（清了会丢掉刚打开的页）
+      if (this.shouldTrackNavUrl(liveUrl)) {
+        this.currentUrl = liveUrl
+        BrowserStore.syncNavToUrl(liveUrl)
+        this.syncTabMeta(this.pageTitle, liveUrl)
+      }
+      this.scheduleRefreshNavActions()
+      BrowserLog.info(`[NavEntry] finalized diverged live=${liveNorm.slice(0, 80)} anchor=${anchorNorm.slice(0, 80)}`)
+      return
+    }
+    if (this.shouldTrackNavUrl(liveUrl)) {
+      this.currentUrl = liveUrl
+    } else if (this.shouldTrackNavUrl(anchorUrl)) {
+      this.currentUrl = anchorUrl
+    }
+    // 入口收尾清 Web 历史：会话根落定后只认此后内核足迹（对齐华为「新开页再 backward」）
     this.webPage.clearWebHistory()
     this.scheduleRefreshNavActions()
     BrowserLog.info(`[NavEntry] finalized site=${this.sessionEntrySiteKey} anchor=${anchorUrl.slice(0, 80)}`)
   }
 
-  /** 入口稳定后保留用户请求的 URL，避免 baidu.php 等中转页成为后退目标 */
+  /** 入口稳定后保留用户请求的 URL，避免 baidu.php 等中转页成为栈根展示 */
   private resolveEntryStackAnchor(loadedUrl: string): string {
     const entry = BrowserUtils.normalizeHistoryUrl(this.sessionEntryUrl)
     const loaded = BrowserUtils.normalizeHistoryUrl(loadedUrl)
@@ -711,85 +732,14 @@ export struct BrowsePageView {
     return loaded
   }
 
-  /** 当前页已离开入口站（如外链结果页），优先走应用导航栈 */
-  private shouldPreferAppNavBack(): boolean {
-    if (this.sessionEntrySiteKey.length === 0) {
-      return false
-    }
-    return BrowserUtils.browseSiteKey(this.currentUrl) !== this.sessionEntrySiteKey
-  }
-
-  /** 仍在入口站内且有应用栈时，优先应用栈后退，跳过 Web refresh 累积项 */
-  private shouldPreferAppNavOverWebBack(): boolean {
-    if (!BrowserStore.canBrowseBack() || this.sessionEntrySiteKey.length === 0) {
-      return false
-    }
-    return BrowserUtils.browseSiteKey(this.currentUrl) === this.sessionEntrySiteKey
-  }
-
-  /** 刷新完成后折叠 Web 内后退历史，避免底栏后退逐次回退 refresh 快照 */
+  /** 刷新完成：保留 Web 历史，可继续后退到上一级（对齐华为：刷新后仍 goBackward） */
   private finalizeWebRefreshIfNeeded(): void {
     if (!this.webRefreshPending) {
       return
     }
     this.webRefreshPending = false
-    this.webPage.clearWebHistory()
-    BrowserLog.info('[NavRefresh] cleared web history after refresh')
-  }
-
-  /** 应用栈在根 (idx=0) 时不消费 Web 内 refresh 历史 */
-  private shouldUseWebHistoryBack(webBack: boolean): boolean {
-    if (!webBack) {
-      return false
-    }
-    return BrowserStore.canBrowseBack()
-  }
-
-  /** 应用栈后退并 loadUrl，完成后清除 Web 内部历史 */
-  private performAppNavBack(source: string): boolean {
-    const prev = BrowserStore.browseBackSkippingTransit()
-    if (!prev) {
-      return false
-    }
-    this.loadAppNavUrl(prev, source)
-    return true
-  }
-
-  private loadAppNavUrl(url: string, source: string): void {
-    const target = BrowserUtils.normalizeHistoryUrl(url)
-    BrowserLog.info(`[NavGoBack] source=${source} via=app url=${target.slice(0, 80)}`)
-    this.appNavTargetUrl = target
-    this.appNavPending = true
-    this.currentUrl = url
-    this.webPage.loadUrl(url)
-    this.refreshNavActions()
-  }
-
-  private tryCompleteAppNav(url: string): void {
-    if (!this.appNavPending) {
-      return
-    }
-    const normalized = BrowserUtils.normalizeHistoryUrl(url)
-    if (normalized.length === 0) {
-      return
-    }
-    if (normalized === this.appNavTargetUrl) {
-      this.finishAppNav(normalized)
-      return
-    }
-    if (BrowserUtils.browseSiteKey(normalized) === BrowserUtils.browseSiteKey(this.appNavTargetUrl) &&
-      !BrowserUtils.isNavTransitUrl(normalized)) {
-      this.finishAppNav(normalized)
-    }
-  }
-
-  private finishAppNav(url: string): void {
-    this.appNavPending = false
-    this.currentUrl = url
-    BrowserStore.syncNavToUrl(url)
-    this.webPage.clearWebHistory()
     this.scheduleRefreshNavActions()
-    BrowserLog.info(`[NavAppBack] settled url=${url.slice(0, 80)}`)
+    BrowserLog.info('[NavRefresh] done keep web history')
   }
 
   private clearEntrySettleTimer(): void {
@@ -799,40 +749,23 @@ export struct BrowsePageView {
     }
   }
 
-  /** 统一后退决策：工具栏 / 导航条 / 边缘侧滑提交共用 */
-  private resolveBrowseBackNavigation(source: string): 'web' | 'app' | 'home' {
+  /**
+   * 统一后退决策（对齐华为：goBackward when loaded / backward step:-1）。
+   * 能 Web 退则只内核后退；否则回首页。不再应用栈 loadUrl。
+   */
+  private resolveBrowseBackNavigation(source: string): 'web' | 'home' {
     const webBack = this.webPage.canGoBack()
-    const appBack = BrowserStore.canBrowseBack()
-    const idx = AppStorage.get<number>(AppStorageKeys.NAV_IDX) ?? 0
-    const stackLen = (AppStorage.get<string[]>(AppStorageKeys.NAV_STACK) ?? []).length
-    BrowserLog.info(`[NavGoBack] source=${source} webBack=${webBack} appBack=${appBack} idx=${idx} stack=${stackLen}`)
-    if (this.shouldExitBrowseToHome()) {
-      BrowserLog.info(`[NavGoBack] source=${source} via=home (app-root)`)
-      return 'home'
-    }
-    if (appBack && this.shouldPreferAppNavBack()) {
-      if (this.performAppNavBack(source)) {
-        return 'app'
-      }
-    }
-    if (appBack && this.shouldPreferAppNavOverWebBack()) {
-      if (this.performAppNavBack(source)) {
-        return 'app'
-      }
-    }
-    if (this.shouldUseWebHistoryBack(webBack) && this.webPage.goBack()) {
+    BrowserLog.info(`[NavGoBack] source=${source} webBack=${webBack}`)
+    if (webBack && this.webPage.goBack()) {
       BrowserLog.info(`[NavGoBack] source=${source} via=web`)
       this.refreshNavActions()
       return 'web'
-    }
-    if (appBack && this.performAppNavBack(source)) {
-      return 'app'
     }
     BrowserLog.info(`[NavGoBack] source=${source} via=home`)
     return 'home'
   }
 
-  /** 后退：弹层 → 全屏图片预览 → Web 历史栈 / 应用导航栈 / 首页 */
+  /** 后退：弹层 → Web 内核历史 / 首页 */
   private goBack(source: string = 'toolbar'): void {
     if (this.consumeBrowseOverlayBack(source)) {
       return
@@ -847,16 +780,9 @@ export struct BrowsePageView {
     }
   }
 
-  /** 前进：优先 Web 历史栈，其次应用导航栈 */
+  /** 前进：仅 Web 内核（对齐华为，不用应用栈补前进） */
   private goForward(): void {
     if (this.webPage.goForward()) {
-      this.refreshNavActions()
-      return
-    }
-    const next = BrowserStore.browseForward()
-    if (next) {
-      this.currentUrl = next
-      this.webPage.loadUrl(next)
       this.refreshNavActions()
     }
   }
@@ -865,17 +791,13 @@ export struct BrowsePageView {
   private refreshNavActions(): void {
     const webBack = this.webPage.canGoBack()
     const webFwd = this.webPage.canGoForward()
-    const appBack = BrowserStore.canBrowseBack()
-    const appFwd = BrowserStore.canBrowseForward()
     const exitHome = this.shouldExitBrowseToHome()
-    // 应用栈在入口时仍可后退回主页（即使 Web 内有重定向/refresh 历史）
-    this.navCanGoBack = webBack || appBack || exitHome
-    this.navCanGoForward = webFwd || appFwd
+    // 浏览页内：能 Web 退，或已退尽可回首页
+    this.navCanGoBack = webBack || exitHome
+    this.navCanGoForward = webFwd
     this.navUiRev++
-    const idx = AppStorage.get<number>(AppStorageKeys.NAV_IDX) ?? 0
-    const stackLen = (AppStorage.get<string[]>(AppStorageKeys.NAV_STACK) ?? []).length
-    BrowserLog.info(`[NavUi] webBack=${webBack} webFwd=${webFwd} appBack=${appBack} appFwd=${appFwd} ` +
-      `exitHome=${exitHome} canBack=${this.navCanGoBack} idx=${idx} stack=${stackLen} rev=${this.navUiRev}`)
+    BrowserLog.info(`[NavUi] webBack=${webBack} webFwd=${webFwd} exitHome=${exitHome} ` +
+      `canBack=${this.navCanGoBack} rev=${this.navUiRev}`)
   }
 
   /** Web 历史更新后延迟再刷一次按钮态（accessBackward 可能尚未就绪） */
@@ -890,17 +812,69 @@ export struct BrowsePageView {
     return BrowserUtils.isRecordableHistoryUrl(BrowserUtils.normalizeHistoryUrl(url.trim()))
   }
 
-  /** 页内跳转 / 历史变化：更新地址栏并同步应用导航栈（不改 Web src） */
+  /** 地址栏与 Web 控制器 URL 是否同一文档（忽略尾斜杠等） */
+  private isSameDocumentUrl(a: string, b: string): boolean {
+    return BrowserUtils.normalizeHistoryUrl(a) === BrowserUtils.normalizeHistoryUrl(b)
+  }
+
+  /**
+   * 以 Web 实况为准校正地址栏 / 标签元数据。
+   * 解决：过期 onPageEnd、入口收尾、多任务返回后「栏上 URL ≠ 画面内容」。
+   */
+  private reconcileAddressWithWeb(reason: string): void {
+    if (!this.browseWebActive || this.webVm.showUrlEdit) {
+      return
+    }
+    const live = this.webPage.getCurrentUrl().trim()
+    if (!this.shouldTrackNavUrl(live)) {
+      return
+    }
+    // 主动导航尚未落到目标文档时，勿用旧 getUrl 覆盖地址栏
+    if (this.pendingLoadTargetUrl.length > 0 &&
+      !this.isSameDocumentUrl(live, this.pendingLoadTargetUrl)) {
+      return
+    }
+    if (this.isSameDocumentUrl(live, this.currentUrl)) {
+      return
+    }
+    BrowserLog.info(`[NavReconcile] reason=${reason} bar=${this.currentUrl.slice(0, 60)} live=${live.slice(0, 60)}`)
+    this.currentUrl = live
+    if (!this.entrySessionPending) {
+      BrowserStore.syncNavToUrl(live)
+    }
+    this.syncTabMeta(this.pageTitle, live)
+  }
+
+  /** 标记即将 loadUrl 的目标，供 reconcile 避开加载窗口误回写 */
+  private markPendingLoadTarget(url: string): void {
+    const normalized = BrowserUtils.normalizeHistoryUrl(url)
+    this.pendingLoadTargetUrl = normalized.length > 0 ? normalized : url.trim()
+  }
+
+  /** 主文档已到达目标（或放弃）时清除 pending */
+  private clearPendingLoadTargetIfMatched(url: string): void {
+    if (this.pendingLoadTargetUrl.length === 0) {
+      return
+    }
+    if (url.length === 0 || this.isSameDocumentUrl(url, this.pendingLoadTargetUrl) ||
+      BrowserUtils.browseSiteKey(url) === BrowserUtils.browseSiteKey(this.pendingLoadTargetUrl)) {
+      this.pendingLoadTargetUrl = ''
+    }
+  }
+
+  /** 主动加载文档：先记下目标 URL，再 loadUrl */
+  private loadWebDocument(url: string): void {
+    this.markPendingLoadTarget(url)
+    this.webPage.loadUrl(url)
+  }
+
+  /** 页内跳转 / 历史变化：更新地址栏并镜像应用导航栈（不改 Web src） */
   private handleWebNavUrl(url: string): void {
     const loaded = url.trim()
     if (!this.shouldTrackNavUrl(loaded)) {
       return
     }
     this.currentUrl = loaded
-    if (this.appNavPending) {
-      this.tryCompleteAppNav(loaded)
-      return
-    }
     if (this.entrySessionPending) {
       return
     }
@@ -1106,7 +1080,7 @@ export struct BrowsePageView {
     this.currentUrl = check.url
     this.pageTitle = tabHostname(check.url)
     BrowserStore.pushNavStack(check.url)
-    this.webPage.loadUrl(check.url)
+    this.loadWebDocument(check.url)
     this.syncTabMeta(this.pageTitle, check.url)
   }
 
@@ -1162,7 +1136,7 @@ export struct BrowsePageView {
       this.currentUrl = check.url
       this.pageTitle = tabHostname(check.url)
       BrowserStore.pushNavStack(check.url)
-      this.webPage.loadUrl(check.url)
+      this.loadWebDocument(check.url)
       this.syncTabMeta(this.pageTitle, check.url)
       return
     }
@@ -1172,18 +1146,27 @@ export struct BrowsePageView {
     this.currentUrl = searchUrl
     this.pageTitle = tabHostname(searchUrl)
     BrowserStore.pushNavStack(searchUrl)
-    this.webPage.loadUrl(searchUrl)
+    this.loadWebDocument(searchUrl)
     this.syncTabMeta(this.pageTitle, searchUrl)
   }
 
-  /** 解析当前页 URL：优先事件回调，其次 WebviewController（忽略 about:blank） */
+  /**
+   * 解析当前页 URL。
+   * 事件与 Web 控制器不一致时以控制器为准（画面实况），避免过期 onPageEnd 把地址栏打回旧页。
+   */
   private resolvePageUrl(eventUrl?: string): string {
     const fromEvent = (eventUrl ?? '').trim()
-    if (fromEvent.length > 0 && this.shouldTrackNavUrl(fromEvent)) {
+    const fromWeb = this.webPage.getCurrentUrl().trim()
+    const eventOk = fromEvent.length > 0 && this.shouldTrackNavUrl(fromEvent)
+    const webOk = fromWeb.length > 0 && this.shouldTrackNavUrl(fromWeb)
+    if (eventOk && webOk && !this.isSameDocumentUrl(fromEvent, fromWeb)) {
+      BrowserLog.info(`[NavUrl] prefer live over event live=${fromWeb.slice(0, 60)} event=${fromEvent.slice(0, 60)}`)
+      return fromWeb
+    }
+    if (eventOk) {
       return fromEvent
     }
-    const fromWeb = this.webPage.getCurrentUrl().trim()
-    if (fromWeb.length > 0 && this.shouldTrackNavUrl(fromWeb)) {
+    if (webOk) {
       return fromWeb
     }
     return this.currentUrl.trim()
@@ -1191,12 +1174,23 @@ export struct BrowsePageView {
 
   /** 写入浏览历史；同一次导航内重复调用仅更新标题 */
   private recordPageHistory(url: string, title?: string): void {
-    const resolved = BrowserUtils.normalizeHistoryUrl(url)
+    let resolved = BrowserUtils.normalizeHistoryUrl(url)
     if (!BrowserUtils.isRecordableHistoryUrl(resolved)) {
       BrowserLog.warn(`[History] skip invalid url=${resolved}`)
       return
     }
-    this.currentUrl = resolved
+    // 若 Web 已导航到更新文档，改记实况 URL，避免过期回调把地址栏写回旧页
+    const live = this.webPage.getCurrentUrl().trim()
+    if (this.shouldTrackNavUrl(live) && !this.isSameDocumentUrl(live, resolved)) {
+      BrowserLog.info(`[History] prefer live over stale url=${resolved.slice(0, 60)} live=${live.slice(0, 60)}`)
+      resolved = BrowserUtils.normalizeHistoryUrl(live)
+      this.currentUrl = live
+      if (!this.entrySessionPending) {
+        BrowserStore.syncNavToUrl(live)
+      }
+    } else {
+      this.currentUrl = resolved
+    }
     let pageTitle = (title ?? this.pageTitle).trim()
     // 加载中占位标题（如「请稍候」）不落库，改用主机名
     if (!BrowserUtils.isValidPageTitle(pageTitle)) {
@@ -1295,7 +1289,7 @@ export struct BrowsePageView {
   private scheduleInitialWebLoad(uaUpdated: boolean): void {
     const target = this.currentUrl.trim()
     if (uaUpdated) {
-      this.webPage.loadUrl(target)
+      this.loadWebDocument(target)
     } else {
       this.ensureWebLoad(target)
     }
@@ -1309,14 +1303,16 @@ export struct BrowsePageView {
     }
     try {
       const loaded = this.webController.getUrl().trim()
-      if (loaded.length > 0 && loaded === target) {
+      if (loaded.length > 0 && this.isSameDocumentUrl(loaded, target)) {
+        this.pendingLoadTargetUrl = ''
+        this.reconcileAddressWithWeb('ensureWebLoad-same')
         return
       }
       BrowserLog.info(`[WebLoad] loadUrl target=${target} current=${loaded}`)
-      this.webPage.loadUrl(target)
+      this.loadWebDocument(target)
     } catch (_err) {
       BrowserLog.info(`[WebLoad] loadUrl fallback target=${target}`)
-      this.webPage.loadUrl(target)
+      this.loadWebDocument(target)
     }
   }
 
@@ -1503,7 +1499,7 @@ export struct BrowsePageView {
                   this.isLoading = true
                   this.progress = 0
                   this.currentUrl = targetUrl
-                  this.webPage.loadUrl(targetUrl)
+                  this.loadWebDocument(targetUrl)
                   this.refreshNavActions()
                 })
               }
@@ -1588,6 +1584,7 @@ export struct BrowsePageView {
                     this.commitWebNavigation()
                   }
                   this.finalizeWebRefreshIfNeeded()
+                  this.reconcileAddressWithWeb('onProgressComplete')
                   this.scheduleRefreshNavActions()
                   if (!this.historyCommittedForNavigation) {
                     this.recordPageHistory(this.resolvePageUrl())
@@ -1607,6 +1604,7 @@ export struct BrowsePageView {
               this.lastCommittedHistoryUrl = ''
               this.faviconAcceptUrl = ''
               this.webMediaFullscreen = false
+              BrowserWindowService.getInstance().onWebMediaFullscreenExit()
               if (this.imagePreviewVisible) {
                 BrowserStore.closeImagePreview()
               }
@@ -1622,6 +1620,21 @@ export struct BrowsePageView {
               }
               if (beginUrl.length > 0) {
                 BrowserLog.info(`[NavBegin] url=${beginUrl.slice(0, 100)}`)
+                this.clearPendingLoadTargetIfMatched(beginUrl)
+              }
+              // 入口稳定窗口内已离开入口站：结束 pending，避免随后 clearHistory 清掉新页
+              if (this.entrySessionPending && beginUrl.length > 0) {
+                const beginKey = BrowserUtils.browseSiteKey(beginUrl)
+                if (beginKey.length > 0 && this.sessionEntrySiteKey.length > 0 &&
+                  beginKey !== this.sessionEntrySiteKey) {
+                  this.clearEntrySettleTimer()
+                  this.entrySessionPending = false
+                  BrowserLog.info(`[NavEntry] abort settle left-site begin=${beginUrl.slice(0, 60)}`)
+                }
+              }
+              // 导航一开始就同步地址栏，减少「栏还停在旧站、画面已开始新站」的错位窗口
+              if (beginUrl.length > 0 && this.shouldTrackNavUrl(beginUrl)) {
+                this.currentUrl = beginUrl
               }
             })
             .onPageEnd((event) => {
@@ -1632,6 +1645,7 @@ export struct BrowsePageView {
               const loadedUrl = this.resolvePageUrl(event?.url)
               BrowserLog.info(`[NavEnd] eventUrl=${(event?.url ?? '').slice(0, 100)} resolved=${loadedUrl.slice(0, 100)}`)
               if (loadedUrl) {
+                this.clearPendingLoadTargetIfMatched(loadedUrl)
                 WebLoadNetworkRetryService.getInstance().notifyPageEndForRetry(loadedUrl)
               }
               if (loadedUrl) {
@@ -1639,11 +1653,12 @@ export struct BrowsePageView {
               }
               this.finalizeWebRefreshIfNeeded()
               this.scheduleEntrySessionFinalize(loadedUrl)
+              this.reconcileAddressWithWeb('onPageEnd')
               this.syncTabMeta(this.pageTitle, this.currentUrl)
-              this.recordPageHistory(loadedUrl)
-              this.faviconAcceptUrl = loadedUrl
-              this.tryPersistHistoryFaviconFromController(loadedUrl)
-              this.onWebPageLoaded(loadedUrl)
+              this.recordPageHistory(this.currentUrl)
+              this.faviconAcceptUrl = this.currentUrl
+              this.tryPersistHistoryFaviconFromController(this.currentUrl)
+              this.onWebPageLoaded(this.currentUrl.length > 0 ? this.currentUrl : loadedUrl)
               this.scheduleRefreshNavActions()
             })
             .onRefreshAccessedHistory((event) => {
@@ -1661,6 +1676,7 @@ export struct BrowsePageView {
               if (historyUrl.length > 0) {
                 this.commitWebNavigation(historyUrl)
               }
+              this.reconcileAddressWithWeb('onRefreshAccessedHistory')
               this.scheduleRefreshNavActions()
             })
             .onFirstScreenPaint(() => {
@@ -1737,10 +1753,12 @@ export struct BrowsePageView {
             })
             .onFullScreenEnter((event: FullScreenEnterEvent) => {
               this.webMediaFullscreen = true
+              BrowserWindowService.getInstance().onWebMediaFullscreenEnter()
               BrowserLog.info('[WebVideo] onFullScreenEnter')
             })
             .onFullScreenExit(() => {
               this.webMediaFullscreen = false
+              BrowserWindowService.getInstance().onWebMediaFullscreenExit()
               BrowserLog.info('[WebVideo] onFullScreenExit')
             })
 
@@ -1796,7 +1814,7 @@ export struct BrowsePageView {
           .width('100%')
           .height(BrowserSafeAreaInsets.BROWSE_TOOLBAR_HEIGHT)
         }
-        .key(`browse-nav-${this.navUiRev}-${this.windowRev}-${this.fontUiRev}-${this.fontUiScale.toFixed(2)}-${this.downloadsRev}`)
+        .key(`browse-nav-${this.navUiRev}-${this.windowRev}-${this.fontUiRev}-${this.fontUiScale.toFixed(2)}`)
         .width('100%')
         .padding({ bottom: BrowserSafeAreaInsets.bottom(10) })
         .backgroundColor(this.browsePanelBg())
@@ -1995,33 +2013,50 @@ export struct BrowsePageView {
 
   /** 是否存在进行中的下载（running / queued） */
   private hasActiveDownloadTask(): boolean {
-    const rev = this.downloadsRev
-    if (rev < 0) {
+    const _rev = this.downloadsRev
+    const _tick = this.downloadProgressRev
+    if (_rev < 0 && _tick < 0) {
       return false
     }
     return this.pickLatestActiveDownload() !== null
   }
 
-  /** 最新进行中下载任务的进度（0–100） */
+  /** 进行中下载的聚合进度（0–100）：与系统浏览器一致，多任务取算术平均 */
   private latestActiveDownloadProgress(): number {
     const _tick = this.downloadProgressRev
     if (_tick < 0) {
       return 0
     }
-    const task = this.pickLatestActiveDownload()
-    if (!task) {
+    let sum = 0
+    let count = 0
+    for (let i = 0; i < this.downloads.length; i++) {
+      const item = this.downloads[i]
+      if (item.status !== 'running' && item.status !== 'queued') {
+        continue
+      }
+      sum += Math.min(100, Math.max(0, item.progress))
+      count++
+    }
+    if (count === 0) {
       return 0
     }
-    return Math.min(100, Math.max(0, task.progress))
+    return Math.min(100, Math.max(0, Math.floor(sum / count)))
   }
 
-  /** 进行中任务是否为排队/尚未上报进度 */
+  /** 全部进行中任务仍无有效进度时显示不确定态 */
   private latestActiveDownloadIndeterminate(): boolean {
-    const task = this.pickLatestActiveDownload()
-    if (!task) {
-      return false
+    let hasActive = false
+    for (let i = 0; i < this.downloads.length; i++) {
+      const item = this.downloads[i]
+      if (item.status !== 'running' && item.status !== 'queued') {
+        continue
+      }
+      hasActive = true
+      if (item.status === 'running' && item.progress > 0) {
+        return false
+      }
     }
-    return task.status === 'queued' || task.progress <= 0
+    return hasActive
   }
 
   private pickLatestActiveDownload(): DownloadTask | null {
@@ -2031,7 +2066,7 @@ export struct BrowsePageView {
       if (item.status !== 'running' && item.status !== 'queued') {
         continue
       }
-      if (pick === null || item.updatedAt > pick.updatedAt) {
+      if (pick === null || item.createdAt < pick.createdAt) {
         pick = item
       }
     }
@@ -2242,7 +2277,6 @@ export struct BrowsePageView {
         }
         .width('100%')
         .padding({ left: 16, right: 16 })
-        .key(`more-quick-${this.downloadsRev}`)
 
         // 列表入口：设计文档中的分享 / 页内搜索 / 设置 / 关于
         Column() {

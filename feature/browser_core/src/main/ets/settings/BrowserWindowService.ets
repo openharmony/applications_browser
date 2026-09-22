@@ -55,6 +55,8 @@ export class BrowserWindowService {
   private lastColorModeTarget: string = ''
   /** 上次已设置的窗口方向，避免页面切换时重复 IPC */
   private lastPreferredOrientation: window.Orientation | null = null
+  /** ArkWeb 网页视频全屏：须隐藏系统栏，且暂停浏览态补钉 */
+  private webMediaFullscreen: boolean = false
 
   static getInstance(): BrowserWindowService {
     if (BrowserWindowService.instance === null) {
@@ -78,10 +80,44 @@ export class BrowserWindowService {
   /** Ability 回到前台：SceneBoard 可能仍 disable 状态栏，须强制多轮补钉+同步内容色 */
   onAbilityForeground(): void {
     this.scheduleLayoutUnfreeze('abilityForeground')
+    if (this.webMediaFullscreen) {
+      const win = this.mainWindow
+      if (win !== null) {
+        void this.applyWebMediaFullscreenBars(win, 'abilityForeground')
+      }
+      return
+    }
     this.systemBarsPinned = false
     const win = this.mainWindow
     if (win !== null) {
       this.scheduleSystemBarRetryPin(win, 'foreground', BrowserWindowService.SYSTEM_BAR_FOREGROUND_DELAYS_MS)
+    }
+  }
+
+  isWebMediaFullscreen(): boolean {
+    return this.webMediaFullscreen
+  }
+
+  /** ArkWeb onFullScreenEnter：隐藏系统栏，停止浏览态补钉，避免把 NaviBar 拉回导致退全屏 */
+  onWebMediaFullscreenEnter(): void {
+    this.webMediaFullscreen = true
+    this.clearSystemBarPinTimers()
+    const win = this.mainWindow
+    if (win !== null) {
+      void this.applyWebMediaFullscreenBars(win, 'enter')
+    }
+  }
+
+  /** ArkWeb onFullScreenExit：恢复浏览态沉浸式透明系统栏 */
+  onWebMediaFullscreenExit(): void {
+    if (!this.webMediaFullscreen) {
+      return
+    }
+    this.webMediaFullscreen = false
+    this.systemBarsPinned = false
+    const win = this.mainWindow
+    if (win !== null) {
+      void this.ensureSystemBarsVisible(win, 'webMediaExit', true)
     }
   }
 
@@ -199,6 +235,10 @@ export class BrowserWindowService {
    * 沉浸式钉住状态栏：layoutFullScreen=true，状态栏/导航栏底透明，由页面背景透出。
    */
   private async ensureSystemBarsVisible(win: window.Window, reason: string = 'direct', force: boolean = false): Promise<void> {
+    if (this.webMediaFullscreen) {
+      BrowserLog.info(`[Window] pinSystemBars skipped reason=${reason} webMediaFullscreen=true`)
+      return
+    }
     if (this.systemBarPinInFlight) {
       BrowserLog.info(`[Window] pinSystemBars skipped reason=${reason} inFlight=true`)
       return
@@ -351,7 +391,7 @@ export class BrowserWindowService {
    */
   syncSystemBarForTheme(isDark?: boolean, _context?: common.UIAbilityContext | null, force: boolean = false): void {
     const win = this.mainWindow
-    if (win === null) {
+    if (win === null || this.webMediaFullscreen) {
       return
     }
     const dark = isDark ?? ((AppStorage.get<string>(AppStorageKeys.THEME) ?? 'light') === 'dark')
@@ -415,6 +455,26 @@ export class BrowserWindowService {
     this.lastSystemBarPinAt = 0
     this.lastSyncedBarDark = null
     this.lastPreferredOrientation = null
+    this.webMediaFullscreen = false
+  }
+
+  /** 网页视频全屏：隐藏状态栏/导航栏（与图库 NaviBar:false 一致），不再走浏览态透明补钉 */
+  private async applyWebMediaFullscreenBars(win: window.Window, reason: string): Promise<void> {
+    try {
+      await win.setWindowLayoutFullScreen(true)
+      try {
+        win.setImmersiveModeEnabledState(true)
+      } catch (immersiveErr) {
+        BrowserLog.warn(`[Window] webMedia setImmersiveMode failed: ${JSON.stringify(immersiveErr)}`)
+      }
+      await win.setWindowSystemBarEnable([])
+      await win.setSpecificSystemBarEnabled('status', false, false)
+      await win.setSpecificSystemBarEnabled('navigation', false, false)
+      BrowserLog.info(`[Window] webMediaFullscreen bars hidden reason=${reason}`)
+      this.syncAvoidArea(win)
+    } catch (err) {
+      BrowserLog.warn(`[Window] webMediaFullscreen bars failed reason=${reason}: ${JSON.stringify(err)}`)
+    }
   }
 
   /** 窗口级边缘返回手势（false=禁止 Router 直接出栈，改由页面 onBackPress / 自定义侧滑处理） */
@@ -625,7 +685,11 @@ export class BrowserWindowService {
       this.syncWindowSize(this.mainWindow)
       this.commitAvoidArea(this.mainWindow)
       this.systemBarsPinned = false
-      void this.ensureSystemBarsVisible(this.mainWindow, `unfreeze:${reason}`, true)
+      if (this.webMediaFullscreen) {
+        void this.applyWebMediaFullscreenBars(this.mainWindow, `unfreeze:${reason}`)
+      } else {
+        void this.ensureSystemBarsVisible(this.mainWindow, `unfreeze:${reason}`, true)
+      }
     }
   }
 

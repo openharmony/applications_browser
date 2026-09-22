@@ -125,6 +125,10 @@
       "value": "Edit"
     },
     {
+      "name": "shortcut_cannot_edit_preset",
+      "value": "Recommended shortcuts cannot be edited, only removed"
+    },
+    {
       "name": "browser_name",
       "value": "Browser"
     },

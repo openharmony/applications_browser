@@ -222,6 +222,21 @@ export struct BookmarksPanel {
 
   private handleBack(): void {
     this.closeSwipeRows()
+    if (this.showLocationPicker) {
+      this.showLocationPicker = false
+      this.locationCollapsedFolderIds = []
+      return
+    }
+    if (this.showNewFolder) {
+      this.showNewFolder = false
+      return
+    }
+    if (this.showMovePicker) {
+      this.showMovePicker = false
+      this.moveSourceIds = []
+      this.moveCollapsedFolderIds = []
+      return
+    }
     if (this.showRenameFolder) {
       this.closeRenameFolderForm()
       return
@@ -652,14 +667,14 @@ export struct BookmarksPanel {
       if (this.showNewBookmark) {
         this.NewBookmarkForm()
       }
-      if (this.showNewFolder) {
-        this.NewFolderForm()
-      }
       if (this.showRenameFolder) {
         this.RenameFolderForm()
       }
       if (this.showMovePicker) {
         this.MovePickerPanel()
+      }
+      if (this.showNewFolder) {
+        this.NewFolderForm()
       }
       if (this.showLocationPicker) {
         this.LocationPickerPanel()
@@ -831,6 +846,16 @@ export struct BookmarksPanel {
     this.movePickFolder = this.defaultMoveTarget()
     this.moveCollapsedFolderIds = []
     this.showMovePicker = true
+  }
+
+  /** 移动选目录页：新建文件夹（对齐官方 choose page onNewFolder） */
+  private openNewFolderFromMove(): void {
+    BrowserLog.info('[BookmarkBatch] choose page onNewFolder')
+    this.newFolderName = BrowserStrings.newFolder()
+    // 默认建在当前选中的合法目标下；非法时回落到根目录
+    this.newFolderParent = this.isInvalidMoveTarget(this.movePickFolder) ?
+      BOOKMARK_ROOT_FOLDER : this.movePickFolder
+    this.showNewFolder = true
   }
 
   @Builder
@@ -1693,11 +1718,24 @@ export struct BookmarksPanel {
       BrowserStore.showToast(BrowserStrings.txt($r('app.string.folder_name_required')))
       return
     }
+    const parentId = this.newFolderParent
+    const fromMove = this.showMovePicker
     this.showNewFolder = false
-    void BrowserStore.addFolderEntry(name, this.newFolderParent).then((ok) => {
+    void BrowserStore.addFolderEntry(name, parentId).then((ok) => {
       if (ok) {
         BrowserStore.showToast(BrowserStrings.txt($r('app.string.folder_created')))
         this.newFolderName = BrowserStrings.newFolder()
+        if (fromMove) {
+          // processType=move_bookmark：回到选目录页，并选中刚建的文件夹
+          BrowserLog.info('[BookmarkBatch] new folder onSubmit processType is move_bookmark')
+          const folder = BrowserStore.getBookmarks().find((b) => {
+            return b.isFolder && b.title === name && (b.parentId || BOOKMARK_ROOT_FOLDER) ===
+              (parentId || BOOKMARK_ROOT_FOLDER)
+          })
+          if (folder && !this.isInvalidMoveTarget(folder.id)) {
+            this.movePickFolder = folder.id
+          }
+        }
       } else {
         BrowserStore.showToast(BrowserStrings.txt($r('app.string.folder_exists')))
         this.showNewFolder = true
@@ -1726,6 +1764,14 @@ export struct BookmarksPanel {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .margin({ left: PanelHeaderStyle.TITLE_GAP })
+        Text($r('app.string.new_folder'))
+          .fontSize(15)
+          .fontColor(BrowserTheme.PRIMARY_COLOR)
+          .maxLines(1)
+          .padding({ left: 8, top: 8, bottom: 8 })
+          .onClick(() => {
+            this.openNewFolderFromMove()
+          })
       }
       .width('100%')
       .padding({
@@ -1742,7 +1788,8 @@ export struct BookmarksPanel {
           ForEach(this.movePickRows(), (row: BookmarkFolderPickRow, index: number) => {
             this.MoveTreeFolderRow(row, index === this.movePickRows().length - 1)
           }, (row: BookmarkFolderPickRow) =>
-            `${row.id}_${this.moveCollapsedFolderIds.length}_${this.moveSourceIds.length}_${this.movePickFolder}`)
+            `${row.id}_${this.bookmarks.length}_${this.moveCollapsedFolderIds.length}_` +
+              `${this.moveSourceIds.length}_${this.movePickFolder}`)
         }
       }
       .layoutWeight(1)

@@ -98,6 +98,24 @@ export class NavigationController {
     AppStorage.set(AppStorageKeys.NAV_IDX, 0)
   }
 
+  /** 用最终 URL 覆盖当前栈帧（中转页重定向 replace，避免再 push 形成回退死循环） */
+  replaceNavStackCurrent(url: string): void {
+    const normalized = BrowserUtils.normalizeHistoryUrl(url)
+    if (!normalized) {
+      return
+    }
+    const stack = (AppStorage.get<string[]>(AppStorageKeys.NAV_STACK) ?? []).slice()
+    const idx = AppStorage.get<number>(AppStorageKeys.NAV_IDX) ?? 0
+    if (stack.length === 0 || idx < 0 || idx >= stack.length) {
+      this.resetNavStack(normalized)
+      BrowserLog.info(`[NavSync] replace-reset url=${normalized.slice(0, 80)}`)
+      return
+    }
+    stack[idx] = normalized
+    AppStorage.set(AppStorageKeys.NAV_STACK, stack)
+    BrowserLog.info(`[NavSync] replace idx=${idx} url=${normalized.slice(0, 80)}`)
+  }
+
   /** 规范化 URL 便于栈内比较 */
   private normalizeNavUrl(url: string): string {
     return BrowserUtils.normalizeHistoryUrl(url)
@@ -108,8 +126,8 @@ export class NavigationController {
   }
 
   /**
-   * 根据 Web 实际到达的 URL 同步导航栈索引（后退/前进）或压入新页面。
-   * 保证应用栈与 Web 历史一致，前进按钮可正确启用。
+   * 镜像当前 Web URL 到应用栈（仅 replace/reset）。
+   * 华为链路：后退只认 Web backward，应用栈不做 back/forward 对齐，避免假前进/双栈错位。
    */
   syncNavToUrl(url: string): void {
     const normalized = this.normalizeNavUrl(url)
@@ -128,19 +146,6 @@ export class NavigationController {
       BrowserLog.info(`[NavSync] same idx=${idx} url=${normalized.slice(0, 80)}`)
       return
     }
-    if (idx > 0 && this.navUrlAt(stack, idx - 1) === normalized) {
-      AppStorage.set(AppStorageKeys.NAV_IDX, idx - 1)
-      BrowserLog.info(`[NavSync] back idx=${idx - 1} url=${normalized.slice(0, 80)}`)
-      return
-    }
-    if (idx < stack.length - 1 && this.navUrlAt(stack, idx + 1) === normalized) {
-      AppStorage.set(AppStorageKeys.NAV_IDX, idx + 1)
-      BrowserLog.info(`[NavSync] forward idx=${idx + 1} url=${normalized.slice(0, 80)}`)
-      return
-    }
-    this.pushNavStack(normalized)
-    const nextIdx = AppStorage.get<number>(AppStorageKeys.NAV_IDX) ?? 0
-    const nextLen = (AppStorage.get<string[]>(AppStorageKeys.NAV_STACK) ?? []).length
-    BrowserLog.info(`[NavSync] push idx=${nextIdx} stack=${nextLen} url=${normalized.slice(0, 80)}`)
+    this.replaceNavStackCurrent(normalized)
   }
 }

@@ -93,10 +93,16 @@ export class SystemFontSync {
   static syncFromConfiguration(config?: Configuration): void {
     const size = SystemFontSync.resolveSizeScale(config)
     const weight = SystemFontSync.resolveWeightScale(config)
+    const prevSize = AppStorage.get<number>(AppStorageKeys.SYSTEM_FONT_SIZE_SCALE)
+    const prevWeight = AppStorage.get<number>(AppStorageKeys.SYSTEM_FONT_WEIGHT_SCALE)
+    const sizeChanged = prevSize !== size
+    const weightChanged = prevWeight !== weight
     AppStorage.setOrCreate(AppStorageKeys.SYSTEM_FONT_SIZE_SCALE, size)
     AppStorage.setOrCreate(AppStorageKeys.SYSTEM_FONT_WEIGHT_SCALE, weight)
-    BrowserLog.info(`[Font] config raw size=${size} weight=${weight}`)
-    FontScaleService.publish('systemConfig', true)
+    if (sizeChanged || weightChanged) {
+      BrowserLog.info(`[Font] config raw size=${size} weight=${weight} changed=${sizeChanged},${weightChanged}`)
+      FontScaleService.publish('systemConfig', sizeChanged || weightChanged)
+    }
   }
 
   /** 用户切到「跟随系统」档：再读一次系统比例并刷新 UI */
