@@ -19,6 +19,7 @@ import { AppStateSync } from 'browser_core'
 import { BrowserLog } from 'common'
 import { BrowserWindowService } from 'browser_core'
 import { FeaturePanelBackBridge } from 'browser_core'
+import { ScanQrPanel, ScanQrService } from 'browser_core'
 
 /** 浏览器主页容器：主页/我的双 Tab，承载搜索、快捷方式与全局弹层 */
 @Entry
@@ -33,6 +34,7 @@ struct MainPage {
   @State mainPageGlobalY: number = 0
   @StorageLink(AppStorageKeys.THEME) theme: string = 'light'
   @StorageLink(AppStorageKeys.DARK_MODE_PICKER_VISIBLE) darkModePickerVisible: boolean = false
+  @StorageLink(AppStorageKeys.SCAN_QR_VISIBLE) scanQrVisible: boolean = false
   @StorageLink('browser_feature_panel') featurePanel: string = ''
   @StorageLink('browser_share_visible') shareVisible: boolean = false
   @StorageLink('browser_dl_dialog') dlDialog: string = ''
@@ -65,10 +67,16 @@ struct MainPage {
       && !this.shareVisible
       && this.dlDialog.length === 0
       && !this.darkModePickerVisible
+      && !this.scanQrVisible
   }
 
   /** 先关闭弹层 / 搜索 / 快捷方式菜单，返回 true 表示已消费 */
   private dismissMainPageOverlays(): boolean {
+    if (this.scanQrVisible) {
+      ScanQrService.clearResumeAfterBrowse()
+      ScanQrService.closePanel()
+      return true
+    }
     if (this.shareVisible) {
       BrowserStore.closeShareSheet()
       return true
@@ -107,8 +115,7 @@ struct MainPage {
       this.currentTab = 0
       return true
     }
-    BrowserNavigation.exitApp()
-    return true
+    return false
   }
 
   aboutToAppear(): void {
@@ -129,6 +136,11 @@ struct MainPage {
     BrowserWindowService.getInstance().setPageSwipeBackEnabled(this.getUIContext(), true)
     BrowserWindowService.getInstance().syncAvoidArea()
     BrowserWindowService.getInstance().syncSystemBarForTheme(this.isDarkMode(), null, true)
+    // 扫码打开浏览后 web 常无后退（短链 replace / 登录 iframe）→ 退浏览回主页时恢复扫码
+    if (ScanQrService.consumeResumeAfterBrowse()) {
+      ScanQrService.startScanFromHome()
+      BrowserLog.info('[ScanQr] resume panel after leave browse')
+    }
     void BrowserStore.whenReady().then(async () => {
       await BrowserNavigation.restoreLastActiveTabOnLaunch()
     })
@@ -153,6 +165,7 @@ struct MainPage {
     BrowserStore.closeShareSheet()
     BrowserStore.closeFeaturePanel()
     BrowserStore.closeDownloadDialog()
+    ScanQrService.closePanel()
     this.shortcutMenuOverlay.liftActive = false
     this.shortcutMenuOverlay.menuVisible = false
     this.shortcutMenuOverlay.fingerOnGrid = false
@@ -227,6 +240,13 @@ struct MainPage {
           .width('100%')
           .height('100%')
           .zIndex(7000)
+      }
+
+      if (this.scanQrVisible) {
+        ScanQrPanel()
+          .width('100%')
+          .height('100%')
+          .zIndex(7200)
       }
 
       if (this.showAddShortcutSheet) {

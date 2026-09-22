@@ -41,6 +41,8 @@ interface DownloadNotifTaskState {
   fileName: string
   progress: number
   phase: DownloadNotifPhase
+  /** 首次进入通知状态的时间，用于多任务时稳定锁定展示项（避免按 updatedAt 轮流跳变） */
+  createdAt: number
   completedAt: number
   updatedAt: number
 }
@@ -64,6 +66,8 @@ export class DownloadNotificationService {
   private sessionNotificationEnabled: boolean = false
   private lastProgressPublishAt: number = 0
   private lastProgressPublishPct: number = -1
+  /** 当前合并通知锁定展示的任务；多下载时不因其它任务进度回调而切换 */
+  private pinnedDisplayTaskId: string = ''
   /** 进度通知最小发布间隔（ms），避免频繁 publish 触发震动 */
   private static readonly PROGRESS_PUBLISH_INTERVAL_MS: number = 3000
   /** 进度变化低于该值时跳过通知刷新（完成/暂停除外） */
@@ -112,10 +116,10 @@ export class DownloadNotificationService {
     BrowserLog.info(`[DownloadNotif] sessionNotificationEnabled=${enabled}`)
   }
 
-  /** 下载进行中：更新合并通知（进度 + 暂停，与下载管理共用同一 progress） */
+  /** 下载进行中：更新合并通知；多任务时进度取算术平均（与系统浏览器 long task progress 一致） */
   async notifyRunningProgress(taskId: string, fileName: string, progress: number): Promise<void> {
     this.updateTaskState(taskId, fileName, progress, 'running')
-    const pct = Math.min(100, Math.max(0, Math.floor(progress)))
+    const pct = this.aggregateRunningProgress()
     if (!this.shouldPublishProgress(pct, 'running')) {
       return
     }
@@ -127,7 +131,10 @@ export class DownloadNotificationService {
   async notifyPausedProgress(taskId: string, fileName: string, progress: number): Promise<void> {
     this.updateTaskState(taskId, fileName, progress, 'paused')
     await this.refreshUnifiedNotification(true)
-    this.markProgressPublished(Math.min(100, Math.max(0, Math.floor(progress))))
+    const picked = this.pickDisplayTask()
+    if (picked !== null) {
+      this.markProgressPublished(Math.min(100, Math.max(0, Math.floor(picked.state.progress))))
+    }
   }
 
   /** 下载完成：合并通知切到已完成态，移除暂停按钮，不再刷新进度 */
@@ -147,9 +154,13 @@ export class DownloadNotificationService {
     }
     this.taskStates.delete(taskId)
     this.cancelLegacyNotification(taskId)
+    if (this.pinnedDisplayTaskId === taskId) {
+      this.clearPinnedDisplayTask()
+    }
     if (this.taskStates.size === 0) {
       this.frozenCompleteKey = ''
       this.lastPublishedPhase = 'idle'
+      this.clearPinnedDisplayTask()
       await this.cancelUnifiedNotification()
       return
     }
@@ -168,15 +179,21 @@ export class DownloadNotificationService {
       return
     }
     const pct = Math.min(100, Math.max(0, Math.floor(progress)))
+    const prev = this.taskStates.get(id)
+    const now = Date.now()
     this.taskStates.set(id, {
       fileName: name,
       progress: pct,
       phase,
-      completedAt: phase === 'done' ? Date.now() : 0,
-      updatedAt: Date.now()
+      createdAt: prev !== undefined ? prev.createdAt : now,
+      completedAt: phase === 'done' ? now : 0,
+      updatedAt: now
     })
     if (phase !== 'done') {
       this.frozenCompleteKey = ''
+    }
+    if (phase !== 'running' && this.pinnedDisplayTaskId === id) {
+      this.clearPinnedDisplayTask()
     }
     if (phase === 'running') {
       const doneIds: string[] = []
@@ -203,6 +220,14 @@ export class DownloadNotificationService {
   }
 
   private pickDisplayTask(): DownloadNotifDisplayPick | null {
+    const pinnedId = this.resolvePinnedDisplayTaskId()
+    if (pinnedId.length > 0) {
+      const pinnedState = this.taskStates.get(pinnedId)
+      if (pinnedState !== undefined && pinnedState.phase === 'running') {
+        const pick: DownloadNotifDisplayPick = { taskId: pinnedId, state: pinnedState }
+        return pick
+      }
+    }
     let runningPick: DownloadNotifDisplayPick | null = null
     let pausedPick: DownloadNotifDisplayPick | null = null
     let donePick: DownloadNotifDisplayPick | null = null
@@ -214,14 +239,15 @@ export class DownloadNotificationService {
         continue
       }
       if (state.phase === 'running') {
-        if (runningPick === null || state.updatedAt > runningPick.state.updatedAt) {
+        // 多任务时锁定最早进入 running 的任务，避免按 updatedAt 轮流展示导致进度弹跳
+        if (runningPick === null || state.createdAt < runningPick.state.createdAt) {
           const pick: DownloadNotifDisplayPick = { taskId, state }
           runningPick = pick
         }
         continue
       }
       if (state.phase === 'paused') {
-        if (pausedPick === null) {
+        if (pausedPick === null || state.createdAt < pausedPick.state.createdAt) {
           const pick: DownloadNotifDisplayPick = { taskId, state }
           pausedPick = pick
         }
@@ -235,12 +261,58 @@ export class DownloadNotificationService {
       }
     }
     if (runningPick !== null) {
+      this.pinDisplayTask(runningPick.taskId)
       return runningPick
     }
     if (pausedPick !== null) {
       return pausedPick
     }
     return donePick
+  }
+
+  /** 锁定当前合并通知展示的 running 任务；任务结束后再选下一最早任务 */
+  private resolvePinnedDisplayTaskId(): string {
+    if (this.pinnedDisplayTaskId.length > 0) {
+      const pinned = this.taskStates.get(this.pinnedDisplayTaskId)
+      if (pinned !== undefined && pinned.phase === 'running') {
+        return this.pinnedDisplayTaskId
+      }
+      this.clearPinnedDisplayTask()
+    }
+    let oldestId = ''
+    let oldestCreatedAt = 0
+    const allIds = this.collectTaskIds()
+    for (let i = 0; i < allIds.length; i++) {
+      const taskId = allIds[i]
+      const state = this.taskStates.get(taskId)
+      if (state === undefined || state.phase !== 'running') {
+        continue
+      }
+      if (oldestId.length === 0 || state.createdAt < oldestCreatedAt) {
+        oldestId = taskId
+        oldestCreatedAt = state.createdAt
+      }
+    }
+    if (oldestId.length > 0) {
+      this.pinDisplayTask(oldestId)
+    }
+    return oldestId
+  }
+
+  private pinDisplayTask(taskId: string): void {
+    if (taskId.length === 0 || this.pinnedDisplayTaskId === taskId) {
+      return
+    }
+    this.pinnedDisplayTaskId = taskId
+    // 切换展示任务后重置节流，确保新任务进度能立即发布
+    this.lastProgressPublishAt = 0
+    this.lastProgressPublishPct = -1
+  }
+
+  private clearPinnedDisplayTask(): void {
+    this.pinnedDisplayTaskId = ''
+    this.lastProgressPublishAt = 0
+    this.lastProgressPublishPct = -1
   }
 
   private async refreshUnifiedNotification(force: boolean): Promise<void> {
@@ -269,8 +341,28 @@ export class DownloadNotificationService {
       this.lastPublishedPhase = 'done'
       return
     }
-    await this.publishProgress(taskId, state.fileName, state.progress, state.phase)
+    const progressPct = state.phase === 'running' ? this.aggregateRunningProgress() : state.progress
+    await this.publishProgress(taskId, state.fileName, progressPct, state.phase)
     this.lastPublishedPhase = state.phase
+  }
+
+  /** 所有 running 任务进度算术平均（0–100）；与日志中 long task update progress * 100 一致 */
+  private aggregateRunningProgress(): number {
+    let sum = 0
+    let count = 0
+    const allIds = this.collectTaskIds()
+    for (let i = 0; i < allIds.length; i++) {
+      const state = this.taskStates.get(allIds[i])
+      if (state === undefined || state.phase !== 'running') {
+        continue
+      }
+      sum += state.progress
+      count++
+    }
+    if (count === 0) {
+      return 0
+    }
+    return Math.min(100, Math.max(0, Math.floor(sum / count)))
   }
 
   private async publishProgress(

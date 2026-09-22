@@ -29,6 +29,8 @@ export struct PanelSwipeDeleteRow {
   /** 分割线右侧外边距，默认与常见列表行右内边距一致 */
   @Prop dividerRight: number = 16
   @Prop rowBg: ResourceColor = BrowserTheme.PANEL_BG
+  /** 进度等刷新令牌：变化时 rebuild 并重跑 @BuilderParam row */
+  @Prop contentRev: number = 0
   @Link openRowId: string
   @Link dragRowId: string
   @Link dragOffsetX: number
@@ -277,5 +279,6 @@ export struct PanelSwipeDeleteRow {
     }
     .width('100%')
     .clip(true)
+    .opacity(this.contentRev >= 0 ? 1 : 1)
   }
 }

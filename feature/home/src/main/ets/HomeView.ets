@@ -3,7 +3,7 @@ import { HarmonyDialogStyle } from 'commons'
 import { BrowserStrings } from 'common'
 import { BrowserStore } from 'browser_core'
 import { BrowserTheme } from 'browser_core'
-import { ShortcutFeature, TabEntry } from 'browser_core'
+import { ShortcutCatalogEntry, ShortcutFeature, TabEntry } from 'browser_core'
 import { ShortcutManager } from 'browser_core'
 import { SearchSuggest, SearchSuggestion } from 'common'
 import { HistoryEntry } from 'common'
@@ -185,6 +185,7 @@ export struct HomeView {
   @State editShortcutUrl: string = ''
   @State editShortcutId: string = ''
   @StorageLink('browser_shortcuts') storedShortcuts: ShortcutItem[] = []
+  @StorageLink('browser_shortcuts_rev') @Watch('onShortcutsRevChanged') shortcutsRev: number = 0
   @State cellLayoutX: number[] = []
   @State cellLayoutY: number[] = []
   @State cellLayoutH: number[] = []
@@ -771,13 +772,17 @@ export struct HomeView {
     return Math.max(HomeView.CONTEXT_MENU_EDGE_MARGIN, Math.min(x, maxX))
   }
 
-  /** 同步 MainPage overlay：抬起阶段实时跟手，菜单阶段冻结图标坐标 */
+  /**
+   * 同步 MainPage overlay：抬起阶段实时跟手，菜单阶段冻结图标坐标。
+   *
+   * 注意属性写入顺序：必须先把 iconAnchorLeft/iconAnchorTop/offsetX/offsetY 写好，
+   * 再写 liftActive / menuVisible 等可见性开关。原因：ShortcutMenuOverlayState 是 @Observed 类，
+   * 每次属性赋值都会通知 ShortcutContextMenuLayer 重新渲染。如果先开 liftActive、再写坐标，
+   * 编辑后第二次长按时（此时 state.iconAnchorLeft 已经被 clearShortcutOverlayState 清成 0），
+   * LiftIcon 会先在 (0, y) 闪一帧再跳到正确位置，肉眼看到"图标突然靠左"。
+   * 先写坐标再开可见性，ShortcutContextMenuLayer 拿到的就是最终一致的快照。
+   */
   private syncShortcutOverlay(): void {
-    this.shortcutMenuOverlay.liftActive = this.isShortcutLiftActive()
-    this.shortcutMenuOverlay.menuVisible = this.showShortcutContextMenu
-    this.shortcutMenuOverlay.fingerOnGrid = this.contextMenuGridPanActive
-    this.shortcutMenuOverlay.darkMode = this.isDarkMode()
-    this.shortcutMenuOverlay.featureId = this.draggingId
     if (this.isShortcutLiftActive() && !this.shortcutMenuOverlay.positionFrozen) {
       const pos = this.overlayIconMainPagePos()
       this.shortcutMenuOverlay.iconAnchorLeft = pos.x
@@ -785,6 +790,11 @@ export struct HomeView {
       this.shortcutMenuOverlay.offsetX = this.dragOffsetX
       this.shortcutMenuOverlay.offsetY = this.dragOffsetY
     }
+    this.shortcutMenuOverlay.liftActive = this.isShortcutLiftActive()
+    this.shortcutMenuOverlay.menuVisible = this.showShortcutContextMenu
+    this.shortcutMenuOverlay.fingerOnGrid = this.contextMenuGridPanActive
+    this.shortcutMenuOverlay.darkMode = this.isDarkMode()
+    this.shortcutMenuOverlay.featureId = this.draggingId
     if (!this.isShortcutLiftActive()) {
       this.clearShortcutOverlayState()
     }
@@ -872,6 +882,17 @@ export struct HomeView {
     return feat?.kind === 'feature'
   }
 
+  /**
+   * 推荐目录预置项不可编辑；仅书签/历史添加项与自定义站点为可编辑项。
+   */
+  private isShortcutEditable(id: string): boolean {
+    const item = this.storedShortcuts.find((s) => s.id === id)
+    if (item !== undefined) {
+      return !item.isPreset
+    }
+    return !ShortcutManager.isPresetId(id)
+  }
+
   private resolveShortcutUrl(id: string): string {
     const item = this.storedShortcuts.find((s) => s.id === id)
     if (item && item.url.length > 0) {
@@ -882,8 +903,36 @@ export struct HomeView {
 
   private openShortcutEditDialog(): void {
     const id = this.contextMenuFeatureId
-    const feat = ShortcutManager.resolveDisplayEntry(id)
+    if (id.length === 0) {
+      return
+    }
+    // 关键修复：之前这里如果从 catalog / AppStorage 都查不到就默默 return，导致菜单被 dismiss
+    // 但编辑弹窗永远不显示，用户只能看到「点了编辑却没反应、整个界面卡死」。
+    // 真实根因是 fire-and-forget 的 refreshShortcuts 还没把 storedShortcuts 填上；现在改成
+    // 主动 await 一次 DB 刷新再尝试一次，确保冷启动或重入场景也能正常打开编辑。
+    let feat = ShortcutManager.resolveDisplayEntry(id)
     if (!feat) {
+      // 同步触发一次刷新并复用结果（AppStateSync.refreshShortcuts 会写 AppStorage SHORTCUTS）
+      void BrowserStore.refreshShortcutsAndAwait().then(() => {
+        feat = ShortcutManager.resolveDisplayEntry(id)
+        if (feat) {
+          this.applyOpenEditDialog(id, feat)
+        } else {
+          BrowserStore.showToast(BrowserStrings.txt($r('app.string.custom_shortcut_name_required')))
+          this.dismissShortcutContextMenuAndLift()
+        }
+      })
+      this.dismissShortcutContextMenuAndLift()
+      return
+    }
+    this.applyOpenEditDialog(id, feat)
+  }
+
+  private applyOpenEditDialog(id: string, feat: ShortcutCatalogEntry): void {
+    // 推荐目录（预置项）不支持编辑，仅保留移除入口
+    if (!this.isShortcutEditable(id)) {
+      BrowserStore.showToast(BrowserStrings.txt($r('app.string.shortcut_cannot_edit_preset')))
+      this.dismissShortcutContextMenuAndLift()
       return
     }
     this.editShortcutId = id
@@ -900,28 +949,42 @@ export struct HomeView {
       BrowserStore.showToast(BrowserStrings.txt($r('app.string.custom_shortcut_name_required')))
       return
     }
-    if (this.isShortcutTitleOnly(editId)) {
-      void BrowserStore.updateShortcut(editId, name).then((ok) => {
+    // 推荐目录添加的快捷方式为预置项，仅可移除
+    if (!this.isShortcutEditable(editId)) {
+      BrowserStore.showToast(BrowserStrings.txt($r('app.string.shortcut_cannot_edit_preset')))
+      this.closeShortcutEditDialog()
+      return
+    }
+    // 仅功能型入口（无 URL）只允许改名称；书签/历史来源与自定义站点可同时改 URL
+    const allowUrl = !this.isShortcutTitleOnly(editId)
+    if (allowUrl) {
+      const check = BrowserNavigation.validateUrlInput(this.editShortcutUrl.trim())
+      if (!check.ok || !check.url) {
+        BrowserStore.showToast(check.message ?? BrowserStrings.urlFormatInvalid())
+        return
+      }
+      void BrowserStore.updateShortcut(editId, name, check.url).then((ok) => {
         if (ok) {
           BrowserStore.showToast(BrowserStrings.txt($r('app.string.renamed')))
-          this.showShortcutEditDialog = false
-          this.editShortcutId = ''
+          this.closeShortcutEditDialog()
         }
       })
       return
     }
-    const check = BrowserNavigation.validateUrlInput(this.editShortcutUrl.trim())
-    if (!check.ok || !check.url) {
-      BrowserStore.showToast(check.message ?? BrowserStrings.urlFormatInvalid())
-      return
-    }
-    void BrowserStore.updateShortcut(editId, name, check.url).then((ok) => {
+    void BrowserStore.updateShortcut(editId, name).then((ok) => {
       if (ok) {
         BrowserStore.showToast(BrowserStrings.txt($r('app.string.renamed')))
-        this.showShortcutEditDialog = false
-        this.editShortcutId = ''
+        this.closeShortcutEditDialog()
       }
     })
+  }
+
+  /** 统一关闭编辑弹窗并清理残留状态，避免返回后再次进入出现界面异常 */
+  private closeShortcutEditDialog(): void {
+    this.showShortcutEditDialog = false
+    this.editShortcutId = ''
+    this.editShortcutName = ''
+    this.editShortcutUrl = ''
   }
 
   private deleteContextShortcut(): void {
@@ -1009,14 +1072,18 @@ export struct HomeView {
     this.syncShortcutOverlay()
     const x0 = this.cellLayoutX[0]
     const x1 = this.cellLayoutX[1]
-    const cellDx = (!Number.isNaN(x0) && !Number.isNaN(x1)) ? Math.abs(x1 - x0) : 0
+    const cellDx = (typeof x0 === 'number' && typeof x1 === 'number') ? Math.abs(x1 - x0) : 0
     const colSrc = this.inferColStepFromLayout() > 0 || cellDx >= 50 ? 'layout' : 'formula'
+    // P11-1：用 typeof === 'number' 替代 Number.isNaN。Number.isNaN(undefined) === false，
+    // 会让 cellLayoutY[SHORTCUT_COLS].toFixed(1) 在 undefined 上调用而崩溃（冷启动后用户手动
+    // 添加的快捷方式，长按拖动时复现）。typeof 是更严格的 number 类型守护。
+    const yRow0 = this.cellLayoutY[0]
+    const yRow1 = this.cellLayoutY[HomeView.SHORTCUT_COLS]
     BrowserLog.info(`[ShortcutDrag] start id=${featureId} index=${index} gridW=${this.shortcutGridWidth} ` +
       `colStep=${this.shortcutColStepValue()} rowStep=${this.shortcutRowStepValue()} src=${colSrc} ` +
-      `cellX0=${Number.isNaN(x0) ? 'na' : x0.toFixed(1)} cellX1=${Number.isNaN(x1) ? 'na' : x1.toFixed(1)} ` +
-      `cellDx=${cellDx.toFixed(1)} cellY0=${Number.isNaN(this.cellLayoutY[0]) ? 'na' : this.cellLayoutY[0].toFixed(1)} ` +
-      `cellY4=${Number.isNaN(this.cellLayoutY[HomeView.SHORTCUT_COLS]) ? 'na' :
-        this.cellLayoutY[HomeView.SHORTCUT_COLS].toFixed(1)}`)
+      `cellX0=${typeof x0 !== 'number' ? 'na' : x0.toFixed(1)} cellX1=${typeof x1 !== 'number' ? 'na' : x1.toFixed(1)} ` +
+      `cellDx=${cellDx.toFixed(1)} cellY0=${typeof yRow0 !== 'number' ? 'na' : yRow0.toFixed(1)} ` +
+      `cellY4=${typeof yRow1 !== 'number' ? 'na' : yRow1.toFixed(1)}`)
   }
 
   private gridLayoutMetrics(): GridLayoutMetrics {
@@ -1229,15 +1296,17 @@ export struct HomeView {
 
   /** 槽位内容中心 X：优先实测，同列按 colStep 外推 */
   private resolveSlotCenterX(index: number): number {
-    if (index >= 0 && index < this.cellLayoutX.length && !Number.isNaN(this.cellLayoutX[index])) {
+    // P11-1 守护：typeof === 'number' 比 Number.isNaN 严格。Number.isNaN(undefined) === false，
+    // 会让 cellLayoutX=[] 时仍进入 `undefined + col * colStep` 分支返回 NaN，造成编辑后再长按菜单/抬起图标跑到屏幕外。
+    if (index >= 0 && index < this.cellLayoutX.length && typeof this.cellLayoutX[index] === 'number') {
       return this.cellLayoutX[index]
     }
     const cols = HomeView.SHORTCUT_COLS
     const col = index % cols
-    if (col < this.cellLayoutX.length && !Number.isNaN(this.cellLayoutX[col])) {
+    if (col < this.cellLayoutX.length && typeof this.cellLayoutX[col] === 'number') {
       return this.cellLayoutX[col]
     }
-    if (!Number.isNaN(this.cellLayoutX[0])) {
+    if (typeof this.cellLayoutX[0] === 'number') {
       return this.cellLayoutX[0] + col * this.shortcutColStepValue()
     }
     return gridPointCenterX(col, this.gridLayoutMetrics())
@@ -1276,8 +1345,10 @@ export struct HomeView {
         height: HomeView.SHORTCUT_ICON_BOX
       }
     }
-    if (index < this.cellIconLeft.length && !Number.isNaN(this.cellIconLeft[index]) &&
-      index < this.cellIconTop.length && !Number.isNaN(this.cellIconTop[index])) {
+    // P11-1 守护：用 typeof === 'number' 而非 Number.isNaN，防止 measurement 数组被清空后
+    // Number.isNaN(undefined) === false 让分支误判为有效，从而把 NaN 写进 iconAnchorLeft。
+    if (index < this.cellIconLeft.length && typeof this.cellIconLeft[index] === 'number' &&
+      index < this.cellIconTop.length && typeof this.cellIconTop[index] === 'number') {
       const width = this.cellIconWidth[index] > 0 ? this.cellIconWidth[index] : HomeView.SHORTCUT_ICON_BOX
       const height = this.cellIconHeight[index] > 0 ? this.cellIconHeight[index] : width
       return {
@@ -1748,13 +1819,10 @@ export struct HomeView {
     this.shortcutGridWidth = 0
     this.shortcutColStep = 0
     this.shortcutRowStep = 0
-    this.cellLayoutX = []
-    this.cellLayoutY = []
-    this.cellLayoutH = []
-    this.cellIconLeft = []
-    this.cellIconTop = []
-    this.cellIconWidth = []
-    this.cellIconHeight = []
+    // 只清步长 / 网格宽度：cellLayoutX/Y/H、cellIconLeft/Top 留给后续 Grid 重建时的 onAreaChange 自动重捕。
+    // 之前这里清掉 cellIconLeft/Top 会让 BrowsePage→HomeView 后 Grid 的 onAreaChange 还没触发时，
+    // 用户立刻长按 → resolveSlotCenterX 走 fallback `undefined + col * colStep`，
+    // Number.isNaN(undefined) === false 误判 → 返回 NaN → iconAnchorLeft=NaN → 抬起图标 / 菜单直接跑出屏幕。
     this.forceResetShortcutInteractionState('window_rev_changed')
     this.recomputeShortcutGridRows()
   }
@@ -1765,13 +1833,8 @@ export struct HomeView {
     this.shortcutGridWidth = 0
     this.shortcutColStep = 0
     this.shortcutRowStep = 0
-    this.cellLayoutX = []
-    this.cellLayoutY = []
-    this.cellLayoutH = []
-    this.cellIconLeft = []
-    this.cellIconTop = []
-    this.cellIconWidth = []
-    this.cellIconHeight = []
+    // 仅清步长 / 宽度：cellLayoutX/Y/H、cellIconLeft/Top 不主动清，等 Grid onAreaChange 自动重捕
+    // （避免 BrowsePage→HomeView 期间 measurement 真空导致菜单位置 NaN）
     this.forceResetShortcutInteractionState(`ratio_change_${reason}`)
     BrowserLog.info(`[Window] HomeView reset measurements reason=${reason}`)
     this.recomputeShortcutGridRows()
@@ -1801,6 +1864,16 @@ export struct HomeView {
 
   private onShortcutIdsChanged(): void {
     this.recomputeShortcutGridRows()
+  }
+
+  /** SHORTCUTS_REV 变化时刷新当前存储的最新快捷方式数据，确保编辑/移除后 UI 立即同步 */
+  private onShortcutsRevChanged(): void {
+    if (this.showShortcutEditDialog) {
+      this.closeShortcutEditDialog()
+    }
+    if (this.showShortcutContextMenu) {
+      this.dismissShortcutContextMenuAndLift()
+    }
   }
 
   private onShortcutAreaWidthChange(width: number): void {
@@ -1931,13 +2004,16 @@ export struct HomeView {
     const cols = HomeView.SHORTCUT_COLS
     const y0 = this.cellLayoutY[0]
     const yRow1 = this.cellLayoutY[cols]
-    const rowDy = (!Number.isNaN(y0) && !Number.isNaN(yRow1)) ? Math.abs(yRow1 - y0) : 0
+    // P11-1：用 typeof === 'number' 替代 Number.isNaN，避免 Number.isNaN(undefined) === false 误判
+    const rowDy = (typeof y0 === 'number' && typeof yRow1 === 'number') ? Math.abs(yRow1 - y0) : 0
     const draggedSettle = settle[draggedId]
+    const draggedX = draggedSettle ? draggedSettle.x.toFixed(1) : 'na'
+    const draggedY = draggedSettle ? draggedSettle.y.toFixed(1) : 'na'
     BrowserLog.info(`[ShortcutDrag] drop from=${from} to=${to} dragged=${draggedId} ` +
       `colStep=${this.shortcutColStepValue().toFixed(1)} rowStep=${this.shortcutRowStepValue().toFixed(1)} ` +
-      `rawRowStep=${this.shortcutRowStep.toFixed(1)} cellY0=${Number.isNaN(y0) ? 'na' : y0.toFixed(1)} ` +
-      `cellY4=${Number.isNaN(yRow1) ? 'na' : yRow1.toFixed(1)} rowDy=${rowDy.toFixed(1)} ` +
-      `dragSettle=(${draggedSettle?.x.toFixed(1)},${draggedSettle?.y.toFixed(1)})`)
+      `rawRowStep=${this.shortcutRowStep.toFixed(1)} cellY0=${typeof y0 !== 'number' ? 'na' : y0.toFixed(1)} ` +
+      `cellY4=${typeof yRow1 !== 'number' ? 'na' : yRow1.toFixed(1)} rowDy=${rowDy.toFixed(1)} ` +
+      `dragSettle=(${draggedX},${draggedY})`)
     for (let i = 0; i < this.shortcutIds.length; i++) {
       const id = this.shortcutIds[i]
       if (id === draggedId) {
@@ -2027,8 +2103,13 @@ export struct HomeView {
     this.endShortcutDrag()
     this.dropSettleById = settleOffsets
     this.suppressShortcutClick = true
+    // P11-1：用显式守护替代 settleOffsets[draggedId]?.x，避免
+    // settleOffsets[draggedId]?.x 为 undefined 后仍调用 .toFixed(1) 崩溃
+    const settleOffset = settleOffsets[draggedId]
+    const settleX = settleOffset ? settleOffset.x.toFixed(1) : 'na'
+    const settleY = settleOffset ? settleOffset.y.toFixed(1) : 'na'
     BrowserLog.info(`[ShortcutDrag] drop settle start id=${draggedId} ` +
-      `offset=(${settleOffsets[draggedId]?.x.toFixed(1)},${settleOffsets[draggedId]?.y.toFixed(1)}) ` +
+      `offset=(${settleX},${settleY}) ` +
       `animMs=${HomeView.DROP_SETTLE_MS}`)
 
     this.dropSettleStartTimer = setTimeout(() => {
@@ -2227,6 +2308,9 @@ export struct HomeView {
   /** 快捷方式业务跳转：站点 URL 或功能面板 */
   private onShortcutClick(feature: ShortcutFeature): void {
     BrowserLog.info(`[ShortcutTap] open id=${feature.id} kind=${feature.kind}`)
+    // 跳转前彻底清理 HomeView 上残留状态（含编辑弹窗、菜单、抬升、拖动定时器等），
+    // 避免返回时 UI 出现「对话框仍在」/「图标抬起未落回」/「拖动拦截点击」等异常
+    this.forceResetShortcutInteractionState(`onShortcutClick:${feature.id}`)
     if (feature.kind === 'site') {
       const url = feature.url ?? ''
       if (url.length > 0) {
@@ -2300,6 +2384,7 @@ export struct HomeView {
     this.suppressShortcutClick = false
     this.dropSettleById = {}
     this.clearShortcutOverlayState()
+    this.closeShortcutEditDialog()
     BrowserLog.info(`[ShortcutTap] force reset source=${source}`)
   }
 
@@ -2616,18 +2701,25 @@ export struct HomeView {
   @Builder
   SearchRow() {
     Row({ space: 8 }) {
+      // 搜索胶囊：左侧点进搜索，右侧扫一扫独立热区，避免父子 onClick 抢手势导致扫码无响应
       Row({ space: 10 }) {
-        SearchLeadingIcon({
-          color: this.isDarkMode() ? '#8a8a8a' : '#9aa0a6',
-          iconSize: 18
-        })
+        Row({ space: 10 }) {
+          SearchLeadingIcon({
+            color: this.isDarkMode() ? '#8a8a8a' : '#9aa0a6',
+            iconSize: 18
+          })
 
-        Text($r('app.string.search_placeholder'))
-          .fontSize(this.uiFp(14))
-          .fontColor(this.isDarkMode() ? '#666666' : '#b0b5bb')
-          .layoutWeight(1)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          Text($r('app.string.search_placeholder'))
+            .fontSize(this.uiFp(14))
+            .fontColor(this.isDarkMode() ? '#666666' : '#b0b5bb')
+            .layoutWeight(1)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        .layoutWeight(1)
+        .height(HomeView.SEARCH_ROW_HEIGHT)
+        .alignItems(VerticalAlign.Center)
+        .onClick(() => this.openSearchMode())
 
         Column() {
           ScanQrIcon({
@@ -2635,10 +2727,12 @@ export struct HomeView {
             iconSize: 20
           })
         }
-        .width(32)
-        .height(32)
+        .width(36)
+        .height(36)
         .justifyContent(FlexAlign.Center)
+        .hitTestBehavior(HitTestMode.Block)
         .onClick(() => {
+          BrowserLog.info('[HomeView] scan qr tap')
           BrowserStore.scanQrCode()
         })
       }
@@ -2650,9 +2744,8 @@ export struct HomeView {
         width: 1,
         color: this.isDarkMode() ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.14)'
       })
-      .padding({ left: 14, right: 8 })
+      .padding({ left: 14, right: 6 })
       .alignItems(VerticalAlign.Center)
-      .onClick(() => this.openSearchMode())
 
       Column() {
         TabCountBadge({
@@ -2712,8 +2805,30 @@ export struct HomeView {
                 this.onShortcutItemTouch(feature, localIndex, event)
               }
             })
-          }, (slotId: string, localIndex: number) => {
-            return `${slotId}_${localIndex}_${this.shortcutIds.length}_${this.shortcutGridRowsCount()}`
+          }, (slotId: string) => {
+            // 仅以 slotId 作为唯一标识不足以应对内容变化：编辑保存后 title/url 变了，
+            // 但 slotId 没变，ForEach 不会重建子项，@Builder 里的 Text(feature.title) / ShortcutEngineIcon 仍
+            // 绑定到旧 feature 上，UI 看不到新名字。参考书签页 b588cf6 的修复，把会变化的内容
+            // （title、url）也并入 key。localIndex / 行数 / 列表长度等仍保持不参与 key，避免拖动期
+            // 反复重算 key 字符串导致 ForEach 销毁重建、子项短暂消失。
+            //
+            // 关键性能点：必须用 @StorageLink 的 storedShortcuts，而不是 AppStorage.get(SHORTCUTS)。
+            // AppStorage.get 在 build 中频繁调用是 fire-and-forget race 的源头（refreshShortcuts 异步完成
+            // 之前可能返回空数组），同时也是冷启动期高频 rebuild 卡死的关键放大点；走 storedShortcuts
+            // 是 O(N) 内存查表，与 build 同步刷新、无 AppStorage 副作用。
+            if (slotId === HomeView.ADD_SHORTCUT_SLOT_ID) {
+              return `__add__:${slotId}`
+            }
+            const item = this.storedShortcuts.find((s) => s.id === slotId)
+            if (item !== undefined) {
+              return `${slotId}|${item.title}|${item.url}`
+            }
+            // 预置项（catalog）：getCatalogEntry 已走 cachedFeatureCatalog，无额外开销
+            const entry = ShortcutManager.getCatalogEntry(slotId)
+            if (entry !== undefined) {
+              return `${slotId}|${entry.title}|${entry.url ?? ''}`
+            }
+            return `unresolved:${slotId}`
           })
         }
         .key(this.shortcutGridRenderKey())
@@ -3138,8 +3253,7 @@ export struct HomeView {
         .height('100%')
         .backgroundColor(HarmonyDialogStyle.maskColor())
         .onClick(() => {
-          this.showShortcutEditDialog = false
-          this.editShortcutId = ''
+          this.closeShortcutEditDialog()
         })
 
       Column({ space: 12 }) {
@@ -3193,8 +3307,7 @@ export struct HomeView {
             .textAlign(TextAlign.Center)
             .padding({ top: HarmonyDialogStyle.BTN_PAD_V, bottom: HarmonyDialogStyle.BTN_PAD_V })
             .onClick(() => {
-              this.showShortcutEditDialog = false
-              this.editShortcutId = ''
+              this.closeShortcutEditDialog()
             })
 
           Text($r('app.string.confirm'))

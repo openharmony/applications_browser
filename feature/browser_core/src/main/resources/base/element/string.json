@@ -149,6 +149,30 @@
       "value": "扫码失败，请重试"
     },
     {
+      "name": "scan_title",
+      "value": "扫一扫"
+    },
+    {
+      "name": "scan_banner",
+      "value": "扫描二维码/条形码"
+    },
+    {
+      "name": "scan_camera",
+      "value": "相机"
+    },
+    {
+      "name": "scan_album",
+      "value": "相册"
+    },
+    {
+      "name": "scan_hint",
+      "value": "将二维码放入取景框，拍照或从相册选择"
+    },
+    {
+      "name": "scan_switch",
+      "value": "切换"
+    },
+    {
       "name": "download_open_failed",
       "value": "无法打开文件，请安装对应类型的应用"
     },

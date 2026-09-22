@@ -3,6 +3,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { webview } from '@kit.ArkWeb';
 import { BrowserStore } from 'browser_core';
+import { BrowserDatabase } from 'common';
 import { BrowserNavigation } from 'browser_core';
 import { BrowserWindowService } from 'browser_core';
 import { IncognitoWebDataCleaner } from 'browser_core';
@@ -11,7 +12,7 @@ import { DownloadNotificationActionHandler } from 'browser_core';
 import { DownloadNotificationEventBridge } from 'browser_core';
 import { AppPermissionService } from 'browser_core';
 import { BrowserApp } from 'browser_core';
-import { SystemFontSync } from 'browser_core';
+import { ShortcutManager, SystemFontSync } from 'browser_core';
 import { SystemThemeSync } from 'browser_core';
 import { TabThumbnailRetryService } from 'browser_core';
 import { DownloadManager, ShareService } from 'browser_core';
@@ -29,6 +30,8 @@ export default class MainAbility extends UIAbility {
   /** Ability 创建时绑定上下文并初始化浏览器服务 */
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     BrowserStore.bindContext(this.context);
+    // RDB 预热：提前开库建表，与 Ability/窗口初始化重叠执行（BrowserDatabase.init 为单飞，与初始化链共享同一次建连）
+    void BrowserDatabase.getInstance().init(this.context)
     DownloadNotificationEventBridge.getInstance().ensureSubscribed();
     this.readRegressionSmsWant(want);
     this.captureExternalBrowseWant(want);
@@ -73,13 +76,14 @@ export default class MainAbility extends UIAbility {
       hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
       BrowserWindowService.getInstance().onContentLoaded();
       this.runRegressionSmsIfNeeded();
-      // 窗口首帧就绪后再申请通知等权限（init 阶段弹窗无效）
+      // 窗口首帧就绪后再申请通知等权限（init 阶段弹窗无效；实测首帧上屏在 contentLoaded+~300ms，400ms 已留余量）
       setTimeout(() => {
         void BrowserApp.getInstance().ensureInitialized(this.context).then((): Promise<void> => {
           return AppPermissionService.getInstance().syncSitePermissionsWithAppGrants()
         })
-      }, 800);
-      // 首帧后再初始化 WebEngine，避免阻塞 Ability 生命周期
+      }, 400);
+      // 首帧与初始化链完成后再预热 WebEngine（内核首次创建 Web 组件时也会自启），
+      // 避免内核初始化阻塞主线程（实测 ~170ms）拖慢首帧与初始化链
       setTimeout(() => {
         try {
           webview.WebviewController.initializeWebEngine();
@@ -87,7 +91,7 @@ export default class MainAbility extends UIAbility {
         } catch (webErr) {
           hilog.error(DOMAIN, 'BrowserApp', 'WebEngine init failed: %{public}s', JSON.stringify(webErr));
         }
-      }, 0);
+      }, 1200);
     });
   }
 
@@ -105,6 +109,8 @@ export default class MainAbility extends UIAbility {
   onConfigurationUpdate(newConfig: Configuration): void {
     SystemFontSync.syncFromConfiguration(newConfig);
     SystemThemeSync.syncFromConfiguration(newConfig);
+    // 系统语言/资源变更时清掉 feature catalog 缓存，让下一次 buildFeatureCatalog() 重新解析 title。
+    ShortcutManager.invalidateFeatureCatalogCache()
     if (newConfig.direction !== undefined && newConfig.direction !== this.lastConfigDirection) {
       this.lastConfigDirection = newConfig.direction;
       BrowserWindowService.getInstance().onDirectionChanged(newConfig.direction);
@@ -135,6 +141,7 @@ export default class MainAbility extends UIAbility {
         onConfigurationUpdated: (config: Configuration) => {
           SystemFontSync.syncFromConfiguration(config);
           SystemThemeSync.syncFromConfiguration(config);
+          ShortcutManager.invalidateFeatureCatalogCache()
         },
         onMemoryLevel: (_level: number) => {
         }

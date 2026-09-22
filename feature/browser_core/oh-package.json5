@@ -6,6 +6,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "common": "file:../../common"
-  }
+    "common": "file:../../common",
+    "@ohos/zxing": "2.1.2"
+  },
+  "devDependencies": {},
+  "dynamicDependencies": {}
 }

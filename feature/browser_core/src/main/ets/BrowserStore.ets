@@ -329,6 +329,15 @@ export class BrowserStore {
     return ShortcutManager.getInstance().updateShortcut(id, title, url)
   }
 
+  /**
+   * 主动重读 shortcuts 并 await 返回：用于「冷启动后 AppStorage SHORTCUTS 还没就绪」导致
+   * 编辑弹窗走 resolveDisplayEntry 返回 undefined 的兜底路径。openShortcutEditDialog 在
+   * AppStorage 还没填上时调用，刷新一次后再次尝试，避免「编辑异常、整个界面卡住」。
+   */
+  static async refreshShortcutsAndAwait(): Promise<void> {
+    await AppStateSync.refreshShortcuts()
+  }
+
   /** 首页快捷方式动态数量上限 */
   static getShortcutMaxCount(): number {
     return ShortcutManager.getMaxHomeShortcuts()
@@ -818,7 +827,7 @@ export class BrowserStore {
     return NavigationController.getInstance().browseForward()
   }
 
-  /** 按 Web 当前 URL 同步浏览导航栈（后退/前进/新页面） */
+  /** 将 Web 当前 URL 镜像到浏览导航栈（replace，不做 back/forward 对齐） */
   static syncNavToUrl(url: string): void {
     NavigationController.getInstance().syncNavToUrl(url)
   }

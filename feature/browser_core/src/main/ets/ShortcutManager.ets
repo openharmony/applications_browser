@@ -37,12 +37,30 @@ export class ShortcutManager {
     { id: '360', kind: 'site', iconText: '360', iconMedia: '360', url: 'https://m.so.com' }
   ]
 
+  /** 默认快捷方式：与推荐目录一致，写入全部八项（功能入口 + 推荐站点） */
   static readonly DEFAULT_ORDER: string[] = [
-    'downloads', 'bookmarks', 'history', 'baidu', 'quark', 'sogou', '360', 'bing'
+    'bookmarks', 'history', 'downloads', 'baidu', 'quark', 'bing', 'sogou', '360'
   ]
+
+  /** 旧版默认首页入口，仅用于把未自定义过的安装从三项升级为八项 */
+  private static readonly LEGACY_DEFAULT_IDS: string[] = ['downloads', 'bookmarks', 'history']
+
+  /**
+   * 站点型快捷方式（推荐站点与默认入口）均视为预置项，不可编辑；
+   * 用户从书签/历史添加的快捷方式与自定义站点为非预置项，可编辑。
+   */
+  static isPresetId(id: string): boolean {
+    return ShortcutManager.getCatalogEntry(id) !== undefined
+  }
+
+  /** 预置目录缓存：避免 getCatalogEntry / resolveDisplayEntry / keyGenerator 每次 build 都重新构建 8 项 + 多次 BrowserStrings 调用 */
+  private static cachedFeatureCatalog: ShortcutCatalogEntry[] | null = null
 
   /** 构建带本地化标题的快捷方式目录（运行时调用，避免 static getter 在模块加载期触发） */
   static buildFeatureCatalog(): ShortcutCatalogEntry[] {
+    if (ShortcutManager.cachedFeatureCatalog !== null) {
+      return ShortcutManager.cachedFeatureCatalog
+    }
     const result: ShortcutCatalogEntry[] = []
     const canLocalize = getBrowserContext() !== null
     for (const item of ShortcutManager.FEATURE_CATALOG_META) {
@@ -57,7 +75,16 @@ export class ShortcutManager {
       }
       result.push(entry)
     }
+    ShortcutManager.cachedFeatureCatalog = result
     return result
+  }
+
+  /**
+   * 语言 / 资源可能异步就绪（getBrowserContext 在 Ability 起来前返回 null）。
+   * 语言变更或浏览器上下文真正就绪时需要清掉缓存重新解析 title。
+   */
+  static invalidateFeatureCatalogCache(): void {
+    ShortcutManager.cachedFeatureCatalog = null
   }
 
   /** 获取 ShortcutManager 单例 */
@@ -128,27 +155,84 @@ export class ShortcutManager {
     return ShortcutManager.getCatalogEntry(id)
   }
 
-  /** 首次启动时导入预置快捷方式 */
+  /**
+   * 首次启动时导入预置快捷方式。
+   * 默认导入推荐目录全部八项；若首页仍为旧版三项默认入口，则补齐其余推荐站点，
+   * 不覆盖用户已有排序、移除结果与自定义快捷方式。
+   * 性能优化：单次 findAll + 并行 upsert，减少启动期串行 RDB round-trip。
+   */
   async importPresetsIfNeeded(): Promise<void> {
     const existing = await ShortcutRepository.getInstance().findAll()
-    if (existing.length > 0) {
+    if (existing.length === 0) {
+      await this.upsertDefaultShortcuts(0, [])
       return
     }
+    if (!ShortcutManager.isLegacyDefaultShortcutSet(existing)) {
+      return
+    }
+    const existingIds: string[] = []
+    for (let i = 0; i < existing.length; i++) {
+      existingIds.push(existing[i].id)
+    }
+    await this.upsertDefaultShortcuts(existing.length, existingIds)
+  }
+
+  /** 是否仍为旧版默认三项（任意顺序），用于一次性补齐推荐站点 */
+  private static isLegacyDefaultShortcutSet(items: ShortcutItem[]): boolean {
+    if (items.length !== ShortcutManager.LEGACY_DEFAULT_IDS.length) {
+      return false
+    }
+    for (let i = 0; i < items.length; i++) {
+      let matched = false
+      for (let j = 0; j < ShortcutManager.LEGACY_DEFAULT_IDS.length; j++) {
+        if (items[i].id === ShortcutManager.LEGACY_DEFAULT_IDS[j]) {
+          matched = true
+          break
+        }
+      }
+      if (!matched) {
+        return false
+      }
+    }
+    return true
+  }
+
+  /** 按 DEFAULT_ORDER 写入缺失的预置快捷方式，skipIds 中的项保持原位 */
+  private async upsertDefaultShortcuts(startOrder: number, skipIds: string[]): Promise<void> {
+    const tasks: Promise<void>[] = []
+    let sortOrder = startOrder
     for (let i = 0; i < ShortcutManager.DEFAULT_ORDER.length; i++) {
       const id = ShortcutManager.DEFAULT_ORDER[i]
+      let skipped = false
+      for (let j = 0; j < skipIds.length; j++) {
+        if (skipIds[j] === id) {
+          skipped = true
+          break
+        }
+      }
+      if (skipped) {
+        continue
+      }
       const catalog: ShortcutCatalogEntry | undefined = ShortcutManager.getCatalogEntry(id)
       if (!catalog) {
         continue
+      }
+      if (startOrder + tasks.length >= ShortcutManager.getMaxHomeShortcuts()) {
+        break
       }
       const url = catalog.url ?? `feature://${catalog.id}`
       const shortcutInput: CreateShortcutItemInput = {
         id: catalog.id,
         title: catalog.title,
         url: url,
-        sortOrder: i,
+        sortOrder: sortOrder,
         isPreset: true
       }
-      await ShortcutRepository.getInstance().upsert(createShortcutItem(shortcutInput))
+      sortOrder++
+      tasks.push(ShortcutRepository.getInstance().upsert(createShortcutItem(shortcutInput)))
+    }
+    if (tasks.length > 0) {
+      await Promise.all(tasks)
     }
   }
 
@@ -180,7 +264,7 @@ export class ShortcutManager {
     return true
   }
 
-  /** 从目录添加快捷方式到首页 */
+  /** 从目录添加快捷方式到首页（统一为预置项，不可编辑） */
   async addShortcut(id: string): Promise<boolean> {
     const catalog = this.getCatalogEntry(id)
     if (!catalog) {
@@ -190,7 +274,7 @@ export class ShortcutManager {
       id: catalog.id,
       title: catalog.title,
       url: catalog.url ?? `feature://${catalog.id}`,
-      isPreset: catalog.kind === 'site'
+      isPreset: true
     })
   }
 

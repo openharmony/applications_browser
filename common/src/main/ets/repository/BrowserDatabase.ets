@@ -10,6 +10,7 @@ const DB_NAME: string = 'browser.db'
 export class BrowserDatabase {
   private static instance: BrowserDatabase | null = null
   private store: relationalStore.RdbStore | null = null
+  private initPromise: Promise<void> | null = null
 
   /** 获取数据库单例实例 */
   static getInstance(): BrowserDatabase {
@@ -19,11 +20,21 @@ export class BrowserDatabase {
     return BrowserDatabase.instance
   }
 
-  /** 初始化 RDB 连接并创建业务表 */
+  /** 初始化 RDB 连接并创建业务表（单飞：并发调用共享同一次初始化，支持 onCreate 提前预热） */
   async init(context: common.UIAbilityContext): Promise<void> {
     if (this.store !== null) {
       return
     }
+    if (this.initPromise !== null) {
+      await this.initPromise
+      return
+    }
+    this.initPromise = this.doInit(context)
+    await this.initPromise
+  }
+
+  /** 实际建连与建表流程 */
+  private async doInit(context: common.UIAbilityContext): Promise<void> {
     const config: relationalStore.StoreConfig = {
       name: DB_NAME,
       securityLevel: relationalStore.SecurityLevel.S1

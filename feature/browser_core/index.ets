@@ -64,6 +64,7 @@ export { NavigationController } from './src/main/ets/navigation/NavigationContro
 export { BrowseBackBridge } from './src/main/ets/navigation/BrowseBackBridge'
 export { FeaturePanelBackBridge } from './src/main/ets/navigation/FeaturePanelBackBridge'
 export { ScanQrService } from './src/main/ets/navigation/ScanQrService'
+export { ScanQrPanel } from './src/main/ets/navigation/ScanQrPanel'
 
 // ── BrowserModels 重导出 ──
 export { TabSession, createTabSession } from './src/main/ets/BrowserModels'

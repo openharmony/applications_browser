@@ -12,7 +12,7 @@ import { fileIo, fileUri } from '@kit.CoreFileKit'
 import { http } from '@kit.NetworkKit'
 import { request } from '@kit.BasicServicesKit'
 import { util } from '@kit.ArkTS'
-import { WebDownloadService } from './WebDownloadService'
+import { WebDownloadService, WebDownloadByteSnap } from './WebDownloadService'
 import { ImageGalleryService } from '../system/ImageGalleryService'
 import { DownloadPathService } from './DownloadPathService'
 import { DownloadPermissionHelper } from './DownloadPermissionHelper'
@@ -56,19 +56,38 @@ interface SystemDownloadHooks {
   onTaskReady: (task: request.DownloadTask) => void
 }
 
+/** HTTP 续传起点规划（识别 ArkWeb 稀疏残片） */
+interface ResumeStartPlan {
+  startByte: number
+  fileBytes: number
+  discardPartial: boolean
+}
+
 /** 下载任务队列、进度、暂停与重试 */
 export class DownloadManager {
   private static instance: DownloadManager | null = null
   private timers: Map<string, number> = new Map()
   /** 下载进度 UI 刷新节流，避免高频 DB/AppStorage 更新冻屏 */
   private progressUiGate: Map<string, number> = new Map()
+  /** 已采纳的最高进度（同步标记，防止异步 upsert 乱序把进度打回去） */
+  private progressLastPct: Map<string, number> = new Map()
+  /** 引擎上报的目标进度；UI 以 +1 步进追到该值 */
+  private progressStepTarget: Map<string, number> = new Map()
+  /** +1 步进定时器 */
+  private progressStepTimers: Map<string, number> = new Map()
+  /** 节流窗口内暂存的最新进度，到期后补刷 */
+  private progressQueued: Map<string, number> = new Map()
+  /** 节流补刷定时器 */
+  private progressFlushTimers: Map<string, number> = new Map()
+  /** 完成/发布中的任务：进度回调不得把 status 写回 running */
+  private finishingIds: Set<string> = new Set()
   /** 进行中的系统 downloadFile 任务，暂停时可 remove */
   private systemDownloadTasks: Map<string, request.DownloadTask> = new Map()
   /** 进行中的 HTTP 流式下载，暂停时可 destroy */
   private httpDownloadRequests: Map<string, http.HttpRequest> = new Map()
   /** 断网批量暂停时避免重复 Toast */
   private networkPauseToastShown: boolean = false
-  /** 断网暂停的任务 id，网络恢复后自动断点续传 */
+  /** 断网/切卡暂停的任务 id，需用户点「继续」后断点续传 */
   private networkPausedTaskIds: Set<string> = new Set()
   /** 暂停/断网中止传输时保留残缺文件，避免 stream settle 误删 */
   private downloadAbortFlags: Map<string, 'pause'> = new Map()
@@ -76,6 +95,10 @@ export class DownloadManager {
   private static readonly MAX_CONCURRENT_DOWNLOADS: number = 5
   /** 当前 running 任务计数（仅 DownloadManager 内部使用，不持久化） */
   private runningCount: number = 0
+  /** 进度 UI：目标可达时按 +1 逐步刷新（约 50ms/格） */
+  private static readonly PROGRESS_STEP_MS: number = 50
+  /** 旧节流常量保留给通知侧粗粒度刷新兼容 */
+  private static readonly PROGRESS_UI_INTERVAL_MS: number = 400
 
   /** 获取 DownloadManager 单例 */
   static getInstance(): DownloadManager {
@@ -229,7 +252,7 @@ export class DownloadManager {
     if (webStarted) {
       task.localPath = WebDownloadService.getInstance().buildSavePath(fileName)
       await DownloadRepository.getInstance().upsert(task)
-      await AppStateSync.refreshDownloads()
+      await AppStateSync.syncDownloadItem(task)
       return
     }
     BrowserLog.info(`[Download] WebDownload not used id=${id} fallback HTTP sourceUrl=${sourceUrl.slice(0, 80)}`)
@@ -237,7 +260,7 @@ export class DownloadManager {
       task.localPath = WebDownloadService.getInstance().buildSavePath(fileName)
       this.prepareDownloadTargetPath(task)
       await DownloadRepository.getInstance().upsert(task)
-      await AppStateSync.refreshDownloads()
+      await AppStateSync.syncDownloadItem(task)
       void this.downloadFromUrl(id, sourceUrl, task.localPath, true)
       return
     }
@@ -365,32 +388,164 @@ export class DownloadManager {
     }
   }
 
-  /** 更新网页下载进度（节流，避免大文件下载时 UI 卡死） */
+  /**
+   * 更新下载进度。
+   * 引擎可能跳变（如 0→38）；UI 侧以 +1 步进追到目标，保证胶囊 1%→2%→… 连续上涨。
+   */
   async updateWebDownloadProgress(id: string, progress: number): Promise<void> {
+    if (this.finishingIds.has(id)) {
+      return
+    }
     const pct = Math.min(100, Math.max(0, Math.floor(progress)))
-    const now = Date.now()
-    const lastAt = this.progressUiGate.get(id) ?? 0
-    if (pct < 100 && now - lastAt < 400) {
+    const lastPct = this.progressLastPct.get(id) ?? -1
+    const targetPct = this.progressStepTarget.get(id) ?? -1
+    if (pct < 100 && pct <= lastPct && pct <= targetPct) {
       return
     }
-    this.progressUiGate.set(id, now)
-    const item = await DownloadRepository.getInstance().findById(id)
-    if (!item || item.status !== 'running') {
+    if (pct === 100) {
+      this.progressStepTarget.set(id, 100)
+      this.clearProgressStepTimer(id)
+      await this.commitProgressPct(id, 100)
       return
     }
-    if (item.progress === pct) {
-      return
-    }
-    item.progress = pct
-    await DownloadRepository.getInstance().upsert(item)
-    AppStateSync.patchDownloadItem(item)
-    this.syncRunningNotification(item)
+    const nextTarget = Math.max(targetPct, pct)
+    this.progressStepTarget.set(id, nextTarget)
+    this.ensureProgressStepper(id)
   }
 
+  /** 启动/保持 +1 步进器 */
+  private ensureProgressStepper(id: string): void {
+    if (this.progressStepTimers.has(id) || this.finishingIds.has(id)) {
+      return
+    }
+    const timer = setTimeout((): void => {
+      this.progressStepTimers.delete(id)
+      void this.advanceProgressStep(id)
+    }, 0)
+    this.progressStepTimers.set(id, timer)
+  }
+
+  private clearProgressStepTimer(id: string): void {
+    const timer = this.progressStepTimers.get(id)
+    if (timer !== undefined) {
+      clearTimeout(timer)
+      this.progressStepTimers.delete(id)
+    }
+  }
+
+  /** 将展示进度 +1，未追上目标则继续调度 */
+  private async advanceProgressStep(id: string): Promise<void> {
+    if (this.finishingIds.has(id)) {
+      this.clearProgressStepTimer(id)
+      return
+    }
+    const target = this.progressStepTarget.get(id) ?? -1
+    const last = this.progressLastPct.get(id) ?? -1
+    if (target < 0 || last >= target) {
+      return
+    }
+    // 从 0/未开始时先到 1%，之后每次严格 +1
+    const next = last < 0 ? Math.min(1, target) : Math.min(target, last + 1)
+    if (next <= last) {
+      return
+    }
+    await this.commitProgressPct(id, next)
+    const latestTarget = this.progressStepTarget.get(id) ?? -1
+    const shown = this.progressLastPct.get(id) ?? next
+    if (shown < latestTarget && shown < 100 && !this.finishingIds.has(id)) {
+      const timer = setTimeout((): void => {
+        this.progressStepTimers.delete(id)
+        void this.advanceProgressStep(id)
+      }, DownloadManager.PROGRESS_STEP_MS)
+      this.progressStepTimers.set(id, timer)
+    }
+  }
+
+  /** 写入单个整数进度并刷新 AppStorage / 通知 */
+  private async commitProgressPct(id: string, applyPct: number): Promise<void> {
+    if (this.finishingIds.has(id)) {
+      return
+    }
+    const pct = Math.min(100, Math.max(0, Math.floor(applyPct)))
+    const lastPct = this.progressLastPct.get(id) ?? -1
+    if (pct < 100 && pct <= lastPct) {
+      return
+    }
+    this.progressUiGate.set(id, Date.now())
+    this.progressLastPct.set(id, pct)
+
+    const item = await DownloadRepository.getInstance().findById(id)
+    if (!item || item.status !== 'running' || this.finishingIds.has(id)) {
+      return
+    }
+    const reserved = this.progressLastPct.get(id) ?? pct
+    if (pct < 100 && pct < reserved) {
+      return
+    }
+    if (pct === item.progress) {
+      this.progressLastPct.set(id, pct)
+      return
+    }
+    this.progressLastPct.set(id, pct)
+    const written = await DownloadRepository.getInstance().updateProgressIfRunning(id, pct)
+    if (!written || this.finishingIds.has(id)) {
+      return
+    }
+    const latest = await DownloadRepository.getInstance().findById(id)
+    if (!latest || latest.status !== 'running') {
+      return
+    }
+    AppStateSync.patchDownloadItem(latest)
+    this.syncRunningNotification(latest)
+  }
+
+  /** 节流窗口结束后用队列中的最新进度补刷一次 */
+  private scheduleProgressFlush(id: string, delayMs: number): void {
+    if (this.progressFlushTimers.has(id)) {
+      return
+    }
+    const wait = Math.max(16, delayMs)
+    const timer = setTimeout((): void => {
+      this.progressFlushTimers.delete(id)
+      const queued = this.progressQueued.get(id)
+      if (queued === undefined) {
+        return
+      }
+      this.progressQueued.delete(id)
+      void this.updateWebDownloadProgress(id, queued)
+    }, wait)
+    this.progressFlushTimers.set(id, timer)
+  }
+
+  /** 清理进度节流 / 单调占位 / 步进状态 */
+  private clearProgressTracking(id: string): void {
+    this.progressUiGate.delete(id)
+    this.progressLastPct.delete(id)
+    this.progressQueued.delete(id)
+    this.progressStepTarget.delete(id)
+    this.clearProgressStepTimer(id)
+    const timer = this.progressFlushTimers.get(id)
+    if (timer !== undefined) {
+      clearTimeout(timer)
+      this.progressFlushTimers.delete(id)
+    }
+  }
   /** 网页下载完成：沙箱落盘后发布到文管，发布失败则标记失败 */
   async completeWebDownload(id: string): Promise<void> {
+    if (this.finishingIds.has(id)) {
+      return
+    }
+    this.finishingIds.add(id)
+    try {
+      await this.completeWebDownloadLocked(id)
+    } finally {
+      this.finishingIds.delete(id)
+    }
+  }
+
+  private async completeWebDownloadLocked(id: string): Promise<void> {
     this.clearTimer(id)
-    this.progressUiGate.delete(id)
+    this.clearProgressTracking(id)
     this.clearActiveTransfer(id)
     const item = await DownloadRepository.getInstance().findById(id)
     if (!item || item.status !== 'running') {
@@ -466,7 +621,7 @@ export class DownloadManager {
   /** 标记下载失败并写入原因；同时清理沙箱与文管残留文件 */
   private async failWebDownloadWithReason(id: string, reason: string, extraPaths: string[] = []): Promise<void> {
     this.clearTimer(id)
-    this.progressUiGate.delete(id)
+    this.clearProgressTracking(id)
     this.clearActiveTransfer(id)
     const item = await DownloadRepository.getInstance().findById(id)
     if (!item) {
@@ -654,18 +809,23 @@ export class DownloadManager {
   /** 暂停正在进行的下载任务（保留残缺文件与进度，支持断点续传） */
   async pauseDownload(id: string, reason: 'user' | 'network' = 'user'): Promise<void> {
     this.downloadAbortFlags.set(id, 'pause')
-    this.clearActiveTransfer(id)
+    // 先快照 ArkWeb 字节再 cancel，避免随后用稀疏文件 size 抬高进度
+    const byteSnap = this.clearActiveTransfer(id)
     this.clearTimer(id)
+    this.clearProgressTracking(id)
     const item = await DownloadRepository.getInstance().findById(id)
     if (!item || item.status !== 'running') {
       this.downloadAbortFlags.delete(id)
       return
     }
-    this.syncProgressFromPartialFile(item)
+    // 暂停水位以运行中进度 / ArkWeb 快照为准，禁止用稀疏文件 stat.size 抬高
+    if (byteSnap !== null && byteSnap.percent > item.progress) {
+      item.progress = Math.min(99, byteSnap.percent)
+    }
     item.status = 'paused'
     item.errorMessage = ''
     await DownloadRepository.getInstance().upsert(item)
-    await AppStateSync.refreshDownloads()
+    await AppStateSync.syncDownloadItem(item)
     this.syncPausedNotification(item)
     if (reason === 'network') {
       this.networkPausedTaskIds.add(id)
@@ -725,7 +885,7 @@ export class DownloadManager {
     this.networkPauseToastShown = false
   }
 
-  /** 断网暂停的任务在网络恢复后自动断点续传 */
+  /** 批量恢复因断网/切卡暂停的任务（当前由用户点「继续」触发 resumeDownload） */
   async resumeNetworkPausedDownloads(): Promise<void> {
     if (!DownloadNetworkHelper.isNetworkAvailable()) {
       return
@@ -788,7 +948,7 @@ export class DownloadManager {
     } else if (item.sourceUrl.trim().length > 0) {
       item.localPath = DownloadPathService.getInstance().resolveResumeLocalPath(item)
     }
-    this.syncProgressFromPartialFile(item)
+    // 续传进度与 startByte 在 downloadFromUrl 内对齐；此处不按稀疏文件抬高水位
     const spaceOk = await this.checkSpaceBeforeResume(item)
     if (!spaceOk) {
       return false
@@ -814,6 +974,7 @@ export class DownloadManager {
   async removeDownload(id: string, deleteLocal: boolean = true): Promise<void> {
     this.clearDownloadNotification(id)
     this.clearTimer(id)
+    this.clearProgressTracking(id)
     this.clearActiveTransfer(id)
     let wasRunning = false
     if (deleteLocal) {
@@ -974,24 +1135,40 @@ export class DownloadManager {
       await DownloadRepository.getInstance().upsert(item)
     }
     let targetPath = canonicalPath
-    let startByte = freshStart ? 0 : this.getPartialFileSize(canonicalPath)
-    if (!freshStart && startByte <= 0) {
-      const altPath = DownloadPathService.getInstance().resolveResumeLocalPath(item)
-      if (altPath !== canonicalPath) {
-        item.localPath = altPath
-        canonicalPath = altPath
-        startByte = this.getPartialFileSize(canonicalPath)
-        await DownloadRepository.getInstance().upsert(item)
+    let startByte = 0
+    if (!freshStart) {
+      const fileSize = this.getPartialFileSize(canonicalPath)
+      if (fileSize <= 0) {
+        const altPath = DownloadPathService.getInstance().resolveResumeLocalPath(item)
+        if (altPath !== canonicalPath) {
+          item.localPath = altPath
+          canonicalPath = altPath
+          await DownloadRepository.getInstance().upsert(item)
+        }
       }
-    }
-    if (startByte > 0) {
-      this.syncProgressFromPartialFile(item)
+      const byteSnap = WebDownloadService.getInstance().consumeLastByteProgress(id)
+      const resumePlan = this.planHttpResumeStart(item, this.getPartialFileSize(canonicalPath), byteSnap)
+      startByte = resumePlan.startByte
+      if (resumePlan.discardPartial) {
+        this.removePartialFile(canonicalPath)
+        startByte = 0
+        BrowserLog.info(
+          `[Download] resume discard sparse partial id=${id} fileBytes=${resumePlan.fileBytes}`
+        )
+      }
+      this.applyResumeProgressFloor(id, item, startByte, resumePlan.discardPartial)
       await DownloadRepository.getInstance().upsert(item)
-      BrowserLog.info(`[Download] resume id=${id} startByte=${startByte} progress=${item.progress}`)
+      await AppStateSync.syncDownloadItem(item)
+      BrowserLog.info(
+        `[Download] resume id=${id} startByte=${startByte} progress=${item.progress} discard=${resumePlan.discardPartial}`
+      )
     }
     try {
       const kickoffProgress = Math.min(99, Math.max(0, item.progress))
-      await this.updateWebDownloadProgress(id, kickoffProgress)
+      // 避免 kickoff 把已有进度打回 0
+      if (kickoffProgress > 0) {
+        await this.updateWebDownloadProgress(id, kickoffProgress)
+      }
       if (sourceUrl.trim().startsWith('data:')) {
         targetPath = this.writeWithFallback(canonicalPath, (path) => {
           this.saveDataUrlToFile(sourceUrl, path)
@@ -1013,7 +1190,10 @@ export class DownloadManager {
       if (!latest || latest.status === 'paused') {
         return
       }
-      if (!DownloadNetworkHelper.isNetworkAvailable()) {
+      // 切卡后新默认网可能已可用，传输失败仍按网络暂停，避免误标失败并自动走新卡流量
+      if (!DownloadNetworkHelper.isNetworkAvailable() ||
+        DownloadNetworkHelper.isInDefaultNetSwitchWindow() ||
+        DownloadNetworkHelper.checkDefaultNetIdentityChanged()) {
         await this.pauseDownload(id, 'network')
         return
       }
@@ -1029,7 +1209,7 @@ export class DownloadManager {
     this.systemDownloadTasks.set(taskId, task)
   }
 
-  private clearActiveTransfer(taskId: string): void {
+  private clearActiveTransfer(taskId: string): WebDownloadByteSnap | null {
     const sysTask = this.systemDownloadTasks.get(taskId)
     if (sysTask !== undefined) {
       void sysTask.remove().catch((_err: Error) => {
@@ -1046,7 +1226,7 @@ export class DownloadManager {
       }
       this.httpDownloadRequests.delete(taskId)
     }
-    WebDownloadService.getInstance().cancelActiveDownload(taskId)
+    return WebDownloadService.getInstance().cancelActiveDownload(taskId)
   }
 
   private buildSystemDownloadHooks(taskId: string): SystemDownloadHooks {
@@ -1153,8 +1333,15 @@ export class DownloadManager {
         if (await retryStreamAfterSslConfirm(destPath, startByte)) {
           return destPath
         }
-        fallbackOffset = this.getPartialFileSize(destPath)
-        BrowserLog.info(`saveHttpUrlToFile range exhausted, fallback offset=${fallbackOffset} path=${destPath}`)
+        // 2300023 等写盘失败：稀疏/损坏残片无法 APPEND，丢弃后整文件重下
+        if (lastError.includes('2300023') || lastError.toLowerCase().includes('failed to write')) {
+          this.removePartialFile(destPath)
+          fallbackOffset = 0
+          BrowserLog.info(`saveHttpUrlToFile range write-fail, restart from 0 path=${destPath}`)
+        } else {
+          fallbackOffset = this.getPartialFileSize(destPath)
+          BrowserLog.info(`saveHttpUrlToFile range exhausted, fallback offset=${fallbackOffset} path=${destPath}`)
+        }
       }
     } else {
       this.removePartialFile(destPath)
@@ -1294,7 +1481,10 @@ export class DownloadManager {
     }
   }
 
-  /** 根据已下载字节与总大小同步 progress */
+  /**
+   * 根据已下载字节与总大小同步 progress（启动恢复等场景）。
+   * 暂停路径不要调用：ArkWeb 多切片残片的 sparse size 会虚高进度。
+   */
   private syncProgressFromPartialFile(item: DownloadTask): void {
     const path = this.resolveDownloadLocalPath(item)
     const downloaded = this.getPartialFileSize(path)
@@ -1302,6 +1492,69 @@ export class DownloadManager {
       return
     }
     item.progress = this.computeProgressFromBytes(downloaded, item.fileSize)
+  }
+
+  /**
+   * ArkWeb 取消后转 HTTP Range：仅在「仍持有 ArkWeb 快照」且本地 size 明显虚高时丢弃残片。
+   * HTTP 续传的文件 size 是真实已写字节，UI 落后于文件是步进延迟，不能当稀疏文件删掉。
+   */
+  private planHttpResumeStart(
+    item: DownloadTask,
+    fileBytes: number,
+    snap: WebDownloadByteSnap | null
+  ): ResumeStartPlan {
+    const plan: ResumeStartPlan = {
+      startByte: Math.max(0, fileBytes),
+      fileBytes: Math.max(0, fileBytes),
+      discardPartial: false
+    }
+    if (fileBytes <= 0) {
+      plan.startByte = 0
+      return plan
+    }
+    if (snap === null) {
+      return plan
+    }
+    const filePct = this.computeProgressFromBytes(fileBytes, item.fileSize)
+    if (snap.receivedBytes > 0 && fileBytes > snap.receivedBytes) {
+      // 本地逻辑 size 超过 ArkWeb 已收字节，Range APPEND 易 2300023
+      plan.discardPartial = true
+      plan.startByte = 0
+      return plan
+    }
+    if (snap.percent > 0 && filePct > snap.percent + 3) {
+      plan.discardPartial = true
+      plan.startByte = 0
+      return plan
+    }
+    return plan
+  }
+
+  /**
+   * 续传展示进度与真实残片对齐。
+   * 旧逻辑在丢弃重下时仍把 UI 锁在暂停前百分比，引擎进度低于该水位会被全部吞掉，看起来卡住。
+   */
+  private applyResumeProgressFloor(
+    id: string,
+    item: DownloadTask,
+    startByte: number,
+    discarded: boolean
+  ): void {
+    const uiPct = Math.min(99, Math.max(0, Math.floor(item.progress)))
+    if (discarded || startByte <= 0) {
+      item.progress = 0
+      this.progressLastPct.delete(id)
+      this.progressStepTarget.delete(id)
+      BrowserLog.info(`[Download] resume reset progress id=${id} ui=${uiPct} -> 0 (restart)`)
+      return
+    }
+    const filePct = this.computeProgressFromBytes(startByte, item.fileSize)
+    item.progress = filePct
+    this.progressLastPct.set(id, filePct)
+    this.progressStepTarget.set(id, filePct)
+    if (uiPct > filePct + 1) {
+      BrowserLog.info(`[Download] resume align progress id=${id} ui=${uiPct} -> file=${filePct}`)
+    }
   }
 
   private computeProgressFromBytes(downloaded: number, total: number): number {
@@ -1408,7 +1661,7 @@ export class DownloadManager {
         }
         item.errorMessage = ''
         await DownloadRepository.getInstance().upsert(item)
-        await AppStateSync.refreshDownloads()
+        await AppStateSync.syncDownloadItem(item)
       }
       if (showQueuedToast) {
         BrowserStore.showToast(BrowserStrings.txt($r('app.string.download_queued_toast'), item.fileName))
@@ -1422,7 +1675,7 @@ export class DownloadManager {
     }
     item.errorMessage = ''
     await DownloadRepository.getInstance().upsert(item)
-    await AppStateSync.refreshDownloads()
+    await AppStateSync.syncDownloadItem(item)
     this.runningCount++
     BrowserLog.info(`[Download] activateOrQueueTask running id=${item.id} runningCount=${this.runningCount}`)
     return true
@@ -1802,6 +2055,18 @@ export class DownloadManager {
     })
     for (let i = 0; i < timerIds.length; i++) {
       this.clearTimer(timerIds[i])
+    }
+    const progressIds: string[] = []
+    this.progressFlushTimers.forEach((_timer: number, id: string) => {
+      progressIds.push(id)
+    })
+    this.progressLastPct.forEach((_pct: number, id: string) => {
+      if (progressIds.indexOf(id) < 0) {
+        progressIds.push(id)
+      }
+    })
+    for (let i = 0; i < progressIds.length; i++) {
+      this.clearProgressTracking(progressIds[i])
     }
     const transferIds: string[] = []
     this.systemDownloadTasks.forEach((_task: request.DownloadTask, id: string) => {
