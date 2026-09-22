@@ -1,5 +1,5 @@
 {
-  "name": "@ohos/browser",
+  "name": "@ohos/applications_browser",
   "description": "Browser app for standard system.",
   "version": "3.0",
   "license": "Apache License 2.0",
@@ -10,7 +10,7 @@
   "dirs": {},
   "scripts": {},
   "component": {
-    "name": "browser",
+    "name": "applications_browser",
     "subsystem": "applications",
     "syscap": [],
     "features": [],
