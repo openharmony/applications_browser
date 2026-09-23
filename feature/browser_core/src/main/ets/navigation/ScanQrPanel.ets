@@ -5,6 +5,8 @@ const SCAN_LINE_DURATION: number = 2600
 /** 扫描杠移动区：文字下方与底部留白 */
 const SCAN_TRAVEL_TOP: number = 24
 const SCAN_TRAVEL_BOTTOM: number = 40
+/** XComponent 原生窗口类型，对应枚举值 0，供相机预览输出绑定 */
+const XC_NATIVE_WINDOW: XComponentType = 0 as XComponentType
 
 /** 全屏扫一扫：扫描杠来回扫，右上翻转，底部相册 */
 @Component
@@ -68,7 +70,7 @@ export struct ScanQrPanel {
     Stack() {
       XComponent({
         id: 'browser_scan_preview',
-        type: XComponentType.SURFACE,
+        type: XC_NATIVE_WINDOW,
         controller: this.xController
       })
         .width('100%')
