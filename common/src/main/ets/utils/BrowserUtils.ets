@@ -234,6 +234,10 @@ export class BrowserUtils {
     if (u.includes('/link?') || u.includes('/jump?')) {
       return true
     }
+    // 淘宝渠道落地页：load 后立刻跳到 pages-fast，回退再 load 会形成「返回变刷新」死循环
+    if (u.includes('pm123.taobao.com') && u.includes('/channel/sfindex')) {
+      return true
+    }
     return false
   }
 

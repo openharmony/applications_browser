@@ -11,15 +11,27 @@ export struct PanelDownloadAction {
 
   @Prop itemId: string = ''
   @Prop itemName: string = ''
-  @Prop status: string = 'pending'
-  @Prop progress: number = 0
+  @Prop @Watch('syncShown') status: string = 'pending'
+  @Prop @Watch('syncShown') progress: number = 0
   @StorageLink(AppStorageKeys.DOWNLOADS) downloads: DownloadTask[] = []
-  @StorageLink(AppStorageKeys.DOWNLOAD_PROGRESS_REV) downloadProgressRev: number = 0
+  @StorageLink(AppStorageKeys.DOWNLOAD_PROGRESS_REV) @Watch('syncShown') downloadProgressRev: number = 0
+  @State private shownStatus: string = 'pending'
+  @State private shownProgress: number = 0
   onOpenItem?: (id: string) => void
   /** 失败/已删除任务点击后由父级弹出「是否重新下载」确认框 */
   onRetryRequest?: (id: string, name: string) => void
   /** 已删除任务点击后弹出重新下载确认（与 onRetryRequest 分离文案） */
   onRedownloadRequest?: (id: string, name: string) => void
+
+  aboutToAppear(): void {
+    this.syncShown()
+  }
+
+  /** progressRev / @Prop 变化时刷新胶囊文案 */
+  private syncShown(): void {
+    this.shownStatus = this.liveStatus()
+    this.shownProgress = this.liveProgress()
+  }
 
   private liveTask(): DownloadTask | undefined {
     const _tick = this.downloadProgressRev
@@ -44,23 +56,26 @@ export struct PanelDownloadAction {
 
   private liveProgress(): number {
     const task = this.liveTask()
-    if (task !== undefined) {
-      return task.progress
+    const live = task !== undefined ? task.progress : this.progress
+    if (this.liveStatus() === 'running') {
+      const pct = Math.min(100, Math.max(0, Math.floor(live)))
+      // 与底栏环形一致：已开始下载时不展示 0%
+      return pct <= 0 ? 1 : pct
     }
-    return this.progress
+    return live
   }
 
   build() {
     Column() {
-      if (this.liveStatus() === 'pending' || this.liveStatus() === 'queued') {
+      if (this.shownStatus === 'pending' || this.shownStatus === 'queued') {
         this.StatusCapsuleRes($r('app.string.download_status_queued'))
-      } else if (this.liveStatus() === 'failed') {
+      } else if (this.shownStatus === 'failed') {
         this.StatusCapsuleRes($r('app.string.download_status_failed'))
-      } else if (this.liveStatus() === 'deleted') {
+      } else if (this.shownStatus === 'deleted') {
         this.StatusCapsuleRes($r('app.string.download_status_deleted'))
-      } else if (this.liveStatus() === 'running') {
-        this.StatusCapsuleText(`${this.liveProgress()}%`)
-      } else if (this.liveStatus() === 'paused') {
+      } else if (this.shownStatus === 'running') {
+        this.StatusCapsuleText(`${this.shownProgress}%`)
+      } else if (this.shownStatus === 'paused') {
         this.StatusCapsuleRes($r('app.string.continue_action'))
       } else {
         this.StatusCapsuleRes($r('app.string.download_action_open'))
@@ -115,7 +130,7 @@ export struct PanelDownloadAction {
   }
 
   private handleTap(): void {
-    const status = this.liveStatus()
+    const status = this.shownStatus
     if (status === 'pending' || status === 'queued') {
       BrowserStore.startDownload(this.itemId)
       return

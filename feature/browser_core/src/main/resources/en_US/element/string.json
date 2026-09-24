@@ -149,6 +149,30 @@
       "value": "Scan failed. Please try again"
     },
     {
+      "name": "scan_title",
+      "value": "Scan"
+    },
+    {
+      "name": "scan_banner",
+      "value": "Scan QR code / barcode"
+    },
+    {
+      "name": "scan_camera",
+      "value": "Camera"
+    },
+    {
+      "name": "scan_album",
+      "value": "Album"
+    },
+    {
+      "name": "scan_hint",
+      "value": "Place the QR code in the frame, then take a photo or choose from album"
+    },
+    {
+      "name": "scan_switch",
+      "value": "Switch"
+    },
+    {
       "name": "download_open_failed",
       "value": "Cannot open file. Install a compatible app."
     },

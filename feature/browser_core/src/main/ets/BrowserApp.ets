@@ -61,26 +61,39 @@ export class BrowserApp {
     AppStateSync.initUiDefaults()
     await BrowserDatabase.getInstance().init(context)
     await SettingsRepository.getInstance().initDefaults()
-    await SslHandler.loadPersisted()
-    // 启动时清理旧版内置测试数据（书签/历史/下载），不再写入示例记录
-    await BookmarkRepository.getInstance().seedDefaultsIfEmpty()
-    await HistoryRepository.getInstance().seedDefaultsIfEmpty()
-    await DownloadRepository.getInstance().seedDefaultsIfEmpty()
-    await DownloadManager.getInstance().recoverInterruptedDownloadsOnStartup()
-    await ShortcutManager.getInstance().importPresetsIfNeeded()
-    await TabManager.getInstance().loadFromRepository()
+    // 以下各步仅依赖 DB/设置就绪且分属不同数据域，并行执行摊薄启动串行等待
+    const initTasks: Promise<void>[] = [
+      SslHandler.loadPersisted(),
+      // 启动时清理旧版内置测试数据（书签/历史/下载），不再写入示例记录
+      BookmarkRepository.getInstance().seedDefaultsIfEmpty(),
+      HistoryRepository.getInstance().seedDefaultsIfEmpty(),
+      DownloadRepository.getInstance().seedDefaultsIfEmpty(),
+      DownloadManager.getInstance().recoverInterruptedDownloadsOnStartup(),
+      // 导入推荐目录全部八项作为默认首页快捷方式（旧版三项安装会一次性补齐站点）
+      ShortcutManager.getInstance().importPresetsIfNeeded(),
+      TabManager.getInstance().loadFromRepository()
+    ]
+    await Promise.all(initTasks)
     AppInitGate.markReady()
-    // 异常退出后可能残留无痕 Web 缓存，启动时先清理无痕分区
-    IncognitoWebDataCleaner.getInstance().purgeIncognitoWebData()
-    await AppStateSync.refreshTabs(TabManager.getInstance().getAllTabs())
+    // 去除原本「markReady → refreshTabs（预刷）→ ensureDefaultTab → refreshTabs（终刷）」的预刷环节。
+    // loadFromRepository 已通过 syncPersistedFromDb 把 TABS_PERSISTED 写入完毕；ensureDefaultTab
+    // 内部如需 addTab 自带 refreshTabs；末尾 refreshTabs 作为最终一致点（与原版等价）
     await TabManager.getInstance().ensureDefaultTabForCurrentMode()
     await AppStateSync.refreshTabs(TabManager.getInstance().getAllTabs())
     this.initialized = true
     hilog.info(DOMAIN, TAG, 'BrowserApp initialized')
+    // 异常退出后可能残留无痕 Web 缓存；延后清理避免 WebEngine 初始化（清理内部会自启引擎）阻塞启动关键路径
+    setTimeout(() => {
+      IncognitoWebDataCleaner.getInstance().purgeIncognitoWebData()
+    }, 300)
     // 书签/历史等非关键数据后台刷新，缩短冷启动主线程占用
     void AppStateSync.refreshBookmarks()
     void AppStateSync.refreshHistory()
     void AppStateSync.refreshDownloads()
+    // 编辑功能关键：refreshShortcuts 之前先把 feature catalog 缓存清掉，让第一次实际调 buildFeatureCatalog()
+    // 时能用上已 ready 的 BrowserContext，否则 keyGenerator / getCatalogEntry 反复触发会导致 title 解析
+    // 用 id 替代真实文案，引发「编辑打开后无响应 / 整个界面卡住」现象。
+    ShortcutManager.invalidateFeatureCatalogCache()
     void AppStateSync.refreshShortcuts()
     void AppStateSync.refreshSettings()
     void AppStateSync.refreshSitePermissions()

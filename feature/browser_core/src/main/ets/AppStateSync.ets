@@ -78,16 +78,36 @@ export class AppStateSync {
   /** 同步下载列表到 AppStorage 并递增版本号 */
   static async refreshDownloads(): Promise<void> {
     const list = await DownloadRepository.getInstance().findAll()
-    const cloned = list.map((d) => cloneDownload(d))
+    const current = AppStorage.get<DownloadTask[]>(AppStorageKeys.DOWNLOADS) ?? []
+    const currentById: Map<string, DownloadTask> = new Map()
+    for (let i = 0; i < current.length; i++) {
+      currentById.set(current[i].id, current[i])
+    }
+    const cloned = list.map((d: DownloadTask) => {
+      const next = cloneDownload(d)
+      const prev = currentById.get(d.id)
+      // 全量刷新时保留内存中更高的 running 进度，避免与异步进度写回竞态导致 pill 回跳
+      if (prev !== undefined && next.status === 'running' && prev.status === 'running' &&
+        prev.progress > next.progress) {
+        next.progress = prev.progress
+      }
+      return next
+    })
     AppStorage.setOrCreate(AppStorageKeys.DOWNLOADS, cloned)
     AppStorage.set(AppStorageKeys.DOWNLOADS, cloned)
     const rev = (AppStorage.get<number>(AppStorageKeys.DOWNLOADS_REV) ?? 0) + 1
     AppStorage.set(AppStorageKeys.DOWNLOADS_REV, rev)
+    const progressRev = (AppStorage.get<number>(AppStorageKeys.DOWNLOAD_PROGRESS_REV) ?? 0) + 1
+    AppStorage.set(AppStorageKeys.DOWNLOAD_PROGRESS_REV, progressRev)
     BrowserLog.info(`[ProfileStats] refreshDownloads count=${list.length} rev=${rev}`)
   }
 
-  /** 仅更新单条下载任务到 AppStorage（不递增 rev，避免列表行/缩略图整行重建） */
-  static patchDownloadItem(task: DownloadTask): void {
+  /**
+   * 仅更新单条下载任务到 AppStorage（不递增 downloadsRev）。
+   * 暂停/继续、进度、localPath 等用此接口，避免整表重建导致界面闪动。
+   * @returns 是否命中已有任务；未命中时应回退 refreshDownloads
+   */
+  static patchDownloadItem(task: DownloadTask): boolean {
     const list = AppStorage.get<DownloadTask[]>(AppStorageKeys.DOWNLOADS) ?? []
     let found = false
     const patched = list.map((d) => {
@@ -95,14 +115,37 @@ export class AppStateSync {
         return d
       }
       found = true
+      // 终态不可被过期的 running 进度回调覆盖，否则会把「打开」打回「100%」
+      if (AppStateSync.isTerminalDownloadStatus(d.status) &&
+        !AppStateSync.isTerminalDownloadStatus(task.status)) {
+        return d
+      }
+      // 进度只升不降，防止乱序 patch 把 UI 数字打回去
+      if (task.status === 'running' && d.status === 'running' && task.progress < d.progress) {
+        const kept = cloneDownload(task)
+        kept.progress = d.progress
+        return kept
+      }
       return cloneDownload(task)
     })
     if (!found) {
-      return
+      return false
     }
     AppStorage.set(AppStorageKeys.DOWNLOADS, patched)
     const rev = (AppStorage.get<number>(AppStorageKeys.DOWNLOAD_PROGRESS_REV) ?? 0) + 1
     AppStorage.set(AppStorageKeys.DOWNLOAD_PROGRESS_REV, rev)
+    return true
+  }
+
+  /** 优先原地 patch；列表中尚无该任务时再全量刷新 */
+  static async syncDownloadItem(task: DownloadTask): Promise<void> {
+    if (!AppStateSync.patchDownloadItem(task)) {
+      await AppStateSync.refreshDownloads()
+    }
+  }
+
+  private static isTerminalDownloadStatus(status: string): boolean {
+    return status === 'done' || status === 'failed' || status === 'deleted'
   }
 
   /** 「我的」页显示时从 DB 重载统计 */
@@ -211,6 +254,7 @@ export class AppStateSync {
     AppStorage.setOrCreate(AppStorageKeys.THEME_PREFERENCE, 'light')
     AppStorage.setOrCreate(AppStorageKeys.THEME_REV, 0)
     AppStorage.setOrCreate(AppStorageKeys.DARK_MODE_PICKER_VISIBLE, false)
+    AppStorage.setOrCreate(AppStorageKeys.SCAN_QR_VISIBLE, false)
     AppStorage.setOrCreate(AppStorageKeys.SAFE_AREA_TOP, 0)
     AppStorage.setOrCreate(AppStorageKeys.SAFE_AREA_BOTTOM, 0)
     AppStorage.setOrCreate(AppStorageKeys.FONT_SIZE, 'system')
