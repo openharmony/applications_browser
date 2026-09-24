@@ -17,6 +17,13 @@ interface PendingWebDownload {
   guid: string
 }
 
+/** ArkWeb 下载进度快照（received 为逻辑已收字节，可能含多切片） */
+export interface WebDownloadByteSnap {
+  receivedBytes: number
+  totalBytes: number
+  percent: number
+}
+
 /** 网页下载桥接：注册 WebDownloadDelegate，衔接应用内下载确认弹窗 */
 export class WebDownloadService {
   private static instance: WebDownloadService | null = null
@@ -25,6 +32,8 @@ export class WebDownloadService {
   private guidToTaskId: Record<string, string> = {}
   /** 进行中的 ArkWeb 下载项，用于暂停时 cancel */
   private activeWebItems: Record<string, webview.WebDownloadItem> = {}
+  /** 最近一次进度快照（cancel 前可读，供 HTTP 断点 startByte 使用） */
+  private lastByteProgress: Record<string, WebDownloadByteSnap> = {}
   private callbacksReady: boolean = false
   /** 无痕下载任务 ID 集合：进度/完成回调不写数据库 */
   private silentTaskIds: Set<string> = new Set()
@@ -61,6 +70,7 @@ export class WebDownloadService {
     }
     this.activeWebItems = {}
     this.guidToTaskId = {}
+    this.lastByteProgress = {}
     this.silentTaskIds.clear()
     if (this.attachedController) {
       try {
@@ -121,15 +131,57 @@ export class WebDownloadService {
     }
   }
 
-  /** 暂停/断网时取消进行中的 ArkWeb 下载 */
-  cancelActiveDownload(taskId: string): void {
+  /** 取消前最后一次 ArkWeb 字节进度（多切片下载时比本地稀疏文件更可靠） */
+  getLastByteProgress(taskId: string): WebDownloadByteSnap | null {
+    const snap = this.lastByteProgress[taskId]
+    if (!snap) {
+      return null
+    }
+    return {
+      receivedBytes: snap.receivedBytes,
+      totalBytes: snap.totalBytes,
+      percent: snap.percent
+    }
+  }
+
+  /** 取出并清除 ArkWeb 字节快照（仅首次转 HTTP 续传使用一次） */
+  consumeLastByteProgress(taskId: string): WebDownloadByteSnap | null {
+    const snap = this.getLastByteProgress(taskId)
+    this.clearLastByteProgress(taskId)
+    return snap
+  }
+
+  /** 暂停/断网时取消进行中的 ArkWeb 下载；返回取消前字节快照 */
+  cancelActiveDownload(taskId: string): WebDownloadByteSnap | null {
     const item = this.activeWebItems[taskId]
     if (!item) {
-      return
+      // HTTP/系统下载暂停：不要把过期 ArkWeb 快照当成当前进度
+      return null
+    }
+    let snap: WebDownloadByteSnap | null = this.getLastByteProgress(taskId)
+    try {
+      const receivedBytes = Math.max(0, Number(item.getReceivedBytes()))
+      const totalBytes = Math.max(0, Number(item.getTotalBytes()))
+      const rawPercent = Math.floor(Number(item.getPercentComplete()))
+      let percent = Number.isFinite(rawPercent) && rawPercent >= 0
+        ? Math.min(100, Math.max(0, rawPercent))
+        : 0
+      if (totalBytes > 0 && receivedBytes >= 0) {
+        const fromBytes = Math.floor(receivedBytes / totalBytes * 100)
+        if (fromBytes > percent) {
+          percent = Math.min(100, fromBytes)
+        }
+      }
+      snap = { receivedBytes, totalBytes, percent }
+      this.lastByteProgress[taskId] = snap
+    } catch (_err) {
+      // 保留上次进度回调中的快照
     }
     try {
       item.cancel()
-      BrowserLog.info(`[WebDownload] cancelActiveDownload taskId=${taskId}`)
+      BrowserLog.info(
+        `[WebDownload] cancelActiveDownload taskId=${taskId} received=${snap?.receivedBytes ?? -1} total=${snap?.totalBytes ?? -1} pct=${snap?.percent ?? -1}`
+      )
     } catch (err) {
       BrowserLog.warn(`[WebDownload] cancelActiveDownload failed taskId=${taskId}: ${JSON.stringify(err)}`)
     }
@@ -142,6 +194,7 @@ export class WebDownloadService {
         break
       }
     }
+    return snap
   }
 
   private clearActiveWebItem(taskId: string): void {
@@ -154,6 +207,18 @@ export class WebDownloadService {
       }
     }
     this.activeWebItems = next
+  }
+
+  private clearLastByteProgress(taskId: string): void {
+    const next: Record<string, WebDownloadByteSnap> = {}
+    const keys = Object.keys(this.lastByteProgress)
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i]
+      if (key !== taskId) {
+        next[key] = this.lastByteProgress[key]
+      }
+    }
+    this.lastByteProgress = next
   }
 
   /** 标记为无痕静默下载（不落 download_tasks 表） */
@@ -228,8 +293,24 @@ export class WebDownloadService {
       if (!taskId || this.isSilentDownload(taskId)) {
         return
       }
-      const progress = Math.min(100, Math.max(0, Math.floor(item.getPercentComplete())))
+      // 大文件时 getPercentComplete 长时间停在同一整数；用 received/total 补齐更平滑的进度
+      const percent = Math.floor(item.getPercentComplete())
+      const received = item.getReceivedBytes()
+      const total = item.getTotalBytes()
+      let progress = percent
+      if (total > 0 && received >= 0) {
+        const fromBytes = Math.floor(received / total * 100)
+        if (fromBytes > progress) {
+          progress = fromBytes
+        }
+      }
+      progress = Math.min(100, Math.max(0, progress))
       this.activeWebItems[taskId] = item
+      this.lastByteProgress[taskId] = {
+        receivedBytes: Math.max(0, received),
+        totalBytes: Math.max(0, total),
+        percent: progress
+      }
       BrowserStore.updateWebDownloadProgress(taskId, progress)
     })
 
@@ -247,6 +328,7 @@ export class WebDownloadService {
       }
       void BrowserStore.completeWebDownload(taskId)
       this.clearActiveWebItem(taskId)
+      this.clearLastByteProgress(taskId)
       this.clearGuidMapping(guid)
     })
 
@@ -266,6 +348,7 @@ export class WebDownloadService {
       void BrowserStore.failWebDownloadWithMessage(taskId,
         BrowserStrings.txt($r('app.string.download_error_network')))
       this.clearActiveWebItem(taskId)
+      this.clearLastByteProgress(taskId)
       this.clearGuidMapping(guid)
     })
   }

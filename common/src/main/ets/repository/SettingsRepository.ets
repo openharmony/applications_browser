@@ -78,21 +78,24 @@ export class SettingsRepository {
 
   /** 从数据库加载并组装浏览器设置对象 */
   async loadSettings(): Promise<BrowserSettings> {
-    const engine = await this.getValue(SettingsKeys.DEFAULT_SEARCH_ENGINE)
-    const theme = await this.getValue(SettingsKeys.THEME_MODE)
-    const imageLess = await this.getValue(SettingsKeys.IMAGE_LESS_MODE)
-    const night = await this.getValue(SettingsKeys.NIGHT_MODE)
-    const incognito = await this.getValue(SettingsKeys.INCOGNITO_MODE)
-    const ua = await this.getValue(SettingsKeys.UA_MODE)
-    const font = await this.getValue(SettingsKeys.FONT_SIZE)
+    // 7 次 RDB 读取从串行改为并行（Promise.all）
+    const results = await Promise.all([
+        this.getValue(SettingsKeys.DEFAULT_SEARCH_ENGINE),
+        this.getValue(SettingsKeys.THEME_MODE),
+        this.getValue(SettingsKeys.IMAGE_LESS_MODE),
+        this.getValue(SettingsKeys.NIGHT_MODE),
+        this.getValue(SettingsKeys.INCOGNITO_MODE),
+        this.getValue(SettingsKeys.UA_MODE),
+        this.getValue(SettingsKeys.FONT_SIZE)
+    ])
     return {
-      defaultSearchEngine: engine ?? DEFAULT_BROWSER_SETTINGS.defaultSearchEngine,
-      themeMode: theme ?? DEFAULT_BROWSER_SETTINGS.themeMode,
-      imageLessMode: imageLess === 'true',
-      nightMode: night === 'true',
-      incognitoMode: incognito === 'true',
-      uaMode: ua ?? DEFAULT_BROWSER_SETTINGS.uaMode,
-      fontSize: BrowserStrings.normalizeFontSizeKey(font ?? DEFAULT_BROWSER_SETTINGS.fontSize)
+      defaultSearchEngine: results[0] ?? DEFAULT_BROWSER_SETTINGS.defaultSearchEngine,
+      themeMode: results[1] ?? DEFAULT_BROWSER_SETTINGS.themeMode,
+      imageLessMode: results[2] === 'true',
+      nightMode: results[3] === 'true',
+      incognitoMode: results[4] === 'true',
+      uaMode: results[5] ?? DEFAULT_BROWSER_SETTINGS.uaMode,
+      fontSize: BrowserStrings.normalizeFontSizeKey(results[6] ?? DEFAULT_BROWSER_SETTINGS.fontSize)
     }
   }
 

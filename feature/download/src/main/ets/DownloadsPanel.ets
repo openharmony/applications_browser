@@ -17,7 +17,6 @@ import { DownloadDeleteDialog } from './DownloadDeleteDialog'
 import { DownloadFileIcon } from './DownloadFileIcon'
 import { PanelBatchCheck } from 'commons'
 import { PanelConfirmDialog } from 'commons'
-import { PanelDownloadAction } from './PanelDownloadAction'
 import { PanelSubpageHeader } from 'commons'
 import { PanelSwipeDeleteRow } from 'commons'
 import { BrowserSafeAreaInsets } from 'commons'
@@ -85,8 +84,11 @@ struct DownloadsBatchBtn {
 
 @Component
 export struct DownloadsPanel {
-  @StorageLink('browser_downloads') @Watch('onDownloadsChanged') downloads: DownloadEntry[] = []
+  @StorageLink('browser_downloads') downloads: DownloadEntry[] = []
+  /** 仅在列表结构/状态变化时重建分组 */
   @StorageLink('browser_downloads_rev') @Watch('onDownloadsChanged') downloadsRev: number = 0
+  /** 进度 patch：写回 downloadGroups，并驱动 ForEach key / 行内胶囊 */
+  @StorageLink('browser_download_progress_rev') @Watch('onProgressRev') downloadProgressRev: number = 0
   @StorageLink('browser_theme') theme: string = 'light'
   @State vm: DownloadsViewModel = new DownloadsViewModel()
   @State searchVisible: boolean = false
@@ -143,6 +145,50 @@ export struct DownloadsPanel {
 
   private onDownloadsChanged(): void {
     this.rebuildDownloadGroups()
+  }
+
+  /** AppStorage 进度更新后，同步进分组缓存并刷新胶囊 */
+  private onProgressRev(): void {
+    if (this.downloadProgressRev < 0 || this.downloadGroups.length === 0) {
+      return
+    }
+    this.syncRunningProgressIntoGroups()
+  }
+
+  private findDownloadById(id: string): DownloadEntry | undefined {
+    for (let i = 0; i < this.downloads.length; i++) {
+      if (this.downloads[i].id === id) {
+        return this.downloads[i]
+      }
+    }
+    return undefined
+  }
+
+  private syncRunningProgressIntoGroups(): void {
+    const nextGroups: DateGroup<DownloadEntry>[] = []
+    let anyChanged = false
+    for (let gi = 0; gi < this.downloadGroups.length; gi++) {
+      const group = this.downloadGroups[gi]
+      const nextItems: DownloadEntry[] = []
+      for (let i = 0; i < group.items.length; i++) {
+        const item = group.items[i]
+        const live = this.findDownloadById(item.id)
+        if (live !== undefined && (live.progress !== item.progress || live.status !== item.status)) {
+          nextItems.push(live)
+          anyChanged = true
+        } else {
+          nextItems.push(item)
+        }
+      }
+      const nextGroup: DateGroup<DownloadEntry> = {
+        label: group.label,
+        items: nextItems
+      }
+      nextGroups.push(nextGroup)
+    }
+    if (anyChanged) {
+      this.downloadGroups = nextGroups
+    }
   }
 
   private rebuildDownloadGroups(): void {
@@ -566,7 +612,7 @@ export struct DownloadsPanel {
               ForEach(this.downloadGroups, (group: DateGroup<DownloadEntry>) => {
                 this.DownloadSection(group)
               }, (group: DateGroup<DownloadEntry>) =>
-                `${group.label}_${this.searchFilter}_${this.downloads.length}_${this.downloadsRev}_${group.items.length}`)
+                `${group.label}_${this.searchFilter}_${this.downloads.length}_${group.items.length}`)
             }
           }
           .width('100%')
@@ -717,9 +763,15 @@ export struct DownloadsPanel {
   }
 
   private downloadRowKey(item: DownloadEntry): string {
-    // 不含选中态/selectionRevision，避免滑动多选时整行重建导致图标闪烁
+    // 暂停/继续只改胶囊文案：key 不含 status/progress，避免整行销毁重建
     const batch = this.vm.batchMode ? '1' : '0'
-    return `${item.id}_${item.status}_${batch}_${item.fileName}`
+    return `${item.id}_${batch}`
+  }
+
+  /** 进行中胶囊：尚未出数时显示 1%，避免空文案 */
+  private displayRunningPct(progress: number): number {
+    const pct = Math.min(100, Math.max(0, Math.floor(progress)))
+    return pct <= 0 ? 1 : pct
   }
 
   @Builder
@@ -825,6 +877,7 @@ export struct DownloadsPanel {
       isLast: isLast,
       dividerLeft: BookmarkFolderTree.dividerStartDownload(),
       rowBg: BrowserTheme.PANEL_BG,
+      contentRev: this.downloadProgressRev,
       openRowId: $swipeOpenRowId,
       dragRowId: $swipeDragRowId,
       dragOffsetX: $swipeDragOffsetX,
@@ -851,6 +904,12 @@ export struct DownloadsPanel {
     })
   }
 
+  /** 取 AppStorage 中最新进度（依赖 downloadProgressRev） */
+  private liveDownload(item: DownloadEntry): DownloadEntry {
+    const live = this.findDownloadById(item.id)
+    return live !== undefined ? live : item
+  }
+
   @Builder
   DownloadNormalRowContent(item: DownloadEntry) {
     Row() {
@@ -875,25 +934,85 @@ export struct DownloadsPanel {
       }
       .layoutWeight(1)
 
-      PanelDownloadAction({
-        itemId: item.id,
-        itemName: item.fileName,
-        status: item.status,
-        progress: item.progress,
-        onOpenItem: (id: string) => {
-          this.tryOpenDownload(id)
-        },
-        onRetryRequest: (id: string, name: string) => {
-          this.requestFailedRetry(id, name)
-        },
-        onRedownloadRequest: (id: string, name: string) => {
-          this.requestRedownload(id, name)
-        }
-      })
+      // 同一胶囊节点只换文案：百分比 ↔ 继续，避免整行/整页刷新
+      this.DownloadStatusCapsule(item)
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 14, bottom: 14 })
     .backgroundColor(BrowserTheme.PANEL_BG)
+  }
+
+  /** 右侧胶囊文案：进行中为百分比，暂停为「继续」 */
+  private capsuleLabel(item: DownloadEntry): string {
+    const _tick = this.downloadProgressRev
+    if (_tick < 0) {
+      return ''
+    }
+    const live = this.liveDownload(item)
+    if (live.status === 'pending' || live.status === 'queued') {
+      return BrowserStrings.txt($r('app.string.download_status_queued'))
+    }
+    if (live.status === 'failed') {
+      return BrowserStrings.txt($r('app.string.download_status_failed'))
+    }
+    if (live.status === 'deleted') {
+      return BrowserStrings.txt($r('app.string.download_status_deleted'))
+    }
+    if (live.status === 'running') {
+      return `${this.displayRunningPct(live.progress)}%`
+    }
+    if (live.status === 'paused') {
+      return BrowserStrings.txt($r('app.string.continue_action'))
+    }
+    return BrowserStrings.txt($r('app.string.download_action_open'))
+  }
+
+  private handleCapsuleTap(item: DownloadEntry): void {
+    const live = this.liveDownload(item)
+    const status = live.status
+    if (status === 'pending' || status === 'queued') {
+      void BrowserStore.startDownload(live.id)
+      return
+    }
+    if (status === 'failed') {
+      this.requestFailedRetry(live.id, live.fileName)
+      return
+    }
+    if (status === 'deleted') {
+      this.requestRedownload(live.id, live.fileName)
+      return
+    }
+    if (status === 'running') {
+      void BrowserStore.pauseDownload(live.id)
+      return
+    }
+    if (status === 'paused') {
+      void BrowserStore.resumeDownload(live.id)
+      return
+    }
+    this.tryOpenDownload(live.id)
+  }
+
+  /** 下载行右侧胶囊：结构固定，仅内部 Text 随进度/状态变化 */
+  @Builder
+  DownloadStatusCapsule(item: DownloadEntry) {
+    Row() {
+      Text(this.capsuleLabel(item))
+        .fontSize(13)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(BrowserTheme.PRIMARY_COLOR)
+        .textAlign(TextAlign.Center)
+        .maxLines(1)
+    }
+    .width(72)
+    .height(32)
+    .justifyContent(FlexAlign.Center)
+    .alignItems(VerticalAlign.Center)
+    .backgroundColor($r('sys.color.ohos_id_color_button_normal'))
+    .borderRadius(16)
+    .onClick(() => {
+      this.handleCapsuleTap(item)
+    })
   }
 
   @Builder

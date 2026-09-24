@@ -313,26 +313,38 @@ export struct BrowseToolbarMoreIcon {
 @Component
 export struct BrowseToolbarDownloadProgressIcon {
   @Prop boxSize: number = BROWSE_TOOLBAR_ICON_BOX
-  @Prop progress: number = 0
+  @Prop @Watch('onProgressChange') progress: number = 0
   @Prop isDark: boolean = false
-  /** queued 等尚无进度数字时为 true，显示最小弧 + 呼吸动画 */
+  /** queued 等尚无进度数字时为 true（保留入参兼容，环形从 0 起算） */
   @Prop indeterminate: boolean = false
   /** toolbar=底栏黑色；accent=更多页等服务入口蓝色 */
   @Prop variant: 'toolbar' | 'accent' = 'toolbar'
   /** variant=toolbar 时传入，与底栏其它图标颜色一致 */
   @Prop iconColor: string = ''
+  /** 实际绘制进度：禁止系统 Progress 默认长动画从旧值猛扫 */
+  @State private displayProgress: number = 0
+
+  aboutToAppear(): void {
+    this.displayProgress = this.ringProgress()
+  }
+
+  private onProgressChange(): void {
+    const next = this.ringProgress()
+    if (next === this.displayProgress) {
+      return
+    }
+    animateTo({ duration: 0 }, () => {
+      this.displayProgress = next
+    })
+  }
 
   private clampedProgress(): number {
     return Math.min(100, Math.max(0, Math.floor(this.progress)))
   }
 
-  /** 环形进度展示值：0% 时保留最小可见弧，避免「看不出在下载」 */
+  /** 环形从 0 开始跟随真实进度，不做 12%/18% 假起步 */
   private ringProgress(): number {
-    const pct = this.clampedProgress()
-    if (pct > 0) {
-      return pct
-    }
-    return this.indeterminate ? 18 : 12
+    return this.clampedProgress()
   }
 
   private trackColor(): string {
@@ -367,12 +379,13 @@ export struct BrowseToolbarDownloadProgressIcon {
 
   build() {
     Stack({ alignContent: Alignment.Center }) {
-      Progress({ value: this.ringProgress(), total: 100, type: ProgressType.Ring })
+      Progress({ value: this.displayProgress, total: 100, type: ProgressType.Ring })
         .width(this.boxSize)
         .height(this.boxSize)
         .color(this.ringActiveColor())
         .backgroundColor(this.trackColor())
         .style({ strokeWidth: this.ringStroke() })
+        .animation({ duration: 0 })
 
       Image($r('app.media.ic_download_toolbar'))
         .width(this.innerIconSize())

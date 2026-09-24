@@ -78,6 +78,24 @@ export class DownloadRepository {
     await store.delete(predicates)
   }
 
+
+  /**
+   * 仅在 status 仍为 running 时更新进度。
+   * 避免完成/失败后被过期进度快照整行 upsert 打回 running。
+   */
+  async updateProgressIfRunning(id: string, progress: number): Promise<boolean> {
+    const store = BrowserDatabase.getInstance().getStore()
+    const predicates = new relationalStore.RdbPredicates('download_tasks')
+    predicates.equalTo('id', id)
+    predicates.equalTo('status', 'running')
+    const bucket: relationalStore.ValuesBucket = {
+      progress: progress,
+      updated_at: Date.now()
+    }
+    const rows = await store.update(bucket, predicates)
+    return rows > 0
+  }
+
   /** 按 ID 查询下载任务，不存在则返回 null */
   async findById(id: string): Promise<DownloadTask | null> {
     const store = BrowserDatabase.getInstance().getStore()

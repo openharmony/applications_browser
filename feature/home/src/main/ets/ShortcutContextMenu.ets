@@ -24,6 +24,10 @@ export struct ShortcutContextMenu {
 
   @Prop menuWidth: number = 144
 
+  /** 是否为预置项（true 仅显示移除，false 显示编辑+移除） */
+
+  @Prop editable: boolean = true
+
   /** 点击编辑 */
 
   onEdit?: () => void
@@ -54,16 +58,19 @@ export struct ShortcutContextMenu {
 
     Column({ space: 0 }) {
 
-      this.MenuAction($r('app.string.edit'), false, () => {
+      if (this.editable) {
 
-        this.onEdit?.()
+        this.MenuAction($r('app.string.edit'), false, () => {
 
-      })
+          this.onEdit?.()
 
-      Divider()
-        .color(this.darkMode ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)')
-        .strokeWidth(0.5)
-        .margin({ left: 16, right: 16 })
+        })
+
+        Divider()
+          .color(this.darkMode ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)')
+          .strokeWidth(0.5)
+          .margin({ left: 16, right: 16 })
+      }
 
       this.MenuAction($r('app.string.shortcut_remove'), true, () => {
 
