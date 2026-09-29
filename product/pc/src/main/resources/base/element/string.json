@@ -1,0 +1,44 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "module description"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "浏览器"
+    },
+    {
+      "name": "location_permission_reason",
+      "value": "用于网页定位、基于位置的内容服务以及下载相关站点能力。"
+    },
+    {
+      "name": "camera_permission_reason",
+      "value": "用于网页拍照、扫码、视频采集等浏览器站点能力。"
+    },
+    {
+      "name": "microphone_permission_reason",
+      "value": "用于网页语音输入、音视频通话与录音等浏览器站点能力。"
+    },
+    {
+      "name": "permission_write_media_reason",
+      "value": "下载文件需要写入媒体存储的权限"
+    },
+    {
+      "name": "permission_read_media_reason",
+      "value": "读取已下载文件需要读取媒体存储的权限"
+    },
+    {
+      "name": "permission_manage_app_status_reason",
+      "value": "管理应用状态需要相应权限"
+    },
+    {
+      "name": "permission_read_pasteboard_reason",
+      "value": "网页输入框粘贴内容需要读取系统剪贴板。"
+    }
+  ]
+}

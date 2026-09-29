@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OH Browser - Permissions Test</title>
+    <style>
+      body { font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 16px; background: #f6f8fb; color: #111827; }
+      h1 { margin: 0 0 8px; font-size: 22px; }
+      .muted { color: #6b7280; font-size: 13px; }
+      .card { background: #ffffff; border-radius: 16px; padding: 14px; margin-top: 14px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06); }
+      .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+      button { border: 0; border-radius: 10px; padding: 10px 14px; background: #2563eb; color: #ffffff; font-size: 14px; cursor: pointer; }
+      button.secondary { background: #e5e7eb; color: #1f2937; }
+      button.danger { background: #dc2626; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; background: #eef2ff; padding: 2px 6px; border-radius: 6px; }
+      pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 12px; min-height: 220px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+      video { width: 100%; max-height: 240px; background: #111827; border-radius: 12px; margin-top: 12px; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+      .stat { background: #f8fafc; border-radius: 12px; padding: 12px; }
+      .stat b { display: block; margin-bottom: 6px; }
+    </style>
+  </head>
+  <body>
+    <h1>权限测试页</h1>
+    <div class="muted">用于验证站点权限弹窗、系统权限申请、记住选择以及 ArkWeb 回调链路。</div>
+
+    <div class="card">
+      <div class="grid">
+        <div class="stat"><b>当前地址</b><code id="currentUrl">-</code></div>
+        <div class="stat"><b>Origin</b><code id="currentOrigin">-</code></div>
+        <div class="stat"><b>Secure Context</b><code id="secureContext">-</code></div>
+        <div class="stat"><b>mediaDevices</b><code id="mediaSupport">-</code></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div><b>定位权限</b></div>
+      <div class="row">
+        <button id="btnGeo">请求定位</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div><b>摄像头 / 麦克风权限</b></div>
+      <div class="row">
+        <button id="btnCamera">请求摄像头</button>
+        <button id="btnMic">请求麦克风</button>
+        <button id="btnAV">请求摄像头 + 麦克风</button>
+        <button id="btnStop" class="secondary">停止媒体流</button>
+      </div>
+      <video id="preview" autoplay playsinline muted></video>
+    </div>
+
+    <div class="card">
+      <div><b>日志</b></div>
+      <div class="row">
+        <button id="btnClear" class="secondary">清空日志</button>
+      </div>
+      <pre id="log"></pre>
+    </div>
+
+    <script>
+      (function () {
+        var logEl = document.getElementById('log');
+        var previewEl = document.getElementById('preview');
+        var activeStream = null;
+
+        function nowHHMMSS() {
+          var d = new Date();
+          return [d.getHours(), d.getMinutes(), d.getSeconds()].map(function (v) {
+            return String(v).padStart(2, '0');
+          }).join(':');
+        }
+
+        function stringify(value) {
+          try {
+            return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+          } catch (_) {
+            return String(value);
+          }
+        }
+
+        function log() {
+          var text = Array.prototype.slice.call(arguments).map(stringify).join(' ');
+          logEl.textContent += '[' + nowHHMMSS() + '] ' + text + '\n';
+          logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function setText(id, value) {
+          document.getElementById(id).textContent = value;
+        }
+
+        function refreshEnv() {
+          setText('currentUrl', location.href || '-');
+          setText('currentOrigin', location.origin || 'null');
+          setText('secureContext', window.isSecureContext ? 'true' : 'false');
+          setText('mediaSupport', navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function' ? 'supported' : 'missing');
+        }
+
+        function stopActiveStream() {
+          if (!activeStream) {
+            return;
+          }
+          activeStream.getTracks().forEach(function (track) {
+            try { track.stop(); } catch (_) {}
+          });
+          activeStream = null;
+          previewEl.srcObject = null;
+          log('媒体流已停止');
+        }
+
+        function requestGeolocation() {
+          if (!navigator.geolocation || typeof navigator.geolocation.getCurrentPosition !== 'function') {
+            log('定位 API 不可用');
+            return;
+          }
+
+          log('开始请求定位权限');
+          navigator.geolocation.getCurrentPosition(function (position) {
+            log('定位成功', {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+            });
+          }, function (error) {
+            log('定位失败', {
+              code: error && error.code,
+              message: error && error.message,
+            });
+          }, {
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 0,
+          });
+        }
+
+        function requestUserMedia(constraints, label) {
+          if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+            log(label + ' 失败', 'mediaDevices.getUserMedia 不可用');
+            return;
+          }
+
+          stopActiveStream();
+          log('开始请求 ' + label, constraints);
+          navigator.mediaDevices.getUserMedia(constraints)
+            .then(function (stream) {
+              activeStream = stream;
+              previewEl.srcObject = stream;
+              log(label + ' 成功', {
+                tracks: stream.getTracks().map(function (track) {
+                  return { kind: track.kind, label: track.label, enabled: track.enabled };
+                })
+              });
+            })
+            .catch(function (error) {
+              log(label + ' 失败', {
+                name: error && error.name,
+                message: error && error.message,
+              });
+            });
+        }
+
+        document.getElementById('btnGeo').onclick = requestGeolocation;
+        document.getElementById('btnCamera').onclick = function () {
+          requestUserMedia({ video: true, audio: false }, '摄像头');
+        };
+        document.getElementById('btnMic').onclick = function () {
+          requestUserMedia({ video: false, audio: true }, '麦克风');
+        };
+        document.getElementById('btnAV').onclick = function () {
+          requestUserMedia({ video: true, audio: true }, '摄像头+麦克风');
+        };
+        document.getElementById('btnStop').onclick = stopActiveStream;
+        document.getElementById('btnClear').onclick = function () {
+          logEl.textContent = '';
+        };
+
+        refreshEnv();
+        log('页面已就绪，可开始权限验证');
+      })();
+    </script>
+  </body>
+</html>

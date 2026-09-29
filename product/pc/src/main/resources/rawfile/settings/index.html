@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>设置</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f6f8;
+        --panel: #ffffff;
+        --line: #dfe4ec;
+        --text: #121826;
+        --muted: #657083;
+        --primary: #2563eb;
+        --primary-soft: #e8f0ff;
+        --danger: #b91c1c;
+        --danger-soft: #fee2e2;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .page {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 18px;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 650;
+      }
+
+      .status {
+        min-height: 20px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 190px minmax(0, 1fr);
+        gap: 14px;
+      }
+
+      .nav,
+      .section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .nav {
+        padding: 8px;
+        align-self: start;
+        position: sticky;
+        top: 12px;
+      }
+
+      .nav button {
+        width: 100%;
+        text-align: left;
+        border: 0;
+        background: transparent;
+        color: var(--text);
+        padding: 10px 12px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      .nav button.active {
+        background: var(--primary-soft);
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      .content {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        min-width: 0;
+      }
+
+      .section {
+        padding: 16px;
+      }
+
+      .section h2 {
+        margin: 0 0 4px;
+        font-size: 18px;
+        font-weight: 650;
+      }
+
+      .section p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .rows {
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 0;
+        border-top: 1px solid #edf0f5;
+      }
+
+      .row:first-child { border-top: 0; }
+
+      .row-title {
+        font-size: 15px;
+        font-weight: 560;
+      }
+
+      .row-desc {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      select,
+      input[type="text"] {
+        min-width: 210px;
+        height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--text);
+        padding: 0 10px;
+        font-size: 13px;
+      }
+
+      input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--primary);
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      button.action {
+        height: 34px;
+        border: 0;
+        border-radius: 6px;
+        padding: 0 12px;
+        cursor: pointer;
+        background: #eef2f7;
+        color: #374151;
+        font-size: 13px;
+      }
+
+      button.primary {
+        background: var(--primary-soft);
+        color: var(--primary);
+      }
+
+      button.danger {
+        background: var(--danger-soft);
+        color: var(--danger);
+      }
+
+      @media (max-width: 720px) {
+        .layout { grid-template-columns: 1fr; }
+        .nav { position: static; display: flex; overflow-x: auto; }
+        .nav button { white-space: nowrap; width: auto; }
+        .row { align-items: flex-start; flex-direction: column; gap: 10px; }
+        select,
+        input[type="text"] { width: 100%; min-width: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <div class="header">
+        <div>
+          <h1>设置</h1>
+          <div class="status" id="status">正在加载设置...</div>
+        </div>
+      </div>
+
+      <div class="layout">
+        <nav class="nav" id="nav">
+          <button class="active" data-target="search">搜索引擎</button>
+          <button data-target="startup">启动与主页</button>
+          <button data-target="content">网页内容</button>
+          <button data-target="privacy">隐私与 Cookie</button>
+        </nav>
+
+        <div class="content">
+          <section class="section" id="search">
+            <h2>搜索引擎</h2>
+            <p>选择地址栏和主页搜索框使用的默认搜索引擎。</p>
+            <div class="rows">
+              <div class="row">
+                <div>
+                  <div class="row-title">默认搜索引擎</div>
+                  <div class="row-desc" id="searchEngineDesc">-</div>
+                </div>
+                <select id="defaultSearchEngine"></select>
+              </div>
+            </div>
+          </section>
+
+          <section class="section" id="startup">
+            <h2>启动与主页</h2>
+            <p>控制浏览器启动后的打开方式，以及主页按钮使用的地址。</p>
+            <div class="rows">
+              <div class="row">
+                <div>
+                  <div class="row-title">启动方式</div>
+                  <div class="row-desc">恢复上次标签、打开新标签页，或直接打开主页。</div>
+                </div>
+                <select id="startupBehavior">
+                  <option value="restore_session">恢复上次浏览</option>
+                  <option value="new_tab">打开新标签页</option>
+                  <option value="home_page">打开主页</option>
+                </select>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="row-title">主页地址</div>
+                  <div class="row-desc">留空会保存为 about:blank。</div>
+                </div>
+                <div class="actions">
+                  <input id="homePageUrl" type="text" placeholder="about:blank 或 https://example.com" />
+                  <button class="action primary" id="saveHomePage">保存</button>
+                  <button class="action" id="resetHomePage">重置</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="section" id="content">
+            <h2>网页内容</h2>
+            <p>这些设置会影响后续网页加载和站点功能表现。</p>
+            <div class="rows">
+              <label class="row">
+                <div>
+                  <div class="row-title">启用 JavaScript</div>
+                  <div class="row-desc">关闭后，部分网页交互功能可能不可用。</div>
+                </div>
+                <input id="javaScriptEnabled" type="checkbox" />
+              </label>
+              <label class="row">
+                <div>
+                  <div class="row-title">加载图片</div>
+                  <div class="row-desc">关闭后可减少页面资源加载。</div>
+                </div>
+                <input id="imagesEnabled" type="checkbox" />
+              </label>
+            </div>
+          </section>
+
+          <section class="section" id="privacy">
+            <h2>隐私与 Cookie</h2>
+            <p>管理跟踪偏好、Cookie 策略，以及一键清理浏览数据。</p>
+            <div class="rows">
+              <label class="row">
+                <div>
+                  <div class="row-title">发送勿追踪请求</div>
+                  <div class="row-desc">向网站发送 Do Not Track 偏好，是否遵守取决于网站。</div>
+                </div>
+                <input id="doNotTrack" type="checkbox" />
+              </label>
+              <label class="row">
+                <div>
+                  <div class="row-title">允许 Cookie</div>
+                  <div class="row-desc">允许网站保存登录状态和站点偏好。</div>
+                </div>
+                <input id="cookiesEnabled" type="checkbox" />
+              </label>
+              <label class="row">
+                <div>
+                  <div class="row-title">阻止第三方 Cookie</div>
+                  <div class="row-desc">对普通与无痕窗口使用统一策略，减少跨站跟踪。</div>
+                </div>
+                <input id="blockThirdPartyCookies" type="checkbox" />
+              </label>
+              <label class="row">
+                <div>
+                  <div class="row-title">无痕模式第三方 Cookie</div>
+                  <div class="row-desc">当前 Web 内核不支持独立策略，此项跟随全局设置。</div>
+                </div>
+                <input id="blockThirdPartyCookiesInPrivate" type="checkbox" />
+              </label>
+              <div class="row">
+                <div>
+                  <div class="row-title">清除浏览数据</div>
+                  <div class="row-desc">清理历史、下载记录、站点数据和站点权限。</div>
+                </div>
+                <div class="actions">
+                  <button class="action danger" data-clear="all">清除全部</button>
+                  <button class="action" data-clear="history">历史</button>
+                  <button class="action" data-clear="downloads">下载记录</button>
+                  <button class="action" data-clear="siteData">站点数据</button>
+                  <button class="action" data-clear="sitePermissions">站点权限</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      (function () {
+        var pending = {};
+        var seq = 1;
+        var snapshot = null;
+        var statusEl = document.getElementById('status');
+
+        function setStatus(text) {
+          statusEl.textContent = text || '';
+        }
+
+        function installFallbackBridge() {
+          if (window.OHBridge && typeof window.OHBridge.invoke === 'function') return;
+          if (!window.__ZZ_BRIDGE_API__) window.__ZZ_BRIDGE_API__ = {};
+          if (!window.__ZZ_BRIDGE_API__._bridge) window.__ZZ_BRIDGE_API__._bridge = {};
+          var bridge = window.__ZZ_BRIDGE_API__._bridge;
+          bridge.resolveWechatStyle = function (id, payload, ok) {
+            var item = pending[String(id || '')];
+            if (!item) return;
+            delete pending[String(id || '')];
+            if (ok) item.resolve(payload);
+            else item.reject(payload || { message: 'native_error' });
+          };
+          bridge.setCapabilities = function () {};
+          bridge.setDefaultTimeout = function () {};
+          bridge.setInvokerWaitTimeout = function () {};
+
+          window.OHBridge = {
+            ready: function () { return Promise.resolve(); },
+            invoke: function (method, params) {
+              return new Promise(function (resolve, reject) {
+                if (!window.OHNativeBridge || typeof window.OHNativeBridge.postMessage !== 'function') {
+                  reject({ message: 'OHNativeBridge not available' });
+                  return;
+                }
+                var id = 'settings_' + (seq++);
+                pending[id] = { resolve: resolve, reject: reject };
+                var json = '{}';
+                try { json = JSON.stringify(params || {}); } catch (_) {}
+                window.OHNativeBridge.postMessage(id, method, json);
+                setTimeout(function () {
+                  if (!pending[id]) return;
+                  delete pending[id];
+                  reject({ message: 'request_timeout' });
+                }, 8000);
+              });
+            }
+          };
+        }
+
+        function invoke(method, params) {
+          installFallbackBridge();
+          return window.OHBridge.ready({ timeout: 3000 })
+            .then(function () { return window.OHBridge.invoke(method, params || {}); });
+        }
+
+        function updateSettings(patch) {
+          setStatus('正在保存...');
+          return invoke('settings.update', patch)
+            .then(function (next) {
+              render(next);
+              setStatus('已保存');
+            })
+            .catch(function (err) {
+              setStatus('保存失败：' + ((err && err.message) || '未知错误'));
+            });
+        }
+
+        function render(nextSnapshot) {
+          snapshot = nextSnapshot;
+          var settings = (snapshot && snapshot.settings) || {};
+          var engines = (snapshot && snapshot.supportedSearchEngines) || [];
+          var engineSelect = document.getElementById('defaultSearchEngine');
+          engineSelect.innerHTML = '';
+          engines.forEach(function (engine) {
+            var option = document.createElement('option');
+            option.value = engine.id;
+            option.textContent = engine.name;
+            engineSelect.appendChild(option);
+          });
+          engineSelect.value = snapshot.defaultSearchEngineId || settings.defaultSearchEngineId || 'baidu';
+          document.getElementById('searchEngineDesc').textContent = '当前默认搜索引擎：' + (snapshot.defaultSearchEngineName || '-');
+
+          document.getElementById('startupBehavior').value = settings.startupBehavior || 'restore_session';
+          document.getElementById('homePageUrl').value = settings.homePageUrl || 'about:blank';
+          document.getElementById('javaScriptEnabled').checked = settings.javaScriptEnabled !== false;
+          document.getElementById('imagesEnabled').checked = settings.imagesEnabled !== false;
+          document.getElementById('doNotTrack').checked = settings.doNotTrack === true;
+          document.getElementById('cookiesEnabled').checked = settings.cookiesEnabled !== false;
+          document.getElementById('blockThirdPartyCookies').checked = settings.blockThirdPartyCookies === true;
+          document.getElementById('blockThirdPartyCookiesInPrivate').checked = settings.blockThirdPartyCookies === true;
+          document.getElementById('blockThirdPartyCookiesInPrivate').disabled = true;
+        }
+
+        function load() {
+          setStatus('正在加载设置...');
+          invoke('settings.getSnapshot')
+            .then(function (res) {
+              render(res);
+              setStatus('设置已加载');
+            })
+            .catch(function (err) {
+              setStatus('加载失败：' + ((err && err.message) || '未知错误'));
+            });
+        }
+
+        document.getElementById('defaultSearchEngine').onchange = function (event) {
+          updateSettings({ defaultSearchEngineId: event.target.value });
+        };
+        document.getElementById('startupBehavior').onchange = function (event) {
+          updateSettings({ startupBehavior: event.target.value });
+        };
+        document.getElementById('saveHomePage').onclick = function () {
+          updateSettings({ homePageUrl: document.getElementById('homePageUrl').value });
+        };
+        document.getElementById('resetHomePage').onclick = function () {
+          document.getElementById('homePageUrl').value = 'about:blank';
+          updateSettings({ homePageUrl: 'about:blank' });
+        };
+
+        [
+          'javaScriptEnabled',
+          'imagesEnabled',
+          'doNotTrack',
+          'cookiesEnabled',
+          'blockThirdPartyCookies'
+        ].forEach(function (key) {
+          document.getElementById(key).onchange = function (event) {
+            var patch = {};
+            patch[key] = event.target.checked;
+            updateSettings(patch);
+          };
+        });
+
+        Array.prototype.forEach.call(document.querySelectorAll('[data-clear]'), function (button) {
+          button.onclick = function () {
+            var type = button.getAttribute('data-clear');
+            var options = {};
+            if (type === 'all') {
+              options = { history: true, downloads: true, siteData: true, sitePermissions: true };
+            } else {
+              options[type] = true;
+            }
+            setStatus('正在清除...');
+            invoke('privacy.clearBrowsingData', options)
+              .then(function (result) {
+                setStatus(result && result.success ? '清除完成' : '部分数据清除失败');
+              })
+              .catch(function (err) {
+                setStatus('清除失败：' + ((err && err.message) || '未知错误'));
+              });
+          };
+        });
+
+        document.getElementById('nav').onclick = function (event) {
+          var target = event.target;
+          if (!target || !target.getAttribute('data-target')) return;
+          Array.prototype.forEach.call(document.querySelectorAll('.nav button'), function (btn) {
+            btn.classList.toggle('active', btn === target);
+          });
+          var section = document.getElementById(target.getAttribute('data-target'));
+          if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        installFallbackBridge();
+        load();
+      })();
+    </script>
+  </body>
+</html>

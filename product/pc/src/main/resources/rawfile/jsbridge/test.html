@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OH Browser - JSBridge Test</title>
+    <style>
+      body { font-family: -apple-system, system-ui, sans-serif; padding: 12px; }
+      .row { margin: 10px 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      button { padding: 8px 12px; }
+      .muted { opacity: 0.7; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+      pre { background: #111; color: #eee; padding: 10px; overflow: auto; border-radius: 8px; min-height: 220px; }
+      progress { width: 260px; max-width: 100%; height: 14px; }
+    </style>
+  </head>
+  <body>
+    <h2>JSBridge Test (rawfile)</h2>
+    <div class="muted">核心演示：API 调用（JS -> Native）+ 事件（Native -> H5）。</div>
+
+    <div class="row">
+      <button id="btnPing">ping: OHBridge.invoke('browser.ping')</button>
+      <button id="btnSys">systemInfo: OHBridge.invoke('system.getSystemInfo')</button>
+      <button id="btnClear">Clear Log</button>
+    </div>
+
+    <div class="row">
+      <div>OHBridge: <code id="zzStatus">-</code></div>
+      <div>OHNativeBridge: <code id="nbStatus">-</code></div>
+      <div>invokerBound: <code id="invokerStatus">-</code></div>
+    </div>
+
+    <div class="row">
+      <div>download:progress</div>
+      <progress id="dlBar" max="100" value="0"></progress>
+      <code id="dlText">0%</code>
+    </div>
+
+    <pre id="log"></pre>
+
+    <script>
+      (function () {
+        var logEl = document.getElementById('log');
+        var subscribed = false;
+
+        function nowHHMMSS() {
+          var d = new Date();
+          var hh = String(d.getHours()).padStart(2, '0');
+          var mm = String(d.getMinutes()).padStart(2, '0');
+          var ss = String(d.getSeconds()).padStart(2, '0');
+          return hh + ':' + mm + ':' + ss;
+        }
+
+        function log() {
+          var s = Array.prototype.slice.call(arguments).map(function (x) {
+            try { return typeof x === 'string' ? x : JSON.stringify(x); } catch (_) { return String(x); }
+          }).join(' ');
+          logEl.textContent += '[' + nowHHMMSS() + '] ' + s + "\n";
+          logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function getBridge() {
+          try {
+            var api = window.__ZZ_BRIDGE_API__;
+            return api && api._bridge ? api._bridge : null;
+          } catch (_) {
+            return null;
+          }
+        }
+
+        function refreshStatus() {
+          document.getElementById('zzStatus').textContent = (window.OHBridge && typeof window.OHBridge.invoke === 'function') ? 'ok' : 'missing';
+          document.getElementById('nbStatus').textContent = (window.OHNativeBridge && typeof window.OHNativeBridge.postMessage === 'function') ? 'ok' : 'missing';
+          var b = getBridge();
+          document.getElementById('invokerStatus').textContent = (b && b._nativeInvokerBound) ? 'true' : 'false';
+        }
+
+        function ensureReady() {
+          if (!window.OHBridge || typeof window.OHBridge.ready !== 'function') {
+            throw new Error('OHBridge sdk not injected');
+          }
+          return window.OHBridge.ready({ timeout: 3000 });
+        }
+
+        function invoke(method) {
+          log('call', method);
+          return ensureReady()
+            .then(function () { return window.OHBridge.invoke(method); })
+            .then(function (res) { log('ok', res); })
+            .catch(function (e) { log('fail', e && (e.message || e), e && e.code); });
+        }
+
+        function subscribeEventsOnce() {
+          if (subscribed) return true;
+          if (!window.OHBridge || typeof window.OHBridge.on !== 'function') return false;
+
+          var dlBar = document.getElementById('dlBar');
+          var dlText = document.getElementById('dlText');
+
+          window.OHBridge.on('native:test', function (e) {
+            log('event native:test', e);
+          });
+          window.OHBridge.on('app:foreground', function (e) {
+            log('event app:foreground', e);
+          });
+          window.OHBridge.on('download:progress', function (e) {
+            try {
+              var p = e && e.data && typeof e.data.percent === 'number' ? e.data.percent : 0;
+              dlBar.value = p;
+              dlText.textContent = String(p) + '%';
+            } catch (_) {}
+            log('event download:progress', e);
+          });
+
+          subscribed = true;
+          log('event subscribed');
+          return true;
+        }
+
+        // Injection timing can vary; poll a bit so the test is stable.
+        (function pollSubscribe() {
+          var start = Date.now();
+          var timer = setInterval(function () {
+            if (subscribeEventsOnce()) {
+              clearInterval(timer);
+              return;
+            }
+            if (Date.now() - start > 3000) {
+              clearInterval(timer);
+              log('event subscribe timeout: OHBridge not ready');
+            }
+          }, 100);
+        })();
+
+        document.getElementById('btnPing').onclick = function () {
+          invoke('browser.ping');
+        };
+        document.getElementById('btnSys').onclick = function () {
+          invoke('system.getSystemInfo');
+        };
+        document.getElementById('btnClear').onclick = function () {
+          logEl.textContent = '';
+        };
+
+        refreshStatus();
+        setInterval(refreshStatus, 500);
+
+        log('page ready');
+      })();
+    </script>
+  </body>
+</html>

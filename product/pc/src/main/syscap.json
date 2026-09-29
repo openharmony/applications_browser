@@ -1,0 +1,24 @@
+{
+  "devices": {
+    "general": ["default", "tablet"]
+  },
+  "production": {
+    "removedSysCaps": [
+      "SystemCapability.Multimedia.Media.AVTranscoder",
+      "SystemCapability.Communication.Bluetooth.Core", 
+      "SystemCapability.HiviewDFX.HiDumper",
+      "SystemCapability.ArkUi.Graphics3D",
+      "SystemCapability.DistributedHardware.DeviceManager",
+      "SystemCapability.Multimedia.Drm.Core",
+      "SystemCapability.Advertising.Ads",
+      "SystemCapability.Security.DeviceAuth",
+      "SystemCapability.Customization.EnterpriseDeviceManager",
+      "SystemCapability.DistributedDataManager.DataObject.DistributedObject",
+      "SystemCapability.Multimedia.AVSession.AVInputCast",
+      "SystemCapability.HiviewDFX.HiRetrieval",
+      "SystemCapability.Communication.WiFi.P2P",
+      "SystemCapability.DistributedDataManager.KVStore.Core",
+      "SystemCapability.Applications.IntelligentScene"
+    ]
+  }
+}
