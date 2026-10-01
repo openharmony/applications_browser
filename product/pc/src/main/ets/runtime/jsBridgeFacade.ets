@@ -46,7 +46,7 @@ class OHNativeBridgeProxy {
 }
 
 // Some ArkWeb SDK versions do not expose deleteJavaScriptRegister on the typed WebviewController.
-// Keep a minimal compatibility surface via an interface cast.
+// Keep a minimal compatibility contract via an interface cast.
 interface WebviewControllerCompat {
   deleteJavaScriptRegister(name: string): void;
 }
@@ -82,14 +82,22 @@ export class JSBridgeFacade {
     this.enabled = options.enabled === true;
     this.autoExposeAliases = Array.isArray(options.autoExposeAliases) ? options.autoExposeAliases : ['OHBridge'];
     this.overrideExistingGlobals = options.overrideExistingGlobals === true;
-    this.allowedHosts = new Set((options.allowedHosts || []).map(h => String(h || '').trim().toLowerCase()).filter(Boolean));
+    this.allowedHosts = new Set(
+      (options.allowedHosts || []).map(h => String(h || '').trim().toLowerCase()).filter(Boolean)
+    );
 
     this.capabilityGateEnabled = options.capabilityGateEnabled !== false;
-    this.capabilities = new Set((options.capabilities || []).map(m => String(m || '').trim()).filter(Boolean));
+    this.capabilities = new Set(
+      (options.capabilities || []).map(m => String(m || '').trim()).filter(Boolean)
+    );
     this.dispatcher.setAllowedMethods(Array.from(this.capabilities.values()));
     this.dispatcher.setGateEnabled(this.capabilityGateEnabled);
-    this.defaultTimeoutMs = typeof options.defaultTimeoutMs === 'number' ? Math.max(0, Math.floor(options.defaultTimeoutMs)) : 10000;
-    this.invokerWaitTimeoutMs = typeof options.invokerWaitTimeoutMs === 'number' ? Math.max(0, Math.floor(options.invokerWaitTimeoutMs)) : 3000;
+    this.defaultTimeoutMs = typeof options.defaultTimeoutMs === 'number'
+      ? Math.max(0, Math.floor(options.defaultTimeoutMs))
+      : 10000;
+    this.invokerWaitTimeoutMs = typeof options.invokerWaitTimeoutMs === 'number'
+      ? Math.max(0, Math.floor(options.invokerWaitTimeoutMs))
+      : 3000;
 
     this.registerBuiltinHandlers();
     this.ensureMinimumCapabilities();
@@ -99,9 +107,13 @@ export class JSBridgeFacade {
   // Keep it public so ArkTS visibility rules allow the proxy object to invoke it,
   // but treat it as an internal API.
   handleProxyMessage(id: string, method: string, paramsJson: string): void {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
     const url = this.currentUrl;
-    if (!this.isUrlAllowed(url)) return;
+    if (!this.isUrlAllowed(url)) {
+      return;
+    }
 
     this.dispatcher.dispatch(method, paramsJson, url)
       .then((res: DispatchResult) => this.sendResponse(id, res))
@@ -143,9 +155,15 @@ export class JSBridgeFacade {
   private ensureMinimumCapabilities(): void {
     // If JSBridge is enabled but caller did not provide any capabilities,
     // expose a minimal non-sensitive set to avoid ready(waitForCapabilities) hanging.
-    if (!this.enabled) return;
-    if (!this.capabilityGateEnabled) return;
-    if (this.capabilities.size > 0) return;
+    if (!this.enabled) {
+      return;
+    }
+    if (!this.capabilityGateEnabled) {
+      return;
+    }
+    if (this.capabilities.size > 0) {
+      return;
+    }
     this.capabilities.add('browser.ping');
     this.capabilities.add('system.getSystemInfo');
     this.dispatcher.setAllowedMethods(Array.from(this.capabilities.values()));
@@ -162,9 +180,13 @@ export class JSBridgeFacade {
   // Native -> H5 event emission (browser-grade, best-effort).
   // dataJson must be a JSON literal string (e.g. '{"a":1}' or 'null').
   emitEvent(name: string, dataJson: string = 'null'): void {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
     const url = this.currentUrl;
-    if (!this.isUrlAllowed(url)) return;
+    if (!this.isUrlAllowed(url)) {
+      return;
+    }
 
     const nameJson = JSON.stringify(String(name || ''));
     const payload = (dataJson && dataJson.trim()) ? dataJson : 'null';
@@ -181,10 +203,11 @@ export class JSBridgeFacade {
       `  } catch (_) {}\n` +
       `  // If binder isn't installed yet, queue events so they can be flushed later.\n` +
       `  try {\n` +
-      `    if (!window.__ZZ_PENDING_EVENTS__) window.__ZZ_PENDING_EVENTS__ = [];\n` +
+      `    if (!window.__ZZ_PENDING_EVENTS__) { window.__ZZ_PENDING_EVENTS__ = []; }\n` +
       `    window.__ZZ_PENDING_EVENTS__.push({ name: ${nameJson}, data: ${payload} });\n` +
       `  } catch (_) {}\n` +
-      `  try { if (typeof window.__ZZ_FLUSH_EVENTS__ === 'function') window.__ZZ_FLUSH_EVENTS__(); } catch (_) {}\n` +
+      `  try { if (typeof window.__ZZ_FLUSH_EVENTS__ === 'function') { ` +
+      `window.__ZZ_FLUSH_EVENTS__(); } } catch (_) {}\n` +
       `})();`;
 
     this.runJavaScriptSafely(script);
@@ -218,11 +241,15 @@ export class JSBridgeFacade {
     if (url.startsWith('about:') || url.startsWith('file://') || url.startsWith('resource://')) {
       return true;
     }
-    if (this.allowedHosts.size === 0) return true;
+    if (this.allowedHosts.size === 0) {
+      return true;
+    }
     // URL parsing in ArkTS runtime may differ; keep it simple and defensive.
     try {
       const m = String(url || '').match(/^https?:\/\/([^\/]+)/i);
-      if (!m || !m[1]) return false;
+      if (!m || !m[1]) {
+        return false;
+      }
       const host = String(m[1]).split(':')[0].toLowerCase();
       return this.allowedHosts.has(host);
     } catch (_) {
@@ -231,8 +258,12 @@ export class JSBridgeFacade {
   }
 
   private tryInstall(url: string, isFallback: boolean): void {
-    if (!this.enabled) return;
-    if (!this.isUrlAllowed(url)) return;
+    if (!this.enabled) {
+      return;
+    }
+    if (!this.isUrlAllowed(url)) {
+      return;
+    }
 
     // 1) Ensure JS->Native proxy exists.
     this.ensureProxyRegistered();
@@ -244,7 +275,9 @@ export class JSBridgeFacade {
 
   private ensureProxyRegistered(): void {
     const permission = this.buildJavaScriptProxyPermission(this.currentUrl, this.proxyWildcardSupported);
-    if (this.proxyRegistered && this.proxyPermissionJson === permission) return;
+    if (this.proxyRegistered && this.proxyPermissionJson === permission) {
+      return;
+    }
 
     // Re-register when policy changes (e.g. InternalOnly -> OpenAll) so https pages can receive proxy.
     if (this.proxyRegistered) {
@@ -299,7 +332,8 @@ export class JSBridgeFacade {
   private buildJavaScriptProxyPermission(url: string, includeWildcard: boolean = true): string {
     // Permission JSON is a string; build it manually to avoid ArkTS object-literal restrictions.
     // Reference shape:
-    // {"javascriptProxyPermission":{"urlPermissionList":[...],"methodList":[{"methodName":"postMessage","urlPermissionList":[...]}]}}
+    // {"javascriptProxyPermission":{"urlPermissionList":[...],
+    // "methodList":[{"methodName":"postMessage","urlPermissionList":[...]}]}}
 
     const perms: string[] = [];
     // Always allow internal rawfile pages.
@@ -313,7 +347,9 @@ export class JSBridgeFacade {
     } else if (this.allowedHosts.size > 0) {
       this.allowedHosts.forEach((h: string) => {
         const host = String(h || '').trim().toLowerCase();
-        if (!host) return;
+        if (!host) {
+          return;
+        }
         perms.push('{"scheme":"https","host":' + JSON.stringify(host) + ',"port":"","path":""}');
         perms.push('{"scheme":"http","host":' + JSON.stringify(host) + ',"port":"","path":""}');
       });
@@ -327,7 +363,9 @@ export class JSBridgeFacade {
         const scheme = String(m[1]).toLowerCase();
         const host = String(m[2]).split(':')[0].toLowerCase();
         if (scheme && host) {
-          perms.push('{"scheme":' + JSON.stringify(scheme) + ',"host":' + JSON.stringify(host) + ',"port":"","path":""}');
+          const permission = '{"scheme":' + JSON.stringify(scheme) +
+            ',"host":' + JSON.stringify(host) + ',"port":"","path":""}';
+          perms.push(permission);
         }
       }
     } catch (_) {
@@ -335,7 +373,8 @@ export class JSBridgeFacade {
 
     const urlPermJson = '[' + perms.join(',') + ']';
     const methodListJson = '[{"methodName":"postMessage","urlPermissionList":' + urlPermJson + '}]';
-    return '{"javascriptProxyPermission":{"urlPermissionList":' + urlPermJson + ',"methodList":' + methodListJson + '}}';
+    return '{"javascriptProxyPermission":{"urlPermissionList":' + urlPermJson +
+      ',"methodList":' + methodListJson + '}}';
   }
 
   private injectScripts(isFallback: boolean): void {
@@ -346,7 +385,9 @@ export class JSBridgeFacade {
 
     // On fallback injection, we only re-run binder (idempotent) to reduce overhead.
     const script = isFallback ? binder : (guardedSdk + '\n' + binder);
-    if (!script.trim()) return;
+    if (!script.trim()) {
+      return;
+    }
 
     this.runJavaScriptSafely(script);
   }
@@ -361,7 +402,7 @@ export class JSBridgeFacade {
     // Also set __ZZ_BRIDGE_SDK_CONFIG__ before SDK runs so it can honor alias/override settings.
     return `;(function(){\n` +
       `  try { window.__ZZ_BRIDGE_SDK_CONFIG__ = ${cfgJson}; } catch (_) {}\n` +
-      `  try { if (window.__ZZ_BRIDGE_API__) return; } catch (_) {}\n` +
+      `  try { if (window.__ZZ_BRIDGE_API__) { return; } } catch (_) {}\n` +
       `  ${sdkSource}\n` +
       `})();`;
   }
@@ -379,18 +420,20 @@ export class JSBridgeFacade {
     return `;(function(){\n` +
       `  function bindOnce(api){\n` +
       `    try {\n` +
-      `      if (!api || !api._bridge) return false;\n` +
+      `      if (!api || !api._bridge) { return false; }\n` +
       `      var b = api._bridge;\n` +
       `      if (typeof b.setInvoker === 'function') {\n` +
       `        // Always (re)bind invoker: policies/tokens/capabilities may change per navigation.\n` +
       `        b.setInvoker(function(payload){\n` +
       `          try {\n` +
       `            if (!window.OHNativeBridge || typeof window.OHNativeBridge.postMessage !== 'function') {\n` +
-      `              // Fail fast to avoid hanging until TIMEOUT when JSProxy is not available due to permission/policy.\n` +
+      `              // Fail fast to avoid hanging until TIMEOUT when JSProxy is not ` +
+      `available due to permission/policy.\n` +
       `              try {\n` +
       `                var rid = payload && payload.id ? String(payload.id) : '';\n` +
       `                if (rid && b && typeof b.resolveWechatStyle === 'function') {\n` +
-      `                  b.resolveWechatStyle(rid, {"code":-32000,"message":"OHNativeBridge not available"}, false);\n` +
+      `                  b.resolveWechatStyle(rid, {"code":-32000,"message":"OHNativeBridge ` +
+      `not available"}, false);\n` +
       `                }\n` +
       `              } catch (_) {}\n` +
       `              return;\n` +
@@ -404,12 +447,14 @@ export class JSBridgeFacade {
       `        });\n` +
       `        b._nativeInvokerBound = true;\n` +
       `      }\n` +
-      `      try { if (typeof b.setDefaultTimeout === 'function') b.setDefaultTimeout(${defaultTimeout}); } catch (_) {}\n` +
-      `      try { if (typeof b.setInvokerWaitTimeout === 'function') b.setInvokerWaitTimeout(${invokerWait}); } catch (_) {}\n` +
-      `      try { if (typeof b.setCapabilities === 'function') b.setCapabilities(${capsJson}); } catch (_) {}\n` +
+      `      try { if (typeof b.setDefaultTimeout === 'function') { ` +
+      `b.setDefaultTimeout(${defaultTimeout}); } } catch (_) {}\n` +
+      `      try { if (typeof b.setInvokerWaitTimeout === 'function') { ` +
+      `b.setInvokerWaitTimeout(${invokerWait}); } } catch (_) {}\n` +
+      `      try { if (typeof b.setCapabilities === 'function') { b.setCapabilities(${capsJson}); } } catch (_) {}\n` +
       `      // Install a stable Native->H5 event dispatcher with queueing.\n` +
       `      try {\n` +
-      `        if (!window.__ZZ_PENDING_EVENTS__) window.__ZZ_PENDING_EVENTS__ = [];\n` +
+      `        if (!window.__ZZ_PENDING_EVENTS__) { window.__ZZ_PENDING_EVENTS__ = []; }\n` +
       `        if (typeof window.__ZZ_DISPATCH_EVENT__ !== 'function') {\n` +
       `          window.__ZZ_DISPATCH_EVENT__ = function(name, data){\n` +
       `            try {\n` +
@@ -423,9 +468,9 @@ export class JSBridgeFacade {
       `          window.__ZZ_FLUSH_EVENTS__ = function(){\n` +
       `            try {\n` +
       `              var b3 = window.__ZZ_BRIDGE_API__ && window.__ZZ_BRIDGE_API__._bridge;\n` +
-      `              if (!b3 || typeof b3.emit !== 'function') return;\n` +
+      `              if (!b3 || typeof b3.emit !== 'function') { return; }\n` +
       `              var q = window.__ZZ_PENDING_EVENTS__ || [];\n` +
-      `              if (!q.length) return;\n` +
+      `              if (!q.length) { return; }\n` +
       `              window.__ZZ_PENDING_EVENTS__ = [];\n` +
       `              for (var i=0;i<q.length;i++){\n` +
       `                try { b3.emit(String(q[i].name||''), q[i].data); } catch (_) {}\n` +
@@ -468,9 +513,13 @@ export class JSBridgeFacade {
     const keys: string[] = [];
     this.capabilities.forEach((k: string) => {
       const s = String(k || '').trim();
-      if (s) keys.push(s);
+      if (s) {
+        keys.push(s);
+      }
     });
-    if (keys.length === 0) return '{}';
+    if (keys.length === 0) {
+      return '{}';
+    }
 
     const parts: string[] = [];
     for (let i = 0; i < keys.length; i++) {
@@ -492,7 +541,9 @@ export class JSBridgeFacade {
       `      return;\n` +
       `    }\n` +
       `    if (b && typeof b.resolve === 'function') {\n` +
-      `      var wrapped = ${isSuccess} ? { ok: true, data: ${payloadJson} } : { ok: false, code: (${payloadJson}).code || -1, message: (${payloadJson}).message || 'Error' };\n` +
+      `      var wrapped = ${isSuccess} ? { ok: true, data: ${payloadJson} } : ` +
+      `{ ok: false, code: (${payloadJson}).code || -1, ` +
+      `message: (${payloadJson}).message || 'Error' };\n` +
       `      b.resolve(${idJson}, wrapped);\n` +
       `      return;\n` +
       `    }\n` +

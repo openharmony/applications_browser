@@ -61,7 +61,9 @@ export class PermissionService {
       );
       const authResults: number[] = result && Array.isArray(result.authResults) ? result.authResults : [];
       this.trace('SYSTEM_PERMISSION_RESULT', pendingPermissions,
-        `requestCode=${requestCode} authResults=${authResults.map((value: number) => String(value)).join(',') || 'empty'}`);
+        `requestCode=${requestCode} authResults=${authResults.map(
+          (value: number) => String(value)
+        ).join(',') || 'empty'}`);
 
       // The post-request AT state is authoritative; callback values alone can
       // be incomplete on some platform versions.

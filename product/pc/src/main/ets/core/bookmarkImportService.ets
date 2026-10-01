@@ -3,7 +3,14 @@
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { picker, fileIo as fs } from '@kit.CoreFileKit';
-import { BookmarkImportResult, BookmarkImportTarget, BookmarkManager, ImportedBookmarkEntry, ImportedBookmarkFolder, ImportedBookmarkItem } from './bookmarkManager';
+import {
+  BookmarkImportResult,
+  BookmarkImportTarget,
+  BookmarkManager,
+  ImportedBookmarkEntry,
+  ImportedBookmarkFolder,
+  ImportedBookmarkItem,
+} from './bookmarkManager';
 
 export interface BookmarkImportPreview {
   entries: ImportedBookmarkEntry[];
@@ -16,7 +23,8 @@ interface MutableImportedBookmarkFolder extends ImportedBookmarkFolder {
 }
 
 export class BookmarkImportService {
-  private readonly tokenPattern: RegExp = /<DT>\s*<H3\b[^>]*>[\s\S]*?<\/H3>|<DT>\s*<A\b[^>]*>[\s\S]*?<\/A>|<DL\b[^>]*>|<\/DL>/gi;
+  private readonly tokenPattern: RegExp =
+    /<DT>\s*<H3\b[^>]*>[\s\S]*?<\/H3>|<DT>\s*<A\b[^>]*>[\s\S]*?<\/A>|<DL\b[^>]*>|<\/DL>/gi;
 
   async importFromPicker(context: object, bookmarkManager?: BookmarkImportTarget): Promise<BookmarkImportResult> {
     const fileUri = await this.pickHtmlFile(context);

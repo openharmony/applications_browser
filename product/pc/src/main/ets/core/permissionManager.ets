@@ -105,7 +105,9 @@ export class PermissionManager {
         updatedAt: Date.now(),
       });
     } else if (rememberChoice) {
-      this.siteSettingsManager.setPermissionSetting(entry.request.origin, entry.request.permissionType, decision, 'user');
+      this.siteSettingsManager.setPermissionSetting(
+        entry.request.origin, entry.request.permissionType, decision, 'user'
+      );
     }
 
     const result = this.buildResult(entry.request, decision, rememberChoice, 'prompt');

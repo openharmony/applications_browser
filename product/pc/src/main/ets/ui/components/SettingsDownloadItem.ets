@@ -36,17 +36,29 @@ export struct SettingsDownloadItem {
 
   private getStatusBackground(): string {
     const task = this.currentTask();
-    if (task.state === 'completed') return '#e8f5e9';
-    if (task.state === 'downloading' || task.state === 'pending') return '#e3f2fd';
-    if (task.state === 'failed') return '#ffebee';
+    if (task.state === 'completed') {
+      return '#e8f5e9';
+    }
+    if (task.state === 'downloading' || task.state === 'pending') {
+      return '#e3f2fd';
+    }
+    if (task.state === 'failed') {
+      return '#ffebee';
+    }
     return '#f0f2f5';
   }
 
   private getStatusColor(): string {
     const task = this.currentTask();
-    if (task.state === 'completed') return '#388e3c';
-    if (task.state === 'downloading' || task.state === 'pending') return '#1976d2';
-    if (task.state === 'failed') return '#d32f2f';
+    if (task.state === 'completed') {
+      return '#388e3c';
+    }
+    if (task.state === 'downloading' || task.state === 'pending') {
+      return '#1976d2';
+    }
+    if (task.state === 'failed') {
+      return '#d32f2f';
+    }
     return '#666666';
   }
 

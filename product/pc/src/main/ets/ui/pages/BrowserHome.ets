@@ -40,7 +40,10 @@ export struct BrowserHome {
               .fontSize(20)
               .fontColor('#ffffff');
 
-            Text('不会保存浏览历史、Cookie、站点数据或表单输入。下载的文件和创建的书签仍会保留。')
+            Text(
+              '不会保存浏览历史、Cookie、站点数据或表单输入。' +
+              '下载的文件和创建的书签仍会保留。'
+            )
               .fontSize(13)
               .fontColor('#d7dce5')
               .textAlign(TextAlign.Center)
@@ -58,7 +61,10 @@ export struct BrowserHome {
             .margin({ right: 12 })
             .opacity(this.isPrivate ? 0.82 : 0.68);
 
-          TextInput({ text: this.searchText, placeholder: this.isPrivate ? '无痕搜索或输入网址' : '搜索或输入网址' })
+          TextInput({
+            text: this.searchText,
+            placeholder: this.isPrivate ? '无痕搜索或输入网址' : '搜索或输入网址'
+          })
             .layoutWeight(1)
             .fontSize(15)
             .backgroundColor('#00000000')

@@ -83,20 +83,42 @@ class SettingsBridgeHandlers {
     const patch: SettingsPatch = {};
     const searchEngineId = this.readSearchEngineId(params.defaultSearchEngineId);
     const startupBehavior = this.readStartupBehavior(params.startupBehavior);
-    if (searchEngineId) patch.defaultSearchEngineId = searchEngineId;
-    if (typeof params.defaultZoomPercent === 'number') patch.defaultZoomPercent = params.defaultZoomPercent;
-    if (typeof params.downloadDirectoryUri === 'string') patch.downloadDirectoryUri = params.downloadDirectoryUri;
+    if (searchEngineId) {
+      patch.defaultSearchEngineId = searchEngineId;
+    }
+    if (typeof params.defaultZoomPercent === 'number') {
+      patch.defaultZoomPercent = params.defaultZoomPercent;
+    }
+    if (typeof params.downloadDirectoryUri === 'string') {
+      patch.downloadDirectoryUri = params.downloadDirectoryUri;
+    }
     if (typeof params.showDownloadsWhenFinished === 'boolean') {
       patch.showDownloadsWhenFinished = params.showDownloadsWhenFinished;
     }
-    if (typeof params.homePageUrl === 'string') patch.homePageUrl = params.homePageUrl;
-    if (startupBehavior) patch.startupBehavior = startupBehavior;
-    if (typeof params.javaScriptEnabled === 'boolean') patch.javaScriptEnabled = params.javaScriptEnabled;
-    if (typeof params.imagesEnabled === 'boolean') patch.imagesEnabled = params.imagesEnabled;
-    if (typeof params.doNotTrack === 'boolean') patch.doNotTrack = params.doNotTrack;
-    if (typeof params.cookiesEnabled === 'boolean') patch.cookiesEnabled = params.cookiesEnabled;
-    if (typeof params.blockThirdPartyCookies === 'boolean') patch.blockThirdPartyCookies = params.blockThirdPartyCookies;
-    if (typeof params.blockThirdPartyCookiesInPrivate === 'boolean') patch.blockThirdPartyCookiesInPrivate = params.blockThirdPartyCookiesInPrivate;
+    if (typeof params.homePageUrl === 'string') {
+      patch.homePageUrl = params.homePageUrl;
+    }
+    if (startupBehavior) {
+      patch.startupBehavior = startupBehavior;
+    }
+    if (typeof params.javaScriptEnabled === 'boolean') {
+      patch.javaScriptEnabled = params.javaScriptEnabled;
+    }
+    if (typeof params.imagesEnabled === 'boolean') {
+      patch.imagesEnabled = params.imagesEnabled;
+    }
+    if (typeof params.doNotTrack === 'boolean') {
+      patch.doNotTrack = params.doNotTrack;
+    }
+    if (typeof params.cookiesEnabled === 'boolean') {
+      patch.cookiesEnabled = params.cookiesEnabled;
+    }
+    if (typeof params.blockThirdPartyCookies === 'boolean') {
+      patch.blockThirdPartyCookies = params.blockThirdPartyCookies;
+    }
+    if (typeof params.blockThirdPartyCookiesInPrivate === 'boolean') {
+      patch.blockThirdPartyCookiesInPrivate = params.blockThirdPartyCookiesInPrivate;
+    }
     return patch;
   }
 

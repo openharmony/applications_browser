@@ -76,7 +76,8 @@ export class BookmarkExportService {
       const indent = this.indent(depth);
       if (node.type === 'folder') {
         lines.push(
-          `${indent}<DT><H3${this.buildTimestampAttributes(node.createdAt, node.updatedAt)}>${this.escapeHtml(node.title)}</H3>`,
+          `${indent}<DT><H3${this.buildTimestampAttributes(node.createdAt, node.updatedAt)}>` +
+            `${this.escapeHtml(node.title)}</H3>`,
         );
         lines.push(`${indent}<DL><p>`);
         this.appendNodes(lines, node.children, depth + 1);

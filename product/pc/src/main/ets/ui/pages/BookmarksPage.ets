@@ -102,7 +102,7 @@ export struct BookmarksPage {
 
     if (item.url) {
       this.pendingUrl = item.url;
-      this.route = AppRouter.Browser;
+      this.route = AppRouter.browser;
     }
   }
 
@@ -172,7 +172,9 @@ export struct BookmarksPage {
       const result = await this.viewModel.importFromPicker(context);
       this.applyState(this.viewModel.getViewState());
       this.statusMessage =
-        `导入完成：新增文件夹 ${result.importedFolders} 个，新增书签 ${result.importedBookmarks} 条，更新书签 ${result.updatedBookmarks} 条，跳过 ${result.skippedBookmarks} 条。`;
+        `导入完成：新增文件夹 ${result.importedFolders} 个，` +
+        `新增书签 ${result.importedBookmarks} 条，更新书签 ${result.updatedBookmarks} 条，` +
+        `跳过 ${result.skippedBookmarks} 条。`;
     } catch (error) {
       const err = error as Error;
       this.statusMessage = err.message ? `导入失败：${err.message}` : '导入失败';
@@ -195,7 +197,8 @@ export struct BookmarksPage {
       }
       const result = await this.viewModel.exportToPicker(context);
       this.statusMessage =
-        `导出完成：文件夹 ${result.totalFolders} 个，书签 ${result.totalBookmarks} 条，已保存到 ${result.fileUri}。`;
+        `导出完成：文件夹 ${result.totalFolders} 个，书签 ${result.totalBookmarks} 条，` +
+        `已保存到 ${result.fileUri}。`;
     } catch (error) {
       const err = error as Error;
       this.statusMessage = err.message ? `导出失败：${err.message}` : '导出失败';
@@ -294,7 +297,7 @@ export struct BookmarksPage {
           .fontColor('#374151')
           .borderRadius(17)
           .onClick(() => {
-            this.route = AppRouter.Browser;
+            this.route = AppRouter.browser;
           });
 
         Text(`书签 ${this.viewState.totalCount}`)
@@ -437,7 +440,11 @@ export struct BookmarksPage {
             .fontWeight(FontWeight.Medium)
             .fontColor('#111827');
 
-          Text(this.viewState.isRootFolder ? '在浏览页收藏当前页面，或导入带文件夹层级的 bookmarks.html。' : '这个文件夹还没有内容。')
+          Text(
+            this.viewState.isRootFolder
+              ? '在浏览页收藏当前页面，或导入带文件夹层级的 bookmarks.html。'
+              : '这个文件夹还没有内容。'
+          )
             .fontSize(13)
             .fontColor('#6b7280');
         }

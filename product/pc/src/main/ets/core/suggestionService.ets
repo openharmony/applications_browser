@@ -14,7 +14,12 @@ export class SuggestionService {
     this.addressInputResolver = addressInputResolver ?? new AddressInputResolver();
   }
 
-  buildSuggestions(input: string, bookmarkItems: BookmarkItem[], historyItems: HistoryItem[], context: AddressSuggestionContext): AddressSuggestion[] {
+  buildSuggestions(
+    input: string,
+    bookmarkItems: BookmarkItem[],
+    historyItems: HistoryItem[],
+    context: AddressSuggestionContext,
+  ): AddressSuggestion[] {
     const trimmedInput = input.trim();
     if (!trimmedInput) {
       return [];
@@ -36,7 +41,11 @@ export class SuggestionService {
    * 让这类行仍能显示收藏夹/历史记录图标。收藏优先于历史，与去重时书签行
    * 先于历史行的既定顺序保持一致。
    */
-  private applyMembershipIcons(suggestions: AddressSuggestion[], bookmarkItems: BookmarkItem[], historyItems: HistoryItem[]): void {
+  private applyMembershipIcons(
+    suggestions: AddressSuggestion[],
+    bookmarkItems: BookmarkItem[],
+    historyItems: HistoryItem[],
+  ): void {
     const bookmarkUrls: Set<string> = new Set();
     bookmarkItems.forEach((bookmark: BookmarkItem): void => {
       const key = normalizeHttpUrlForStorage(bookmark.url);
@@ -126,7 +135,11 @@ export class SuggestionService {
     });
   }
 
-  private pushBookmarkSuggestions(suggestions: AddressSuggestion[], input: string, bookmarkItems: BookmarkItem[]): void {
+  private pushBookmarkSuggestions(
+    suggestions: AddressSuggestion[],
+    input: string,
+    bookmarkItems: BookmarkItem[],
+  ): void {
     const matchedBookmarks = bookmarkItems
       .filter((bookmark: BookmarkItem): boolean => this.matchesInput(input, bookmark.title, bookmark.url))
       .sort((left: BookmarkItem, right: BookmarkItem): number => {

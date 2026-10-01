@@ -37,36 +37,62 @@ export struct DevLauncherPage {
 
   private getAppModeText(): string {
     const mode = this.debugGate.getAppMode();
-    if (mode === 'dev') return 'DEV';
-    if (mode === 'internal') return 'INTERNAL';
+    if (mode === 'dev') {
+      return 'DEV';
+    }
+    if (mode === 'internal') {
+      return 'INTERNAL';
+    }
     return 'PROD';
   }
 
   private getJsBridgeModeText(): string {
     const mode = JSBridgePolicyManager.getInstance().getMode();
-    if (mode === JSBridgePolicyMode.OpenAll) return 'OpenAll';
-    if (mode === JSBridgePolicyMode.Allowlist) return 'Allowlist';
+    if (mode === JSBridgePolicyMode.OpenAll) {
+      return 'OpenAll';
+    }
+    if (mode === JSBridgePolicyMode.Allowlist) {
+      return 'Allowlist';
+    }
     return 'InternalOnly';
   }
 
   private getCategoryTitle(category: DevLauncherCategory): string {
-    if (category === 'page') return '页面入口';
-    if (category === 'site') return '站点入口';
-    if (category === 'bookmark') return '书签调试';
-    if (category === 'toggle') return '能力开关';
-    if (category === 'diagnostic') return '诊断工具';
+    if (category === 'page') {
+      return '页面入口';
+    }
+    if (category === 'site') {
+      return '站点入口';
+    }
+    if (category === 'bookmark') {
+      return '书签调试';
+    }
+    if (category === 'toggle') {
+      return '能力开关';
+    }
+    if (category === 'diagnostic') {
+      return '诊断工具';
+    }
     return '高风险操作';
   }
 
   private getRiskLabel(riskLevel: DevLauncherRiskLevel): string {
-    if (riskLevel === 'high') return '高风险';
-    if (riskLevel === 'medium') return '中风险';
+    if (riskLevel === 'high') {
+      return '高风险';
+    }
+    if (riskLevel === 'medium') {
+      return '中风险';
+    }
     return '低风险';
   }
 
   private getRiskColor(riskLevel: DevLauncherRiskLevel): string {
-    if (riskLevel === 'high') return '#dc2626';
-    if (riskLevel === 'medium') return '#d97706';
+    if (riskLevel === 'high') {
+      return '#dc2626';
+    }
+    if (riskLevel === 'medium') {
+      return '#d97706';
+    }
     return '#2563eb';
   }
 
@@ -206,7 +232,7 @@ export struct DevLauncherPage {
       Column({ space: 12 }) {
         Row({ space: 12 }) {
           Button('返回')
-            .onClick(() => (this.route = AppRouter.Browser));
+            .onClick(() => (this.route = AppRouter.browser));
           Text('开发调试入口')
             .fontSize(20)
             .fontWeight(FontWeight.Medium);

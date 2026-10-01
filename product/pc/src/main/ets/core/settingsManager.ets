@@ -94,7 +94,9 @@ export class SettingsManager {
 
   updateSettings(partial: Partial<BrowserSettings>): void {
     const nextSettings = this.cloneSettings(this.settings);
-    if (partial.defaultSearchEngineId !== undefined) nextSettings.defaultSearchEngineId = partial.defaultSearchEngineId;
+    if (partial.defaultSearchEngineId !== undefined) {
+      nextSettings.defaultSearchEngineId = partial.defaultSearchEngineId;
+    }
     if (partial.customSearchEngines !== undefined) {
       nextSettings.customSearchEngines = this.cloneCustomSearchEngines(partial.customSearchEngines);
     }
@@ -107,14 +109,30 @@ export class SettingsManager {
     if (partial.showDownloadsWhenFinished !== undefined) {
       nextSettings.showDownloadsWhenFinished = partial.showDownloadsWhenFinished;
     }
-    if (partial.homePageUrl !== undefined) nextSettings.homePageUrl = partial.homePageUrl;
-    if (partial.startupBehavior !== undefined) nextSettings.startupBehavior = partial.startupBehavior;
-    if (partial.javaScriptEnabled !== undefined) nextSettings.javaScriptEnabled = partial.javaScriptEnabled;
-    if (partial.imagesEnabled !== undefined) nextSettings.imagesEnabled = partial.imagesEnabled;
-    if (partial.doNotTrack !== undefined) nextSettings.doNotTrack = partial.doNotTrack;
-    if (partial.cookiesEnabled !== undefined) nextSettings.cookiesEnabled = partial.cookiesEnabled;
-    if (partial.blockThirdPartyCookies !== undefined) nextSettings.blockThirdPartyCookies = partial.blockThirdPartyCookies;
-    if (partial.blockThirdPartyCookiesInPrivate !== undefined) nextSettings.blockThirdPartyCookiesInPrivate = partial.blockThirdPartyCookiesInPrivate;
+    if (partial.homePageUrl !== undefined) {
+      nextSettings.homePageUrl = partial.homePageUrl;
+    }
+    if (partial.startupBehavior !== undefined) {
+      nextSettings.startupBehavior = partial.startupBehavior;
+    }
+    if (partial.javaScriptEnabled !== undefined) {
+      nextSettings.javaScriptEnabled = partial.javaScriptEnabled;
+    }
+    if (partial.imagesEnabled !== undefined) {
+      nextSettings.imagesEnabled = partial.imagesEnabled;
+    }
+    if (partial.doNotTrack !== undefined) {
+      nextSettings.doNotTrack = partial.doNotTrack;
+    }
+    if (partial.cookiesEnabled !== undefined) {
+      nextSettings.cookiesEnabled = partial.cookiesEnabled;
+    }
+    if (partial.blockThirdPartyCookies !== undefined) {
+      nextSettings.blockThirdPartyCookies = partial.blockThirdPartyCookies;
+    }
+    if (partial.blockThirdPartyCookiesInPrivate !== undefined) {
+      nextSettings.blockThirdPartyCookiesInPrivate = partial.blockThirdPartyCookiesInPrivate;
+    }
     this.settings = nextSettings;
     this.notify();
     this.persistSettings();
@@ -224,9 +242,14 @@ export class SettingsManager {
   private mergeWithDefaultSettings(storedSettings: Partial<BrowserSettings>): BrowserSettings {
     const defaultSettings = this.getDefaultSettings();
     return {
-      defaultSearchEngineId: this.readSearchEngineId(storedSettings.defaultSearchEngineId, defaultSettings.defaultSearchEngineId),
+      defaultSearchEngineId: this.readSearchEngineId(
+        storedSettings.defaultSearchEngineId,
+        defaultSettings.defaultSearchEngineId
+      ),
       customSearchEngines: this.readCustomSearchEngines(storedSettings.customSearchEngines),
-      defaultZoomPercent: this.normalizeZoomPercent(storedSettings.defaultZoomPercent ?? defaultSettings.defaultZoomPercent),
+      defaultZoomPercent: this.normalizeZoomPercent(
+        storedSettings.defaultZoomPercent ?? defaultSettings.defaultZoomPercent
+      ),
       downloadDirectoryUri: this.readOptionalString(storedSettings.downloadDirectoryUri),
       showDownloadsWhenFinished: this.readBoolean(
         storedSettings.showDownloadsWhenFinished,
@@ -238,8 +261,14 @@ export class SettingsManager {
       imagesEnabled: this.readBoolean(storedSettings.imagesEnabled, defaultSettings.imagesEnabled),
       doNotTrack: this.readBoolean(storedSettings.doNotTrack, defaultSettings.doNotTrack),
       cookiesEnabled: this.readBoolean(storedSettings.cookiesEnabled, defaultSettings.cookiesEnabled),
-      blockThirdPartyCookies: this.readBoolean(storedSettings.blockThirdPartyCookies, defaultSettings.blockThirdPartyCookies),
-      blockThirdPartyCookiesInPrivate: this.readBoolean(storedSettings.blockThirdPartyCookiesInPrivate, defaultSettings.blockThirdPartyCookiesInPrivate),
+      blockThirdPartyCookies: this.readBoolean(
+        storedSettings.blockThirdPartyCookies,
+        defaultSettings.blockThirdPartyCookies
+      ),
+      blockThirdPartyCookiesInPrivate: this.readBoolean(
+        storedSettings.blockThirdPartyCookiesInPrivate,
+        defaultSettings.blockThirdPartyCookiesInPrivate
+      ),
     };
   }
 
@@ -261,8 +290,9 @@ export class SettingsManager {
       const id = engine.id.trim();
       const name = engine.name.trim();
       const template = engine.searchUrlTemplate.trim().split('%s').join('{query}');
-      if (!id || !name || !template.startsWith('http://') && !template.startsWith('https://') ||
-        !template.includes('{query}') || ids.has(id) || id === 'baidu' || id === 'so360') {
+      const isHttpTemplate = template.startsWith('http://') || template.startsWith('https://');
+      const isDuplicate = ids.has(id) || id === 'baidu' || id === 'so360';
+      if (!id || !name || !isHttpTemplate || !template.includes('{query}') || isDuplicate) {
         return;
       }
       ids.add(id);

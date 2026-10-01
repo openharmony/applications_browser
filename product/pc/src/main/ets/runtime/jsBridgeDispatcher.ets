@@ -27,7 +27,9 @@ export class JSBridgeDispatcher {
 
   register(method: string, handler: MethodHandler): void {
     const m = String(method || '').trim();
-    if (!m) return;
+    if (!m) {
+      return;
+    }
     this.handlers.set(m, handler);
   }
 

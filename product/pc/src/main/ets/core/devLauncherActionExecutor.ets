@@ -2,7 +2,6 @@
 
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { BookmarkExportService } from './bookmarkExportService';
-import { BookmarkImportService } from './bookmarkImportService';
 import { JSBridgePolicyManager, JSBridgePolicyMode } from '../runtime/jsBridgePolicyManager';
 import { AppRoute, AppRouter } from './appRouter';
 import { BookmarkManager } from './bookmarkManager';
@@ -14,7 +13,6 @@ const DOMAIN = 0x0000;
 
 export class DevLauncherActionExecutor {
   private readonly bookmarkExportService: BookmarkExportService = new BookmarkExportService();
-  private readonly bookmarkImportService: BookmarkImportService = new BookmarkImportService();
 
   async execute(entry: DevLauncherEntry): Promise<DevLauncherExecutionResult> {
     if (!DebugGate.getInstance().canOpenDevLauncher()) {
@@ -26,7 +24,7 @@ export class DevLauncherActionExecutor {
     if (entry.type === 'url') {
       return {
         nextPendingUrl: String(entry.value),
-        nextRoute: AppRouter.Browser,
+        nextRoute: AppRouter.browser,
       };
     }
 
@@ -68,36 +66,6 @@ export class DevLauncherActionExecutor {
       };
     }
 
-    if (operation === 'import_bookmarks_test_rawfile') {
-      const context = UIAbilityContextWrapper.getCurrentContext();
-      if (!context) {
-        return {
-          statusMessage: '未获取到 UIAbilityContext，无法导入测试书签',
-        };
-      }
-
-      const bookmarkManager: BookmarkManager = BookmarkManager.getInstance();
-      const result = await this.bookmarkImportService.importFromRawFile(
-        context,
-        'bookmarks/BookmarkTest.html',
-        bookmarkManager,
-      );
-      hilog.info(
-        DOMAIN,
-        'DevLauncher',
-        'Imported rawfile bookmarks. folders=%{public}d bookmarks=%{public}d updated=%{public}d skipped=%{public}d',
-        result.importedFolders,
-        result.importedBookmarks,
-        result.updatedBookmarks,
-        result.skippedBookmarks,
-      );
-      return {
-        nextRoute: AppRouter.Bookmarks,
-        statusMessage:
-          `测试书签导入完成：文件夹 ${result.importedFolders} 个，新增书签 ${result.importedBookmarks} 条，更新 ${result.updatedBookmarks} 条，跳过 ${result.skippedBookmarks} 条。`,
-      };
-    }
-
     if (operation === 'export_bookmarks_html') {
       const context = UIAbilityContextWrapper.getCurrentContext();
       if (!context) {
@@ -117,9 +85,10 @@ export class DevLauncherActionExecutor {
         result.fileUri,
       );
       return {
-        nextRoute: AppRouter.Bookmarks,
+        nextRoute: AppRouter.bookmarks,
         statusMessage:
-          `书签已导出：文件夹 ${result.totalFolders} 个，书签 ${result.totalBookmarks} 条，保存到 ${result.fileUri}。`,
+          `书签已导出：文件夹 ${result.totalFolders} 个，` +
+            `书签 ${result.totalBookmarks} 条，保存到 ${result.fileUri}。`,
       };
     }
 

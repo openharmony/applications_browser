@@ -12,14 +12,21 @@ export class AddressBarService {
   private readonly historyManager: HistoryManager = HistoryManager.getInstance();
   private readonly suggestionService: SuggestionService = new SuggestionService();
 
-  async querySuggestions(input: string, tabs: Tab[], limit: number = 6, isPrivate: boolean = false): Promise<AddressSuggestion[]> {
+  async querySuggestions(
+    input: string,
+    tabs: Tab[],
+    limit: number = 6,
+    isPrivate: boolean = false
+  ): Promise<AddressSuggestion[]> {
     const trimmedInput = input.trim();
     if (!trimmedInput) {
       return [];
     }
 
     const bookmarkPromise = this.loadBookmarkSuggestions(trimmedInput, limit);
-    const historyPromise = isPrivate ? Promise.resolve([] as HistoryItem[]) : this.loadHistorySuggestions(trimmedInput, limit);
+    const historyPromise = isPrivate
+      ? Promise.resolve([] as HistoryItem[])
+      : this.loadHistorySuggestions(trimmedInput, limit);
     const bookmarkItems = await bookmarkPromise;
     const historyItems = await historyPromise;
     return this.suggestionService.buildSuggestions(trimmedInput, bookmarkItems, historyItems, {

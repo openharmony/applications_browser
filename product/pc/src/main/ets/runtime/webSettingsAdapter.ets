@@ -60,7 +60,12 @@ export class WebSettingsAdapter {
     return [{ headerKey: 'DNT', headerValue: '1' }];
   }
 
-  resolveRequestHeaders(_requestUrl: string, _pageUrl: string, _isPrivate: boolean, headers: Header[]): RequestHeaderDecision {
+  resolveRequestHeaders(
+    _requestUrl: string,
+    _pageUrl: string,
+    _isPrivate: boolean,
+    headers: Header[],
+  ): RequestHeaderDecision {
     const settings = this.settingsManager.getSettings();
     const nextHeaders: Header[] = [];
     const shouldBlockRequest = false;

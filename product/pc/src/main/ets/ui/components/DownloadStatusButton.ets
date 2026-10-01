@@ -78,7 +78,8 @@ export struct DownloadStatusButton {
           .height(16)
           .fillColor(this.getTintColor())
           .opacity(this.snapshot.primaryState === 'idle' ? 0.74 :
-            (this.snapshot.primaryState === 'completed_notice' || this.snapshot.primaryState === 'session_history' ? 0.82 : 1));
+            (this.snapshot.primaryState === 'completed_notice' ||
+              this.snapshot.primaryState === 'session_history' ? 0.82 : 1));
       }
       .width(28)
       .height(28)

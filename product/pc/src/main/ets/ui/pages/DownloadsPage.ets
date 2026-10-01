@@ -59,7 +59,7 @@ export struct DownloadsPage {
       return;
     }
     this.pendingUrl = targetUrl;
-    this.route = AppRouter.Browser;
+    this.route = AppRouter.browser;
   }
 
   private async clearFinishedDownloads(): Promise<void> {
@@ -149,7 +149,7 @@ export struct DownloadsPage {
           .fontColor('#374151')
           .borderRadius(17)
           .onClick(() => {
-            this.route = AppRouter.Browser;
+            this.route = AppRouter.browser;
           });
 
         Text(`下载 ${this.viewState.totalCount}`)

@@ -1,4 +1,8 @@
-import { SitePermissionPromptDecision, SitePermissionPromptResult, SitePermissionRequest } from '../../core/permissionTypes';
+import {
+  SitePermissionPromptDecision,
+  SitePermissionPromptResult,
+  SitePermissionRequest,
+} from '../../core/permissionTypes';
 
 const EMPTY_PERMISSION_REQUEST: SitePermissionRequest = {
   requestId: '',

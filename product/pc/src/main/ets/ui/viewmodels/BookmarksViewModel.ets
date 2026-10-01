@@ -1,6 +1,12 @@
 // BookmarksViewModel：BookmarksPage 的数据与操作封装。
 
-import { BookmarkDataProvider, BookmarkImportResult, BookmarkItem, BookmarkManager, BookmarkTreeNode } from '../../core/bookmarkManager';
+import {
+  BookmarkDataProvider,
+  BookmarkImportResult,
+  BookmarkItem,
+  BookmarkManager,
+  BookmarkTreeNode,
+} from '../../core/bookmarkManager';
 import { BookmarkExportResult, BookmarkExportService } from '../../core/bookmarkExportService';
 import { BookmarkImportService } from '../../core/bookmarkImportService';
 
@@ -53,7 +59,10 @@ export class BookmarksViewModel {
   private isLoading: boolean = false;
   private errorMessage: string = '';
   private loadRequestId: number = 0;
-  private readonly listenerMap: Map<(state: BookmarksPageViewState) => void, (bookmarks: BookmarkItem[]) => void> = new Map();
+  private readonly listenerMap: Map<
+    (state: BookmarksPageViewState) => void,
+    (bookmarks: BookmarkItem[]) => void
+  > = new Map();
 
   constructor(
     bookmarkManager?: BookmarkDataSource,

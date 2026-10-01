@@ -215,7 +215,8 @@ export struct TabItem {
   }
 
   private traceRenderIfChanged(): void {
-    const signature = `${this.faviconUrl}|${this.faviconDataUri.length}|${this.favicon !== null ? 'runtime' : 'none'}|` +
+    const signature = `${this.faviconUrl}|${this.faviconDataUri.length}|` +
+      `${this.favicon !== null ? 'runtime' : 'none'}|` +
       `${this.isLoading ? 'loading' : 'idle'}|${this.failedFaviconUrl}|${this.failedRuntimeFavicon}|` +
       `${this.getRenderSourceSummary()}`;
     if (signature === this.lastRenderTrace) {

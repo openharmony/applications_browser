@@ -149,13 +149,14 @@ export class SiteSettingsManager {
       };
 
       this.rdbStore = await new Promise((resolve, reject) => {
-        relationalStore.getRdbStore(context as never, config, (err: BusinessError | null, store: relationalStore.RdbStore | null) => {
+        const onStoreReady = (err: BusinessError | null, store: relationalStore.RdbStore | null): void => {
           if (err || !store) {
             reject(err || new Error('Failed to get site settings store'));
           } else {
             resolve(store);
           }
-        });
+        };
+        relationalStore.getRdbStore(context as never, config, onStoreReady);
       });
 
       await this.createTable();
@@ -255,7 +256,9 @@ export class SiteSettingsManager {
       return;
     }
     const pending: SitePermissionSetting[] = [];
-    this.pendingSettings.forEach((setting: SitePermissionSetting) => pending.push(this.clonePermissionSetting(setting)));
+    this.pendingSettings.forEach((setting: SitePermissionSetting) => {
+      pending.push(this.clonePermissionSetting(setting));
+    });
     this.pendingSettings.clear();
     for (let index = 0; index < pending.length; index++) {
       await this.persistPermissionSetting(pending[index]);

@@ -41,7 +41,7 @@ export class AddressInputResolver {
     }
 
     // Do not send arbitrary schemes (file/resource/custom protocol) directly to
-    // ArkWeb. Treat them as search text until an explicit external-intent policy
+    // ArkWeb. Treat them as search text until an explicit external-protocol policy
     // is introduced.
     if (explicitScheme) {
       return this.resolveSearch(input, normalizedInput);
@@ -101,7 +101,8 @@ export class AddressInputResolver {
   }
 
   private isIpv4Host(input: string): boolean {
-    const matched = input.match(/^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(:\d+)?([/?#].*)?$/);
+    const octet = '(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
+    const matched = input.match(new RegExp(`^(${octet}\\.){3}${octet}(:\\d+)?([/?#].*)?$`));
     return matched !== null;
   }
 

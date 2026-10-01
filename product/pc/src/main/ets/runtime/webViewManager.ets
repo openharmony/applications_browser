@@ -48,12 +48,24 @@ export class WebViewManager {
   }
 
   setBridgeDefaults(defaults: JSBridgeFacadeOptions): void {
-    if (!defaults) return;
-    if (typeof defaults.enabled === 'boolean') this.bridgeDefaultsEnabled = defaults.enabled;
-    if (Array.isArray(defaults.autoExposeAliases)) this.bridgeDefaultsAutoExposeAliases = defaults.autoExposeAliases;
-    if (typeof defaults.overrideExistingGlobals === 'boolean') this.bridgeDefaultsOverrideExistingGlobals = defaults.overrideExistingGlobals;
-    if (typeof defaults.invokerWaitTimeoutMs === 'number') this.bridgeDefaultsInvokerWaitTimeoutMs = Math.max(0, Math.floor(defaults.invokerWaitTimeoutMs));
-    if (typeof defaults.defaultTimeoutMs === 'number') this.bridgeDefaultsDefaultTimeoutMs = Math.max(0, Math.floor(defaults.defaultTimeoutMs));
+    if (!defaults) {
+      return;
+    }
+    if (typeof defaults.enabled === 'boolean') {
+      this.bridgeDefaultsEnabled = defaults.enabled;
+    }
+    if (Array.isArray(defaults.autoExposeAliases)) {
+      this.bridgeDefaultsAutoExposeAliases = defaults.autoExposeAliases;
+    }
+    if (typeof defaults.overrideExistingGlobals === 'boolean') {
+      this.bridgeDefaultsOverrideExistingGlobals = defaults.overrideExistingGlobals;
+    }
+    if (typeof defaults.invokerWaitTimeoutMs === 'number') {
+      this.bridgeDefaultsInvokerWaitTimeoutMs = Math.max(0, Math.floor(defaults.invokerWaitTimeoutMs));
+    }
+    if (typeof defaults.defaultTimeoutMs === 'number') {
+      this.bridgeDefaultsDefaultTimeoutMs = Math.max(0, Math.floor(defaults.defaultTimeoutMs));
+    }
   }
 
   getOrCreate(tabId: TabId, options?: JSBridgeFacadeOptions, protectedTabIds: string[] = []): WebRuntime {
@@ -75,13 +87,27 @@ export class WebViewManager {
       defaultTimeoutMs: this.bridgeDefaultsDefaultTimeoutMs,
     };
     if (options) {
-      if (typeof options.enabled === 'boolean') effective.enabled = options.enabled;
-      if (Array.isArray(options.autoExposeAliases)) effective.autoExposeAliases = options.autoExposeAliases;
-      if (typeof options.overrideExistingGlobals === 'boolean') effective.overrideExistingGlobals = options.overrideExistingGlobals;
-      if (Array.isArray(options.allowedHosts)) effective.allowedHosts = options.allowedHosts;
-      if (Array.isArray(options.capabilities)) effective.capabilities = options.capabilities;
-      if (typeof options.invokerWaitTimeoutMs === 'number') effective.invokerWaitTimeoutMs = Math.max(0, Math.floor(options.invokerWaitTimeoutMs));
-      if (typeof options.defaultTimeoutMs === 'number') effective.defaultTimeoutMs = Math.max(0, Math.floor(options.defaultTimeoutMs));
+      if (typeof options.enabled === 'boolean') {
+        effective.enabled = options.enabled;
+      }
+      if (Array.isArray(options.autoExposeAliases)) {
+        effective.autoExposeAliases = options.autoExposeAliases;
+      }
+      if (typeof options.overrideExistingGlobals === 'boolean') {
+        effective.overrideExistingGlobals = options.overrideExistingGlobals;
+      }
+      if (Array.isArray(options.allowedHosts)) {
+        effective.allowedHosts = options.allowedHosts;
+      }
+      if (Array.isArray(options.capabilities)) {
+        effective.capabilities = options.capabilities;
+      }
+      if (typeof options.invokerWaitTimeoutMs === 'number') {
+        effective.invokerWaitTimeoutMs = Math.max(0, Math.floor(options.invokerWaitTimeoutMs));
+      }
+      if (typeof options.defaultTimeoutMs === 'number') {
+        effective.defaultTimeoutMs = Math.max(0, Math.floor(options.defaultTimeoutMs));
+      }
     }
     const jsBridge = new JSBridgeFacade(controller, effective);
     jsBridge.setSdkSource(this.sdkSource);

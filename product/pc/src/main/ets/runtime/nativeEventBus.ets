@@ -13,7 +13,7 @@ export interface AppLifecyclePayload {
   ts: number;
 }
 
-export const AppLifecycleEvents = new EventEmitter<AppLifecyclePayload>();
+export const appLifecycleEvents = new EventEmitter<AppLifecyclePayload>();
 
 /**
  * System memory pressure notifications are emitted by EntryAbility and
@@ -28,11 +28,11 @@ export interface MemoryPressurePayload {
 let currentMemoryPressureLevel: AbilityConstant.MemoryLevel =
   AbilityConstant.MemoryLevel.MEMORY_LEVEL_MODERATE;
 
-export const MemoryPressureEvents = new EventEmitter<MemoryPressurePayload>();
+export const memoryPressureEvents = new EventEmitter<MemoryPressurePayload>();
 
 export function emitMemoryPressure(level: AbilityConstant.MemoryLevel): void {
   currentMemoryPressureLevel = level;
-  MemoryPressureEvents.emit({ level, ts: Date.now() });
+  memoryPressureEvents.emit({ level, ts: Date.now() });
 }
 
 export function getCurrentMemoryPressureLevel(): AbilityConstant.MemoryLevel {

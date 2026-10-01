@@ -63,7 +63,7 @@ export struct HistoryPage {
 
   private openHistory(url: string): void {
     this.pendingUrl = url;
-    this.route = AppRouter.Browser;
+    this.route = AppRouter.browser;
   }
 
   private removeHistory(item: HistoryItem): void {
@@ -180,7 +180,7 @@ export struct HistoryPage {
           .fontColor('#374151')
           .borderRadius(17)
           .onClick(() => {
-            this.route = AppRouter.Browser;
+            this.route = AppRouter.browser;
           });
 
         Text(`历史 ${this.viewState.totalCount}`)
@@ -258,7 +258,11 @@ export struct HistoryPage {
             .fontWeight(FontWeight.Medium)
             .fontColor('#111827');
 
-          Text(this.keyword.trim().length > 0 ? '换一个关键词再试试。' : '访问网页后，会在这里显示浏览记录。')
+          Text(
+            this.keyword.trim().length > 0
+              ? '换一个关键词再试试。'
+              : '访问网页后，会在这里显示浏览记录。'
+          )
             .fontSize(13)
             .fontColor('#6b7280');
         }

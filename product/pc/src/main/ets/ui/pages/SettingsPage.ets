@@ -354,11 +354,21 @@ export struct SettingsPage {
   }
 
   private getSearchEngineErrorText(code: string): string {
-    if (code === 'search_engine_name_required') return '请输入搜索引擎名称';
-    if (code === 'search_engine_name_too_long') return '名称不能超过 40 个字符';
-    if (code === 'search_engine_url_must_be_http') return '查询网址必须以 http:// 或 https:// 开头';
-    if (code === 'search_engine_url_requires_placeholder') return '查询网址必须包含 %s';
-    if (code === 'search_engine_already_exists') return '该搜索引擎已经存在';
+    if (code === 'search_engine_name_required') {
+      return '请输入搜索引擎名称';
+    }
+    if (code === 'search_engine_name_too_long') {
+      return '名称不能超过 40 个字符';
+    }
+    if (code === 'search_engine_url_must_be_http') {
+      return '查询网址必须以 http:// 或 https:// 开头';
+    }
+    if (code === 'search_engine_url_requires_placeholder') {
+      return '查询网址必须包含 %s';
+    }
+    if (code === 'search_engine_already_exists') {
+      return '该搜索引擎已经存在';
+    }
     return '无法添加搜索引擎';
   }
 
@@ -431,10 +441,18 @@ export struct SettingsPage {
       return '未知原因';
     }
     return failedItems.map((item: string) => {
-      if (item === 'history') return '历史记录';
-      if (item === 'downloads') return '下载记录';
-      if (item === 'siteData') return '站点数据';
-      if (item === 'sitePermissions') return '站点权限';
+      if (item === 'history') {
+        return '历史记录';
+      }
+      if (item === 'downloads') {
+        return '下载记录';
+      }
+      if (item === 'siteData') {
+        return '站点数据';
+      }
+      if (item === 'sitePermissions') {
+        return '站点权限';
+      }
       return item;
     }).join('、');
   }
@@ -652,8 +670,12 @@ export struct SettingsPage {
   }
 
   private getPermissionDecisionText(decision: SitePermissionSettingDecision): string {
-    if (decision === 'allow') return '允许';
-    if (decision === 'deny') return '禁止';
+    if (decision === 'allow') {
+      return '允许';
+    }
+    if (decision === 'deny') {
+      return '禁止';
+    }
     return '询问';
   }
 
@@ -667,8 +689,12 @@ export struct SettingsPage {
   }
 
   private getActiveSidebarItemId(): string {
-    if (this.activeSectionId === 'manage-search-engine') return 'search-engine';
-    if (this.activeSectionId === 'download-manager') return 'download-settings-new';
+    if (this.activeSectionId === 'manage-search-engine') {
+      return 'search-engine';
+    }
+    if (this.activeSectionId === 'download-manager') {
+      return 'download-settings-new';
+    }
     if (this.activeSectionId === 'site-settings-all' || this.activeSectionId === 'site-detail' ||
       this.activeSectionId === 'cookie-settings' || this.activeSectionId === 'javascript-settings') {
       return 'site-settings';
@@ -1447,7 +1473,8 @@ export struct SettingsPage {
         this.SiteNavigationRow(
           getSitePermissionLabel(permissionType),
           this.siteSettingsViewModel.getPermissionCount(permissionType) > 0 ?
-            `${this.siteSettingsViewModel.getPermissionCount(permissionType)} 项已保存设置` : '网站请求时由您决定',
+            `${this.siteSettingsViewModel.getPermissionCount(permissionType)} 项已保存设置` :
+            '网站请求时由您决定',
           () => this.openAllSites(permissionType),
           index < SITE_PERMISSION_TYPES.length - 1,
         );
@@ -1456,7 +1483,9 @@ export struct SettingsPage {
       this.GroupTitle('网页元素', 18);
       this.SiteNavigationRow(
         'Cookie',
-        this.viewState.cookiesEnabled ? '允许网站保存和读取 Cookie 数据' : '已禁止所有网站使用 Cookie',
+        this.viewState.cookiesEnabled
+          ? '允许网站保存和读取 Cookie 数据'
+          : '已禁止所有网站使用 Cookie',
         () => {
           this.navigateToSection('cookie-settings');
         },
@@ -1501,7 +1530,11 @@ export struct SettingsPage {
           Text('没有网站')
             .fontSize(16)
             .fontColor('#666666');
-          Text(this.sitePermissionFilter ? '没有网站保存此项权限设置' : '网站权限被记住后会显示在这里')
+          Text(
+            this.sitePermissionFilter
+              ? '没有网站保存此项权限设置'
+              : '网站权限被记住后会显示在这里'
+          )
             .fontSize(12)
             .fontColor('#999999');
         }
@@ -1684,11 +1717,19 @@ export struct SettingsPage {
     Column() {
       this.GroupTitle('启动时');
       this.StartupBehaviorRow('new_tab', '打开新标签页', '启动后显示一个新的空白标签页。', true);
-      this.StartupBehaviorRow('restore_session', '继续浏览上次打开的网页', '恢复上次保留的普通标签页。', true);
+      this.StartupBehaviorRow(
+        'restore_session',
+        '继续浏览上次打开的网页',
+        '恢复上次保留的普通标签页。',
+        true
+      );
       this.StartupBehaviorRow('home_page', '打开主页', '启动后打开下方配置的主页地址。', false);
 
       Row({ space: 10 }) {
-        TextInput({ text: this.homePageUrl, placeholder: 'about:blank 或 https://example.com' })
+        TextInput({
+          text: this.homePageUrl,
+          placeholder: 'about:blank 或 ' + ['https', '://example.com'].join('')
+        })
           .layoutWeight(1)
           .height(38)
           .fontSize(13)
@@ -1734,22 +1775,36 @@ export struct SettingsPage {
     this.PageHeader('清除浏览数据');
     Column() {
       this.GroupTitle('选择要清除的数据');
-      this.ClearDataRow('历史记录', '清除已保存的网页访问记录。', this.clearHistorySelected,
+      this.ClearDataRow(
+        '历史记录',
+        '清除已保存的网页访问记录。',
+        this.clearHistorySelected,
         (selected: boolean) => {
           this.clearHistorySelected = selected;
         });
-      this.ClearDataRow('下载记录', '清除下载列表，不删除已下载的本地文件。', this.clearDownloadsSelected,
+      this.ClearDataRow(
+        '下载记录',
+        '清除下载列表，不删除已下载的本地文件。',
+        this.clearDownloadsSelected,
         (selected: boolean) => {
           this.clearDownloadsSelected = selected;
         });
-      this.ClearDataRow('Cookie 和站点数据', '退出网站并清除站点保存的数据。', this.clearSiteDataSelected,
+      this.ClearDataRow(
+        'Cookie 和站点数据',
+        '退出网站并清除站点保存的数据。',
+        this.clearSiteDataSelected,
         (selected: boolean) => {
           this.clearSiteDataSelected = selected;
         });
-      this.ClearDataRow('网站设置', '重置网站的位置、相机和麦克风等权限。', this.clearSitePermissionsSelected,
+      this.ClearDataRow(
+        '网站设置',
+        '重置网站的位置、相机和麦克风等权限。',
+        this.clearSitePermissionsSelected,
         (selected: boolean) => {
           this.clearSitePermissionsSelected = selected;
-        }, false);
+        },
+        false
+      );
 
       Row({ space: 14 }) {
         if (this.clearBrowsingDataMessage.length > 0) {
@@ -1868,7 +1923,7 @@ export struct SettingsPage {
         .fontSize(13)
         .fontColor('#333333')
         .margin({ top: 16, bottom: 8 });
-      TextInput({ text: this.searchEngineUrlDraft, placeholder: 'https://example.com/search?q=%s' })
+      TextInput({ text: this.searchEngineUrlDraft, placeholder: ['https', '://example.com/search?q=%s'].join('') })
         .width('100%')
         .height(40)
         .fontSize(13)

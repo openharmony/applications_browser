@@ -6,10 +6,10 @@ import { SettingsManager } from './settingsManager';
 import { DownloadManager } from './downloadManager';
 
 export class BrowserCore {
-  readonly tabs: TabManager;
-  readonly navigation: NavigationController;
-  readonly settings: SettingsManager;
-  readonly downloads: DownloadManager;
+  public readonly tabs: TabManager;
+  public readonly navigation: NavigationController;
+  public readonly settings: SettingsManager;
+  public readonly downloads: DownloadManager;
 
   constructor() {
     this.tabs = new TabManager();

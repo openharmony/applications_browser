@@ -61,13 +61,14 @@ export class HistoryManager {
 
       // 获取RdbStore实例 - 使用类型断言处理上下文
       this.rdbStore = await new Promise((resolve, reject) => {
-        relationalStore.getRdbStore(context as never, config, (err: BusinessError | null, store: relationalStore.RdbStore | null) => {
+        const onStoreReady = (err: BusinessError | null, store: relationalStore.RdbStore | null): void => {
           if (err || !store) {
             reject(err || new Error('Failed to get rdb store'));
           } else {
             resolve(store);
           }
-        });
+        };
+        relationalStore.getRdbStore(context as never, config, onStoreReady);
       });
 
       // 创建历史记录表
@@ -111,7 +112,9 @@ export class HistoryManager {
       throw new Error('RdbStore is not initialized');
     }
     try {
-      await this.rdbStore.executeSql(`CREATE INDEX IF NOT EXISTS idx_history_visit_time ON ${this.TABLE_NAME}(visitTime DESC);`);
+      const visitTimeIndexSql =
+        `CREATE INDEX IF NOT EXISTS idx_history_visit_time ON ${this.TABLE_NAME}(visitTime DESC);`;
+      await this.rdbStore.executeSql(visitTimeIndexSql);
       await this.rdbStore.executeSql(`CREATE INDEX IF NOT EXISTS idx_history_title ON ${this.TABLE_NAME}(title);`);
     } catch (error) {
       const errorMessage = (error as BusinessError).message || 'Unknown error';
@@ -378,80 +381,4 @@ export class HistoryManager {
     return keyword.replace(/[%_]/g, '');
   }
 
-  // 测试方法
-  static async testHistoryManager(context?: object): Promise<void> {
-    console.log('=== HistoryManager Test Start ===');
-    
-    const manager = HistoryManager.getInstance();
-    
-    try {
-      // 初始化数据库（需要上下文，在实际应用中由EntryAbility调用）
-      if (context) {
-        await manager.init(context);
-        console.log('✓ Database initialized');
-      } else {
-        console.log('⚠️  No context provided, skipping database initialization');
-        return;
-      }
-      
-      // 清空现有数据
-      await manager.clearAllHistory();
-      console.log('✓ All history cleared');
-      
-      // 添加测试数据
-      const testItems: HistoryItem[] = [
-        { url: 'https://www.example.com', title: 'Example', visitTime: Date.now() },
-        { url: 'https://www.openharmony.cn', title: 'OpenHarmony', visitTime: Date.now() + 1000 },
-        { url: 'https://www.github.com', title: 'GitHub', visitTime: Date.now() + 2000 }
-      ];
-      
-      for (const item of testItems) {
-        await manager.addHistory(item);
-        console.log(`✓ Added history: ${item.title}`);
-      }
-      
-      // 测试查询所有历史
-      const allHistory = await manager.queryAllHistory();
-      console.log(`✓ Query all history: ${allHistory.length} items`);
-      
-      // 测试搜索功能
-      const searchResult = await manager.searchHistory('open');
-      console.log(`✓ Search history: ${searchResult.length} items found`);
-      
-      // 测试获取最近历史
-      const recentHistory = await manager.getRecentHistory(2);
-      console.log(`✓ Get recent history: ${recentHistory.length} items`);
-      
-      // 测试更新记录（再次访问同一URL）
-      await manager.addHistory(testItems[0]);
-      const updatedItem = await manager.queryHistoryByUrl(testItems[0].url);
-      if (updatedItem && updatedItem.visitCount === 2) {
-        console.log('✓ History update test passed');
-      }
-      
-      // 测试根据ID删除功能
-      if (updatedItem && updatedItem.id) {
-        const deleteId = updatedItem.id;
-        await manager.deleteHistoryById(deleteId);
-        const afterDeleteItem = await manager.queryHistoryByUrl(testItems[0].url);
-        if (!afterDeleteItem) {
-          console.log('✓ Delete history by id test passed');
-        }
-      }
-      
-      // 测试清空所有历史
-      await manager.clearAllHistory();
-      const clearedHistory = await manager.queryAllHistory();
-      if (clearedHistory.length === 0) {
-        console.log('✓ Clear all history test passed');
-      }
-      
-      console.log('=== HistoryManager Test End ===');
-    } catch (error) {
-      const errorMessage = (error as BusinessError).message || 'Unknown error';
-      console.error(`Test failed: ${errorMessage}`);
-      console.log('=== HistoryManager Test End ===');
-      throw new Error(errorMessage);
-    }
-  }
 }

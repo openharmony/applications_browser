@@ -13,7 +13,7 @@ import { DownloadManager } from '../core/downloadManager';
 import { ScriptStore } from '../runtime/scriptStore';
 import { SearchEngineConfigProvider } from '../core/searchEngineConfig';
 import {
-  AppLifecycleEvents,
+  appLifecycleEvents,
   AppLifecyclePayload,
   emitMemoryPressure,
 } from '../runtime/nativeEventBus';
@@ -194,7 +194,7 @@ export default class EntryAbility extends UIAbility {
 
     try {
       const p: AppLifecyclePayload = { state: 'foreground', ts: Date.now() };
-      AppLifecycleEvents.emit(p);
+      appLifecycleEvents.emit(p);
     } catch (_) {
     }
   }
@@ -205,7 +205,7 @@ export default class EntryAbility extends UIAbility {
 
     try {
       const p: AppLifecyclePayload = { state: 'background', ts: Date.now() };
-      AppLifecycleEvents.emit(p);
+      appLifecycleEvents.emit(p);
     } catch (_) {
     }
   }

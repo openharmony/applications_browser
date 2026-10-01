@@ -23,11 +23,12 @@ export class ScriptStore {
   // - decode bytes to string (UTF-8)
   // - cache and return
   static async loadJsBridgeSdkFromRawfile(): Promise<string> {
-    if (ScriptStore.sdkCached) return ScriptStore.sdkCached;
+    if (ScriptStore.sdkCached) {
+      return ScriptStore.sdkCached;
+    }
     // Placeholder to keep compilation deterministic.
     // Integrator should replace with real rawfile reading.
     ScriptStore.sdkCached = '';
     return ScriptStore.sdkCached;
   }
 }
-

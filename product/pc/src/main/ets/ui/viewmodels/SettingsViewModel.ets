@@ -24,9 +24,16 @@ export interface SettingsPageState {
 
 export class SettingsViewModel {
   private readonly settingsCapability: SettingsCapability;
-  private readonly listenerMap: Map<(settings: BrowserSettings) => void, (snapshot: SettingsSnapshot) => void> = new Map();
+  private readonly listenerMap: Map<
+    (settings: BrowserSettings) => void,
+    (snapshot: SettingsSnapshot) => void
+  > = new Map();
 
-  constructor(settingsManager?: SettingsManager, privacyManager?: PrivacyManager, settingsCapability?: SettingsCapability) {
+  constructor(
+    settingsManager?: SettingsManager,
+    privacyManager?: PrivacyManager,
+    settingsCapability?: SettingsCapability,
+  ) {
     this.settingsCapability = settingsCapability ?? (settingsManager || privacyManager ?
       new SettingsCapability(settingsManager, privacyManager) :
       SettingsCapability.getInstance());

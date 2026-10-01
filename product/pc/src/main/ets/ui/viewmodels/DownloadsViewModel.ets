@@ -17,7 +17,10 @@ export class DownloadsViewModel {
   private readonly downloadManager: DownloadManager;
   private filter: DownloadTaskFilter = 'all';
   private keyword: string = '';
-  private readonly listenerMap: Map<(state: DownloadsPageViewState) => void, (downloads: DownloadTask[]) => void> = new Map();
+  private readonly listenerMap: Map<
+    (state: DownloadsPageViewState) => void,
+    (downloads: DownloadTask[]) => void
+  > = new Map();
 
   constructor(downloadManager?: DownloadManager) {
     this.downloadManager = downloadManager ?? DownloadManager.getInstance();

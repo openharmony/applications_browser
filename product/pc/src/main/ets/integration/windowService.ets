@@ -103,7 +103,12 @@ export class WindowService {
     }
   }
 
-  async resizeBy(hostContext: common.BaseContext, widthDelta: number, heightDelta: number, windowName?: string): Promise<void> {
+  async resizeBy(
+    hostContext: common.BaseContext,
+    widthDelta: number,
+    heightDelta: number,
+    windowName?: string
+  ): Promise<void> {
     try {
       const mainWindow = await this.resolveWindow(hostContext, windowName);
       const rect = mainWindow.getWindowProperties().windowRect;
@@ -158,7 +163,7 @@ export class WindowService {
       // Explicit options are important for child windows: without decorEnabled
       // a subwindow has no system title controls and cannot be moved by its
       // title bar. The rect mirrors the source window so a new window does not
-      // unexpectedly open as a tiny floating surface.
+      // unexpectedly open as a tiny floating child window.
       try {
         browserWindow = await windowStage.createSubWindowWithOptions(name, {
           title: title.length > 0 ? title : this.getSubWindowTitle(kind),
@@ -169,7 +174,9 @@ export class WindowService {
       } catch (error) {
         // Older device images may expose createSubWindow but not its options
         // overload. Fall back to the legacy API and apply geometry below.
-        hilog.warn(DOMAIN, 'WindowService', 'createSubWindowWithOptions failed: %{public}s', this.getErrorMessage(error));
+        hilog.warn(
+          DOMAIN, 'WindowService', 'createSubWindowWithOptions failed: %{public}s', this.getErrorMessage(error)
+        );
         browserWindow = await windowStage.createSubWindow(name);
       }
       hilog.info(DOMAIN, 'WindowService', 'Subwindow created %{public}s', name);
@@ -200,7 +207,9 @@ export class WindowService {
       try {
         browserWindow.setWindowTitleMoveEnabled(true);
       } catch (error) {
-        hilog.warn(DOMAIN, 'WindowService', 'setWindowTitleMoveEnabled failed: %{public}s', this.getErrorMessage(error));
+        hilog.warn(
+          DOMAIN, 'WindowService', 'setWindowTitleMoveEnabled failed: %{public}s', this.getErrorMessage(error)
+        );
       }
       try {
         await browserWindow.setResizeByDragEnabled(true);
@@ -225,7 +234,10 @@ export class WindowService {
       hilog.info(DOMAIN, 'WindowService', 'Subwindow shown %{public}s', name);
       await this.focusSubWindow(browserWindow, sourceWindowName);
     } catch (error) {
-      hilog.error(DOMAIN, 'WindowService', 'Open subwindow failed at %{public}s: %{public}s', name, this.getErrorMessage(error));
+      hilog.error(
+        DOMAIN, 'WindowService', 'Open subwindow failed at %{public}s: %{public}s',
+        name, this.getErrorMessage(error)
+      );
       this.pendingPopupControllers.delete(name);
       AppStorage.delete(`browserPopupUserAgent:${name}`);
       if (browserWindow) {

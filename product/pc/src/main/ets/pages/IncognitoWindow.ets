@@ -116,7 +116,7 @@ struct IncognitoWindow {
 
   private toolbarInputController: TextInputController = new TextInputController();
   private homeInputController: TextInputController = new TextInputController();
-  // 焦点状态追踪：点击未聚焦的地址输入框时全选文本，聚焦状态下点击保持光标默认行为。
+  // 焦点状态追踪：点击未聚焦的地址输入框时全选文本，聚焦状态下点击保持默认光标行为。
   private toolbarInputFocused: boolean = false;
   private toolbarInputFocusedAtPress: boolean = false;
   private homeInputFocused: boolean = false;
@@ -566,7 +566,7 @@ struct IncognitoWindow {
   }
 
   private handleSslError(event: OnSslErrorEventReceiveEvent): void {
-    // 证书错误（过期/自签/域不匹配等）直接放行，保证 https://expired.badssl.com/ 等站点可正常访问。
+    // 证书错误（过期/自签/域不匹配等）直接放行，便于验证异常证书页面。
     try {
       event.handler.handleConfirm();
     } catch (_) {
@@ -583,7 +583,8 @@ struct IncognitoWindow {
       url: this.getCurrentRequestUrl(),
       errorCode: 'RENDERER_UNRESPONSIVE',
       detail: data.reason === RenderProcessNotRespondingReason.NAVIGATION_COMMIT_TIMEOUT ?
-        '网页加载超时，可以重新加载页面。' : '网页进程没有及时响应，可以重新加载页面。',
+        '网页加载超时，可以重新加载页面。' :
+          '网页进程没有及时响应，可以重新加载页面。',
     }));
   }
 
@@ -751,7 +752,12 @@ struct IncognitoWindow {
         items.push({ id: 'save_image', label: '保存图片', leadingIcon: '↓' });
         items.push({ id: 'copy_image_url', label: '复制图片地址', leadingIcon: '▣' });
       }
-      items.push({ id: 'copy_image', label: '复制图片', leadingIcon: '▧', dividerBefore: imageUrl.length === 0 && items.length > 0 });
+      items.push({
+        id: 'copy_image',
+        label: '复制图片',
+        leadingIcon: '▧',
+        dividerBefore: imageUrl.length === 0 && items.length > 0,
+      });
     }
 
     if (selectionText.length > 0 && !editable) {
@@ -1085,7 +1091,9 @@ struct IncognitoWindow {
     this.controller.runJavaScript('document.documentElement ? document.documentElement.outerHTML : ""')
       .then((source: string) => {
         const escaped = source.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const html = '<!doctype html><meta charset="utf-8"><style>body{padding:16px;font:13px/1.55 monospace;white-space:pre-wrap;word-break:break-word}</style>' + escaped;
+        const html = '<!doctype html><meta charset="utf-8">' +
+          '<style>body{padding:16px;font:13px/1.55 monospace;' +
+          'white-space:pre-wrap;word-break:break-word}</style>' + escaped;
         startWebNavigation(this.navigationLifecycle);
         this.controller.loadData(html, 'text/html', 'UTF-8', pageUrl, `view-source:${pageUrl}`);
         this.pageTitle = `view-source:${pageUrl}`;
@@ -1408,7 +1416,11 @@ struct IncognitoWindow {
       this.NavButton('⟳', () => this.reload());
       this.NavButton('⌂', () => this.goHome());
 
-      TextInput({ text: this.addressText, placeholder: '无痕搜索或输入网址', controller: this.toolbarInputController })
+      TextInput({
+        text: this.addressText,
+        placeholder: '无痕搜索或输入网址',
+        controller: this.toolbarInputController,
+      })
         .id(INCOGNITO_TOOLBAR_INPUT_ID)
         .layoutWeight(1)
         .height(34)
@@ -1455,7 +1467,8 @@ struct IncognitoWindow {
         .fontSize(14)
         .fontColor('#c4b5fd');
 
-      Text('不会保存浏览历史、Cookie、站点数据或表单输入。下载的文件和创建的书签仍会保留。')
+      Text('不会保存浏览历史、Cookie、站点数据或表单输入。' +
+        '下载的文件和创建的书签仍会保留。')
         .layoutWeight(1)
         .fontSize(12)
         .fontColor('#d7dce5')
@@ -1485,7 +1498,11 @@ struct IncognitoWindow {
         .maxLines(2)
         .textOverflow({ overflow: TextOverflow.Ellipsis });
 
-      TextInput({ text: this.addressText, placeholder: '无痕搜索或输入网址', controller: this.homeInputController })
+      TextInput({
+        text: this.addressText,
+        placeholder: '无痕搜索或输入网址',
+        controller: this.homeInputController,
+      })
         .id(INCOGNITO_HOME_INPUT_ID)
         .width(520)
         .height(40)
@@ -1563,7 +1580,9 @@ struct IncognitoWindow {
               event.request.deny();
             });
           })
-          .onRenderProcessNotResponding((data: RenderProcessNotRespondingData) => this.handleRenderProcessNotResponding(data))
+          .onRenderProcessNotResponding(
+            (data: RenderProcessNotRespondingData) => this.handleRenderProcessNotResponding(data)
+          )
           .onRenderProcessResponding(() => this.handleRenderProcessResponding())
           .onRenderExited((event: OnRenderExitedEvent) => this.handleRenderExited(event));
 

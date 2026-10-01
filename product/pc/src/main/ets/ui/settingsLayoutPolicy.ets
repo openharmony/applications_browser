@@ -27,8 +27,12 @@ export const SETTINGS_LAYOUT_CONFIG: SettingsLayoutConfig = {
 
 export class SettingsLayoutPolicy {
   static resolveNavigationMode(viewportWidth: number): SettingsNavigationMode {
-    if (viewportWidth < SETTINGS_LAYOUT_CONFIG.drawerBreakpoint) return 'drawer';
-    if (viewportWidth < SETTINGS_LAYOUT_CONFIG.sidebarBreakpoint) return 'rail';
+    if (viewportWidth < SETTINGS_LAYOUT_CONFIG.drawerBreakpoint) {
+      return 'drawer';
+    }
+    if (viewportWidth < SETTINGS_LAYOUT_CONFIG.sidebarBreakpoint) {
+      return 'rail';
+    }
     return 'sidebar';
   }
 

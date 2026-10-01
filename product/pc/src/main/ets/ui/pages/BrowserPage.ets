@@ -23,9 +23,9 @@ import { BrowserPageViewModel, BrowserPageViewState } from '../viewmodels/Browse
 import { JSBridgeFacade, JSBridgeFacadeOptions } from '../../runtime/jsBridgeFacade';
 import { ScriptStore } from '../../runtime/scriptStore';
 import {
-  AppLifecycleEvents,
+  appLifecycleEvents,
   AppLifecyclePayload,
-  MemoryPressureEvents,
+  memoryPressureEvents,
   MemoryPressurePayload,
   getCurrentMemoryPressureLevel,
 } from '../../runtime/nativeEventBus';
@@ -351,7 +351,7 @@ export struct BrowserPage {
   @State navCanGoBack: boolean = false;
   @State navCanGoForward: boolean = false;
   // Changes whenever inactive WebView runtimes are evicted so the Web stack
-  // unmounts the corresponding native surfaces on the next render pass.
+  // unmounts the corresponding native views on the next render pass.
   @State private runtimeMountRevision: number = 0;
 
   @State showPermissionDialog: boolean = false;
@@ -466,22 +466,77 @@ export struct BrowserPage {
   private pendingFindNavigationDirection: number = 0;
 
   private readonly mainMenuItems: BrowserMenuItem[] = [
-    { id: 'new_tab', label: '打开新的标签页', leadingIconResource: $r('app.media.settings_menu_new_tab'), shortcut: 'Ctrl+T' },
-    { id: 'new_window', label: '打开新窗口', leadingIconResource: $r('app.media.settings_menu_new_window'), shortcut: 'Ctrl+N' },
+    {
+      id: 'new_tab',
+      label: '打开新的标签页',
+      leadingIconResource: $r('app.media.settings_menu_new_tab'),
+      shortcut: 'Ctrl+T'
+    },
+    {
+      id: 'new_window',
+      label: '打开新窗口',
+      leadingIconResource: $r('app.media.settings_menu_new_window'),
+      shortcut: 'Ctrl+N'
+    },
     // 暂时预留，后期完善：无痕模式当前不对用户开放，因此不加入主菜单。
-    { id: 'bookmarks', label: '书签', leadingIconResource: $r('app.media.settings_menu_bookmarks'), showArrow: true, shortcut: 'Ctrl+Shift+O' },
-    { id: 'history', label: '历史记录', leadingIconResource: $r('app.media.settings_menu_history'), shortcut: 'Ctrl+H' },
-    { id: 'downloads', label: '下载管理', leadingIconResource: $r('app.media.settings_menu_downloads'), shortcut: 'Ctrl+J' },
+    {
+      id: 'bookmarks',
+      label: '书签',
+      leadingIconResource: $r('app.media.settings_menu_bookmarks'),
+      showArrow: true,
+      shortcut: 'Ctrl+Shift+O'
+    },
+    {
+      id: 'history',
+      label: '历史记录',
+      leadingIconResource: $r('app.media.settings_menu_history'),
+      shortcut: 'Ctrl+H'
+    },
+    {
+      id: 'downloads',
+      label: '下载管理',
+      leadingIconResource: $r('app.media.settings_menu_downloads'),
+      shortcut: 'Ctrl+J'
+    },
     // 暂时隐藏：ArkWeb 缩小方向受页面 fit-width 最小比例钳制，待方案完善后再开放。
-    // { id: 'zoom', label: '缩放', leadingIconResource: $r('app.media.settings_menu_zoom'), kind: 'zoom', dividerBefore: true, zoomPercent: 100 },
-    { id: 'find_in_page', label: '页内查找', leadingIconResource: $r('app.media.settings_menu_find_in_page'), shortcut: 'Ctrl+F', dividerBefore: true },
-    { id: 'print', label: '打印', leadingIconResource: $r('app.media.settings_menu_print'), shortcut: 'Ctrl+P' },
-    { id: 'add_to_desktop', label: '添加至桌面', leadingIconResource: $r('app.media.settings_menu_add_to_desktop'), disabled: true },
-    { id: 'save_page_as', label: '网页另存为', leadingIconResource: $r('app.media.settings_menu_save_page_as'), shortcut: 'Ctrl+S' },
+    // {
+    //   id: 'zoom', label: '缩放', leadingIconResource: $r('app.media.settings_menu_zoom'),
+    //   kind: 'zoom', dividerBefore: true, zoomPercent: 100
+    // },
+    {
+      id: 'find_in_page',
+      label: '页内查找',
+      leadingIconResource: $r('app.media.settings_menu_find_in_page'),
+      shortcut: 'Ctrl+F',
+      dividerBefore: true
+    },
+    {
+      id: 'print',
+      label: '打印',
+      leadingIconResource: $r('app.media.settings_menu_print'),
+      shortcut: 'Ctrl+P'
+    },
+    {
+      id: 'add_to_desktop',
+      label: '添加至桌面',
+      leadingIconResource: $r('app.media.settings_menu_add_to_desktop'),
+      disabled: true
+    },
+    {
+      id: 'save_page_as',
+      label: '网页另存为',
+      leadingIconResource: $r('app.media.settings_menu_save_page_as'),
+      shortcut: 'Ctrl+S'
+    },
     // Keep the UA switch available from the browser menu. The submenu and
     // runtime application logic remain shared for every open tab.
     { id: 'ua', label: '浏览器UA标识', leadingIcon: 'A', showArrow: true },
-    { id: 'settings', label: '设置', leadingIconResource: $r('app.media.settings_menu_settings'), dividerBefore: true },
+    {
+      id: 'settings',
+      label: '设置',
+      leadingIconResource: $r('app.media.settings_menu_settings'),
+      dividerBefore: true
+    },
   ];
 
   private readonly bookmarksSubMenuItems: BrowserMenuItem[] = [
@@ -589,7 +644,8 @@ export struct BrowserPage {
 
   private shouldCloseTransientOverlays(): boolean {
     return this.showContextMenu || this.showTabContextMenu || this.showBookmarkContextMenu ||
-      this.bookmarkFolderMenuItems.length > 0 || this.showBookmarkRenameDialog || this.showBookmarkDeleteDialog || this.showMainMenu ||
+      this.bookmarkFolderMenuItems.length > 0 || this.showBookmarkRenameDialog ||
+      this.showBookmarkDeleteDialog || this.showMainMenu ||
       this.showBookmarkEditDialog ||
       this.showFindPanel || this.showTabSearch ||
       this.showAddressSuggestions || this.isAddressEditing || this.showJavaScriptDialog;
@@ -639,51 +695,51 @@ export struct BrowserPage {
     // Keep legacy standalone routes as compatibility aliases, but canonicalize
     // them to the settings shell so no entry can accidentally cover the
     // browser toolbar or create a second full-screen settings implementation.
-    if (nextRoute === AppRouter.Downloads) {
+    if (nextRoute === AppRouter.downloads) {
       this.settingsSectionId = 'download-manager';
-      this.route = AppRouter.Settings;
+      this.route = AppRouter.settings;
       return;
     }
-    if (nextRoute === AppRouter.Bookmarks) {
+    if (nextRoute === AppRouter.bookmarks) {
       this.settingsSectionId = 'bookmarks-manager';
-      this.route = AppRouter.Settings;
+      this.route = AppRouter.settings;
       return;
     }
-    if (nextRoute === AppRouter.History) {
+    if (nextRoute === AppRouter.history) {
       this.settingsSectionId = 'history';
-      this.route = AppRouter.Settings;
+      this.route = AppRouter.settings;
       return;
     }
     this.route = nextRoute;
   }
 
   private normalizeEmbeddedSettingsRoute(): void {
-    if (this.route === AppRouter.Downloads) {
+    if (this.route === AppRouter.downloads) {
       this.settingsSectionId = 'download-manager';
-      this.route = AppRouter.Settings;
-    } else if (this.route === AppRouter.Bookmarks) {
+      this.route = AppRouter.settings;
+    } else if (this.route === AppRouter.bookmarks) {
       this.settingsSectionId = 'bookmarks-manager';
-      this.route = AppRouter.Settings;
-    } else if (this.route === AppRouter.History) {
+      this.route = AppRouter.settings;
+    } else if (this.route === AppRouter.history) {
       this.settingsSectionId = 'history';
-      this.route = AppRouter.Settings;
+      this.route = AppRouter.settings;
     }
   }
 
   /** 设置相关页面覆盖内容区时，顶部壳始终保留标签栏、地址栏和书签栏。 */
   private isSettingsRouteActive(): boolean {
-    return this.route === AppRouter.Settings || this.route === AppRouter.Downloads ||
-      this.route === AppRouter.Bookmarks || this.route === AppRouter.History;
+    return this.route === AppRouter.settings || this.route === AppRouter.downloads ||
+      this.route === AppRouter.bookmarks || this.route === AppRouter.history;
   }
 
   private getSettingsSectionForRoute(): string {
-    if (this.route === AppRouter.Downloads) {
+    if (this.route === AppRouter.downloads) {
       return 'download-manager';
     }
-    if (this.route === AppRouter.Bookmarks) {
+    if (this.route === AppRouter.bookmarks) {
       return 'bookmarks-manager';
     }
-    if (this.route === AppRouter.History) {
+    if (this.route === AppRouter.history) {
       return 'history';
     }
     return this.settingsSectionId;
@@ -695,26 +751,26 @@ export struct BrowserPage {
    */
   private exitSettingsOverlayForNavigation(): void {
     if (this.isSettingsRouteActive()) {
-      this.route = AppRouter.Browser;
+      this.route = AppRouter.browser;
     }
   }
 
   /** Opens the single bookmarks manager hosted by the Settings shell. */
   private openBookmarksManager(): void {
     this.settingsSectionId = 'bookmarks-manager';
-    this.navigateToRoute(AppRouter.Settings);
+    this.navigateToRoute(AppRouter.settings);
   }
 
   /** Opens the unified downloads list hosted by the Settings shell. */
   private openDownloadsManager(): void {
     this.settingsSectionId = 'download-manager';
-    this.navigateToRoute(AppRouter.Settings);
+    this.navigateToRoute(AppRouter.settings);
   }
 
   /** Opens the history list hosted by the Settings shell. */
   private openHistoryManager(): void {
     this.settingsSectionId = 'history';
-    this.navigateToRoute(AppRouter.Settings);
+    this.navigateToRoute(AppRouter.settings);
   }
 
   private updateMainMenuLayout(width: number, height: number): void {
@@ -935,11 +991,19 @@ export struct BrowserPage {
   }
 
   private buildBookmarkFolderMenuItems(children: BookmarkItem[]): BrowserContextMenuItem[] {
-    return children.length > 0 ? children.map((item: BookmarkItem): BrowserContextMenuItem => ({
+    if (children.length === 0) {
+      return [{
+        id: 'bookmark_folder_empty',
+        label: '文件夹为空',
+        leadingIcon: '·',
+        disabled: true
+      } as BrowserContextMenuItem];
+    }
+    return children.map((item: BookmarkItem): BrowserContextMenuItem => ({
       id: `bookmark_child:${item.id}`,
       label: item.isFolder ? `${item.title}  ›` : item.title,
-      leadingImage: this.getBookmarkMenuIcon(item),
-    })) : [{ id: 'bookmark_folder_empty', label: '文件夹为空', leadingIcon: '·', disabled: true } as BrowserContextMenuItem];
+      leadingImage: this.getBookmarkMenuIcon(item)
+    }));
   }
 
   private showBookmarkFolderMenu(folder: BookmarkItem, rawX: number, rawY: number): void {
@@ -1495,7 +1559,9 @@ export struct BrowserPage {
     }
   }
 
-  private permissionPromptListener: (request: SitePermissionRequest | null) => void = (request: SitePermissionRequest | null) => {
+  private permissionPromptListener: (
+    request: SitePermissionRequest | null
+  ) => void = (request: SitePermissionRequest | null) => {
     if (!request) {
       this.showPermissionDialog = false;
       this.permissionRequest = EMPTY_PERMISSION_REQUEST;
@@ -1543,8 +1609,8 @@ export struct BrowserPage {
     }
 
     // Subscribe native lifecycle events.
-    AppLifecycleEvents.on(this.appLifecycleListener);
-    MemoryPressureEvents.on(this.memoryPressureListener);
+    appLifecycleEvents.on(this.appLifecycleListener);
+    memoryPressureEvents.on(this.memoryPressureListener);
     this.handleMemoryPressure({ level: getCurrentMemoryPressureLevel(), ts: Date.now() });
     this.permissionManager.addPromptListener(this.permissionPromptListener);
     this.permissionPromptListener(this.permissionManager.getActiveRequest());
@@ -1562,8 +1628,8 @@ export struct BrowserPage {
     // Unsubscribe to avoid leaking listeners across page recreations.
     this.persistSession();
     this.releasePrivateSessionOwner();
-    AppLifecycleEvents.off(this.appLifecycleListener);
-    MemoryPressureEvents.off(this.memoryPressureListener);
+    appLifecycleEvents.off(this.appLifecycleListener);
+    memoryPressureEvents.off(this.memoryPressureListener);
     this.permissionManager.removePromptListener(this.permissionPromptListener);
     this.downloadManager.removeListener(this.downloadListener);
     this.bookmarkManager.removeListener(this.bookmarkListener);
@@ -2307,12 +2373,26 @@ export struct BrowserPage {
       // Always enabled: the tab's mute state is meaningful even while the page
       // is silent, and a disabled entry made the control look broken on pages
       // whose audio the kernel never reported.
-      { id: 'mute_tab', label: tab.muted ? '取消此网页静音' : '使此网页静音', leadingIcon: tab.muted ? '🔊' : '🔇' },
+      {
+        id: 'mute_tab',
+        label: tab.muted ? '取消此网页静音' : '使此网页静音',
+        leadingIcon: tab.muted ? '🔊' : '🔇'
+      },
       { id: 'close_tab', label: '关闭标签页', leadingIcon: '×', disabled: !canClose },
       { id: 'close_other_tabs', label: '关闭其他标签页', leadingIcon: '⊗', disabled: otherTabs.length === 0 },
-      { id: 'close_tabs_to_right', label: '关闭右侧标签页', leadingIcon: '▷', disabled: rightTabs.length === 0 },
-      { id: 'reopen_closed_tab', label: '重新打开已关闭的标签页', leadingIcon: '↶', dividerBefore: true,
-        disabled: !this.viewModel.canRestoreLastClosedTab() },
+      {
+        id: 'close_tabs_to_right',
+        label: '关闭右侧标签页',
+        leadingIcon: '▷',
+        disabled: rightTabs.length === 0
+      },
+      {
+        id: 'reopen_closed_tab',
+        label: '重新打开已关闭的标签页',
+        leadingIcon: '↶',
+        dividerBefore: true,
+        disabled: !this.viewModel.canRestoreLastClosedTab()
+      },
     ];
   }
 
@@ -2400,7 +2480,9 @@ export struct BrowserPage {
       return;
     }
     if (item.id === 'close_other_tabs') {
-      const ids = this.viewState.tabs.filter((tab: Tab) => String(tab.id) !== String(target.id)).map((tab: Tab) => tab.id);
+      const ids = this.viewState.tabs
+        .filter((tab: Tab) => String(tab.id) !== String(target.id))
+        .map((tab: Tab) => tab.id);
       this.handleCloseTabSet(ids, 'close_other_tabs');
       return;
     }
@@ -3044,7 +3126,7 @@ export struct BrowserPage {
     if (!this.debugGate.canOpenDevLauncher()) {
       return;
     }
-    this.navigateToRoute(AppRouter.DevLauncher);
+    this.navigateToRoute(AppRouter.devLauncher);
   }
 
   private handleKeyEvent(event: KeyEvent): boolean {
@@ -3279,7 +3361,9 @@ export struct BrowserPage {
   }
 
   private getActiveMainMenuItem(): BrowserMenuItem | null {
-    const item = this.getResolvedMainMenuItems().find((entry: BrowserMenuItem) => entry.id === this.mainMenuActiveItemId);
+    const item = this.getResolvedMainMenuItems().find(
+      (entry: BrowserMenuItem) => entry.id === this.mainMenuActiveItemId
+    );
     return item ? item : null;
   }
 
@@ -3432,7 +3516,7 @@ export struct BrowserPage {
 
     if (item.id === 'settings') {
       this.settingsSectionId = 'search-engine';
-      this.navigateToRoute(AppRouter.Settings);
+      this.navigateToRoute(AppRouter.settings);
     }
   }
 
@@ -3441,7 +3525,9 @@ export struct BrowserPage {
   }
 
   private getActiveBookmarksSubMenuItem(): BrowserMenuItem | null {
-    const item = this.getResolvedBookmarksSubMenuItems().find((entry: BrowserMenuItem) => entry.id === this.bookmarksSubMenuActiveItemId);
+    const item = this.getResolvedBookmarksSubMenuItems().find(
+      (entry: BrowserMenuItem) => entry.id === this.bookmarksSubMenuActiveItemId
+    );
     return item ? item : null;
   }
 
@@ -3493,7 +3579,7 @@ export struct BrowserPage {
       // uses the same layout and navigation as the Settings sidebar.
       this.settingsSectionId = 'bookmarks-manager';
       this.closeMainMenu();
-      this.navigateToRoute(AppRouter.Settings);
+      this.navigateToRoute(AppRouter.settings);
       return;
     }
 
@@ -3520,7 +3606,9 @@ export struct BrowserPage {
   }
 
   private getActiveUaSubMenuItem(): BrowserMenuItem | null {
-    const item = this.getResolvedUaSubMenuItems().find((entry: BrowserMenuItem) => entry.id === this.uaSubMenuActiveItemId);
+    const item = this.getResolvedUaSubMenuItems().find(
+      (entry: BrowserMenuItem) => entry.id === this.uaSubMenuActiveItemId
+    );
     return item ? item : null;
   }
 
@@ -3791,7 +3879,9 @@ export struct BrowserPage {
           const marks = Array.from(root.querySelectorAll('span.' + markClass));
           marks.forEach((mark) => {
             const parent = mark.parentNode;
-            if (!parent) return;
+            if (!parent) {
+              return;
+            }
             const textNode = document.createTextNode(mark.textContent || '');
             parent.replaceChild(textNode, mark);
             parent.normalize();
@@ -3809,9 +3899,13 @@ export struct BrowserPage {
         const lowerKeyword = keyword.toLowerCase();
         const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
           acceptNode(node) {
-            if (!node || !node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+            if (!node || !node.nodeValue || !node.nodeValue.trim()) {
+              return NodeFilter.FILTER_REJECT;
+            }
             const parent = node.parentElement;
-            if (!parent) return NodeFilter.FILTER_REJECT;
+            if (!parent) {
+              return NodeFilter.FILTER_REJECT;
+            }
             const tagName = parent.tagName;
             if (tagName === 'SCRIPT' || tagName === 'STYLE' || tagName === 'NOSCRIPT') {
               return NodeFilter.FILTER_REJECT;
@@ -3921,7 +4015,7 @@ export struct BrowserPage {
       return;
     }
 
-    // Direction must follow the user's intent (next/prev), not be inferred from
+    // Direction must follow the requested next/previous action, not be inferred from
     // index comparison: at the boundary the wrapped target index (e.g. count when
     // going prev from 1) is larger than the current one, which used to flip the
     // searchNext direction and caused 1<->2 / last<->second-to-last oscillation.
@@ -4131,7 +4225,8 @@ export struct BrowserPage {
   }
 
   private handleFindSearchResult(tabId: TabId, runtime: WebRuntime, event: OnSearchResultReceiveEvent): void {
-    if (!this.isCurrentTabRuntime(tabId, runtime) || !this.isActiveTabId(tabId) || !this.showFindPanel || !this.findText.trim()) {
+    if (!this.isCurrentTabRuntime(tabId, runtime) || !this.isActiveTabId(tabId) ||
+      !this.showFindPanel || !this.findText.trim()) {
       return;
     }
 
@@ -4240,7 +4335,10 @@ export struct BrowserPage {
       }
       .width('100%');
 
-      Text('会高亮当前页面中的匹配文本，并自动滚动到第一个结果；当前计数为轻量实现。')
+      Text(
+        '会高亮当前页面中的匹配文本，并自动滚动到第一个结果；' +
+        '当前计数为轻量实现。'
+      )
         .fontSize(12)
         .fontColor('#6b7280');
     }
@@ -4296,7 +4394,7 @@ export struct BrowserPage {
 
   private openClearBrowsingData(): void {
     this.settingsSectionId = 'clear-data';
-    this.navigateToRoute(AppRouter.Settings);
+    this.navigateToRoute(AppRouter.settings);
   }
 
   private getActivePageTitle(fallback: string): string {
@@ -4402,9 +4500,13 @@ export struct BrowserPage {
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
-    const escapedTitle = pageUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escapedTitle = pageUrl
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
     return `<!doctype html><html><head><meta charset="utf-8"><title>view-source:${escapedTitle}</title>` +
-      '<style>body{margin:0;padding:16px;background:#fff;color:#202124;font:13px/1.55 monospace;white-space:pre-wrap;word-break:break-word}</style>' +
+      '<style>body{margin:0;padding:16px;background:#fff;color:#202124;' +
+      'font:13px/1.55 monospace;white-space:pre-wrap;word-break:break-word}</style>' +
       `</head><body>${escapedSource}</body></html>`;
   }
 
@@ -4866,7 +4968,9 @@ export struct BrowserPage {
     state.lastError = '';
     state.updatedAt = Date.now();
     this.traceNavigationState('NAVIGATION_REVISION_COMMIT', tabId, null,
-      `runtimeRevision=${state.runtimeRevision} navigationRevision=${navigationRevision} committedUrl=${url}`);
+      `runtimeRevision=${state.runtimeRevision} navigationRevision=${navigationRevision} ` +
+      `committedHost=${this.describeNavigationUrl(url)}`
+    );
   }
 
   private markTabLoadCompleted(tabId: TabId, url: string): void {
@@ -5169,7 +5273,12 @@ export struct BrowserPage {
         items.push({ id: 'save_image', label: '保存图片', leadingIcon: '↓' });
         items.push({ id: 'copy_image_url', label: '复制图片地址', leadingIcon: '▣' });
       }
-      items.push({ id: 'copy_image', label: '复制图片', leadingIcon: '▧', dividerBefore: imageUrl.length === 0 && items.length > 0 });
+      items.push({
+        id: 'copy_image',
+        label: '复制图片',
+        leadingIcon: '▧',
+        dividerBefore: imageUrl.length === 0 && items.length > 0
+      });
     }
 
     if (selectionText.length > 0 && !editable) {
@@ -5909,7 +6018,7 @@ export struct BrowserPage {
 
   private createTabSslErrorHandler(): (event: OnSslErrorEventReceiveEvent) => void {
     return (event: OnSslErrorEventReceiveEvent): void => {
-      // 证书错误（过期/自签/域不匹配等）直接放行，保证 https://expired.badssl.com/ 等站点可正常访问。
+      // 证书错误（过期/自签/域不匹配等）直接放行，便于验证异常证书页面。
       try {
         event.handler.handleConfirm();
       } catch (_) {
@@ -5977,13 +6086,17 @@ export struct BrowserPage {
       return;
     }
     this.traceNavigationState('NAV_PAGE_BEGIN', tabId, null,
-      `eventUrl=${event.url} tabUrl=${this.findTab(tabId)?.url ?? ''} ` +
-      `requestedUrl=${runtimeState.requestedUrl} committedUrl=${runtimeState.committedUrl} ` +
+      `eventHost=${this.describeNavigationUrl(event.url)} ` +
+      `tabHost=${this.describeNavigationUrl(this.findTab(tabId)?.url ?? '')} ` +
+      `requestedHost=${this.describeNavigationUrl(runtimeState.requestedUrl)} ` +
+      `committedHost=${this.describeNavigationUrl(runtimeState.committedUrl)} ` +
       `runtimeRevision=${runtimeState.runtimeRevision} navigationRevision=${runtimeState.navigationRevision} ` +
-      `loadState=${this.findTab(tabId)?.loadState ?? 'none'} isLoading=${String(this.findTab(tabId)?.isLoading ?? false)}`);
+      `loadState=${this.findTab(tabId)?.loadState ?? 'none'} ` +
+      `isLoading=${String(this.findTab(tabId)?.isLoading ?? false)}`);
     if (!acceptWebPageBegin(runtimeState.navigationLifecycle, event.url)) {
       this.traceNavigationState('NAV_PAGE_BEGIN_IGNORED', tabId, null,
-        `eventUrl=${event.url} lifecycle=${this.describeNavigationLifecycle(runtimeState.navigationLifecycle)}`);
+        `eventHost=${this.describeNavigationUrl(event.url)} ` +
+        `lifecycle=${this.describeNavigationLifecycle(runtimeState.navigationLifecycle)}`);
       return;
     }
     this.clearTabBrowserWebError(tabId);
@@ -5994,7 +6107,7 @@ export struct BrowserPage {
       `hasCurrent=${hasCurrentNavigationFavicon} generation=${this.getFaviconGeneration(tabId)} ` +
       `runtimeRevision=${runtimeState.runtimeRevision} navigationRevision=${navigationRevision} ` +
       `requested=${runtimeState.requestedUrl} committed=${runtimeState.committedUrl} ` +
-      `tabUrl=${tab?.url ?? ''} tabFavicon=${tab?.faviconUrl ?? ''}`);
+      `tabHost=${this.describeNavigationUrl(tab?.url ?? '')} hasFavicon=${String((tab?.faviconUrl ?? '').length > 0)}`);
     this.markTabLoadCommitted(tabId, event.url);
     if (!hasCurrentNavigationFavicon) {
       const key = String(tabId);
@@ -6040,10 +6153,14 @@ export struct BrowserPage {
     const expectedUrls: string[] = [runtimeState.requestedUrl, runtimeState.committedUrl,
       tabUrl].filter((url: string) => this.isHttpUrl(url));
     this.traceNavigationState('NAV_PAGE_END', tabId, null,
-      `eventUrl=${event.url} controllerUrl=${controllerUrl} tabUrl=${tabUrl} ` +
-      `requestedUrl=${runtimeState.requestedUrl} committedUrl=${runtimeState.committedUrl} ` +
+      `eventHost=${this.describeNavigationUrl(event.url)} ` +
+      `controllerHost=${this.describeNavigationUrl(controllerUrl)} ` +
+      `tabHost=${this.describeNavigationUrl(tabUrl)} ` +
+      `requestedHost=${this.describeNavigationUrl(runtimeState.requestedUrl)} ` +
+      `committedHost=${this.describeNavigationUrl(runtimeState.committedUrl)} ` +
       `runtimeRevision=${runtimeState.runtimeRevision} navigationRevision=${navigationRevision} ` +
-      `loadState=${this.findTab(tabId)?.loadState ?? 'none'} isLoading=${String(this.findTab(tabId)?.isLoading ?? false)}`);
+      `loadState=${this.findTab(tabId)?.loadState ?? 'none'} ` +
+      `isLoading=${String(this.findTab(tabId)?.isLoading ?? false)}`);
     const pageEndMatchesExpected = this.isHttpUrl(event.url) &&
       (expectedUrls.length === 0 || expectedUrls.some((url: string) =>
         isSameHttpDocumentUrl(url, event.url))) &&
@@ -6053,8 +6170,9 @@ export struct BrowserPage {
     if (!pageEndMatchesExpected) {
       this.traceFavicon('PAGE_END_IGNORED', tabId, event.url,
         `reason=url_mismatch requested=${runtimeState.requestedUrl} ` +
-        `committed=${runtimeState.committedUrl} tabUrl=${tabUrl} ` +
-        `controllerUrl=${controllerUrl}`);
+        `committedHost=${this.describeNavigationUrl(runtimeState.committedUrl)} ` +
+        `tabHost=${this.describeNavigationUrl(tabUrl)} ` +
+        `controllerHost=${this.describeNavigationUrl(controllerUrl)}`);
       this.syncTabNavigationStateFromController(tabId);
       return;
     }
@@ -6062,7 +6180,8 @@ export struct BrowserPage {
       !canCompleteWebNavigation(runtimeState.navigationLifecycle)) {
       this.traceNavigationState('NAV_PAGE_END_IGNORED', tabId, null,
         `reason=${runtimeState.lastError.length > 0 ? 'runtime_error' : 'invalid_lifecycle'} ` +
-        `lifecycle=${this.describeNavigationLifecycle(runtimeState.navigationLifecycle)} lastError=${runtimeState.lastError}`);
+        `lifecycle=${this.describeNavigationLifecycle(runtimeState.navigationLifecycle)} ` +
+        `lastError=${runtimeState.lastError}`);
       this.syncTabNavigationStateFromController(tabId);
       return;
     }
@@ -6076,7 +6195,8 @@ export struct BrowserPage {
     }
     const normalizedPageTitle = pageTitle?.trim() ?? '';
     this.traceNavigationState('NAV_TITLE_PAGE_END', tabId, null,
-      `eventUrl=${event.url} title=${normalizedPageTitle.length > 0 ? normalizedPageTitle : 'empty'}`);
+      `eventHost=${this.describeNavigationUrl(event.url)} ` +
+      `title=${normalizedPageTitle.length > 0 ? normalizedPageTitle : 'empty'}`);
     this.applyViewState(this.viewModel.updateTabFromPageEnd(
       tabId,
       event.url,
@@ -6131,8 +6251,9 @@ export struct BrowserPage {
         if (redirectTab && redirectTab.isLoading &&
           !isSameHttpDocumentUrl(redirectRuntimeState.committedUrl, redirectCommitUrl)) {
           this.traceNavigationState('NAV_REDIRECT_COMMIT', tabId, null,
-            `eventUrl=${redirectCommitUrl} committedUrl=${redirectRuntimeState.committedUrl} ` +
-            `tabUrl=${redirectTab.url}`);
+            `eventHost=${this.describeNavigationUrl(redirectCommitUrl)} ` +
+            `committedHost=${this.describeNavigationUrl(redirectRuntimeState.committedUrl)} ` +
+            `tabHost=${this.describeNavigationUrl(redirectTab.url)}`);
           this.markTabLoadCommitted(tabId, redirectCommitUrl);
           this.applyViewState(this.viewModel.updateTabFromPageBegin(tabId, redirectCommitUrl), false, false);
         }
@@ -6149,8 +6270,8 @@ export struct BrowserPage {
     const controllerUrl = this.readControllerUrl(runtime.controller);
     const url = details.url?.trim() || controllerUrl;
     this.traceNavigationState('NAV_HISTORY_UPDATE', tabId, null,
-      `eventUrl=${url || 'none'} controllerUrl=${controllerUrl || 'none'} ` +
-      `tabUrl=${tab.url} loading=${String(tab.isLoading)} ` +
+      `eventHost=${this.describeNavigationUrl(url)} controllerHost=${this.describeNavigationUrl(controllerUrl)} ` +
+      `tabHost=${this.describeNavigationUrl(tab.url)} loading=${String(tab.isLoading)} ` +
       `didReplaceEntry=${String(details.didReplaceEntry)}`);
     if (!url || !this.isHttpUrl(url)) {
       return;
@@ -6226,13 +6347,15 @@ export struct BrowserPage {
     if (controllerUrl.length > 0 && tabUrl.length > 0 && this.isHttpUrl(tabUrl) &&
       !isSameHttpDocumentUrl(controllerUrl, tabUrl)) {
       this.traceNavigationState('NAV_TITLE_RECEIVED_IGNORED', tabId, null,
-        `reason=controller_url_mismatch controllerUrl=${controllerUrl} tabUrl=${tabUrl} ` +
+        `reason=controller_url_mismatch ` +
+        `controllerHost=${this.describeNavigationUrl(controllerUrl)} ` +
+        `tabHost=${this.describeNavigationUrl(tabUrl)} ` +
         `runtimeRevision=${runtimeState.runtimeRevision} navigationRevision=${runtimeState.navigationRevision}`);
       return;
     }
     const title = event.title?.trim() ?? '';
     this.traceNavigationState('NAV_TITLE_RECEIVED', tabId, null,
-      `eventTitle=${title.length > 0 ? title : 'empty'} tabUrl=${tabUrl} ` +
+      `eventTitle=${title.length > 0 ? title : 'empty'} tabHost=${this.describeNavigationUrl(tabUrl)} ` +
       `runtimeRevision=${runtimeState.runtimeRevision} navigationRevision=${runtimeState.navigationRevision}`);
     if (title.length === 0) {
       return;
@@ -6266,8 +6389,9 @@ export struct BrowserPage {
       if (this.isHttpUrl(currentTab.url) && this.isHttpUrl(currentControllerUrl) &&
         !isSameHttpDocumentUrl(currentTab.url, currentControllerUrl)) {
         this.traceNavigationState('NAV_TITLE_RECEIVED_IGNORED', tabId, null,
-          `reason=delayed_controller_url_mismatch controllerUrl=${currentControllerUrl} ` +
-          `tabUrl=${currentTab.url} runtimeRevision=${runtimeRevision} navigationRevision=${navigationRevision}`);
+          `reason=delayed_controller_url_mismatch controllerHost=${this.describeNavigationUrl(currentControllerUrl)} ` +
+          `tabHost=${this.describeNavigationUrl(currentTab.url)} ` +
+          `runtimeRevision=${runtimeRevision} navigationRevision=${navigationRevision}`);
         return;
       }
       let currentControllerTitle = '';
@@ -6345,7 +6469,7 @@ export struct BrowserPage {
       `${this.describePixelMap(event.favicon)} generation=${this.getFaviconGeneration(tabId)} ` +
       `runtimeRevision=${runtimeState.runtimeRevision} navigationRevision=${navigationRevision} ` +
       `requested=${runtimeState.requestedUrl} committed=${runtimeState.committedUrl} ` +
-      `tabUrl=${tab.url} loading=${tab.isLoading}`);
+      `tabHost=${this.describeNavigationUrl(tab.url)} loading=${tab.isLoading}`);
     this.persistTabFavicon(tabId, runtime, event.favicon, navigationUrl, true, navigationRevision);
   }
 
@@ -6389,14 +6513,16 @@ export struct BrowserPage {
     const generation = this.getFaviconGeneration(tabId);
     const runtimeRevision = runtime.revision;
     this.traceFavicon('CAPTURE_SCHEDULED', tabId, this.findTab(tabId)?.url ?? '',
-      `generation=${generation} runtimeRevision=${runtimeRevision} navigationRevision=${navigationRevision} delays=250,1000`);
+      `generation=${generation} runtimeRevision=${runtimeRevision} ` +
+      `navigationRevision=${navigationRevision} delays=250,1000`);
     [250, 1000].forEach((delay: number) => {
       setTimeout(() => {
         const currentUrl = this.findTab(tabId)?.url ?? '';
         this.traceFavicon('CAPTURE_TIMER', tabId, currentUrl,
           `delay=${delay} expectedGeneration=${generation} actualGeneration=${this.getFaviconGeneration(tabId)} ` +
           `expectedRuntimeRevision=${runtimeRevision} actualRuntimeRevision=${this.currentRuntimeRevision(tabId)} ` +
-          `expectedNavigationRevision=${navigationRevision} actualNavigationRevision=${this.getTabNavigationRevision(tabId)} ` +
+          `expectedNavigationRevision=${navigationRevision} ` +
+          `actualNavigationRevision=${this.getTabNavigationRevision(tabId)} ` +
           `runtimeCurrent=${this.isCurrentTabRuntime(tabId, runtime)} ` +
           `data=${this.faviconDataUriByTabId.has(String(tabId))} ` +
           `runtimeFavicon=${this.hasRuntimeTabFaviconForCurrentTab(tabId)} ` +
@@ -6456,7 +6582,8 @@ export struct BrowserPage {
     }
     this.traceFavicon('PERSIST_CHECK', tabId, navigationUrl,
       `generation=${this.getFaviconGeneration(tabId)} requested=${runtimeState.requestedUrl} ` +
-      `committed=${runtimeState.committedUrl} tabUrl=${tab.url} ` +
+      `committedHost=${this.describeNavigationUrl(runtimeState.committedUrl)} ` +
+      `tabHost=${this.describeNavigationUrl(tab.url)} ` +
       `runtimeRevision=${runtimeState.runtimeRevision} navigationRevision=${effectiveNavigationRevision} ` +
       `existingRuntime=${this.runtimeFaviconUrlByTabId.get(key) ?? 'none'} ` +
       `existingPending=${this.pendingFaviconUrlByTabId.get(key) ?? 'none'} ` +
@@ -6647,7 +6774,8 @@ export struct BrowserPage {
     this.releaseOwnedRuntimeFavicons(removedEntries);
     this.traceFavicon('RUNTIME_LIST_UPDATED', tabId, navigationUrl,
       `revision=${this.runtimeFaviconRevision} entries=${this.runtimeTabFavicons.length} ` +
-      `removed=${removedEntries.map((item: TabFaviconPresentation) => `${item.revision}:${item.ownedByApp ? 'owned' : 'native'}`).join(',') || 'none'} ` +
+      `removed=${removedEntries.map((item: TabFaviconPresentation) =>
+        `${item.revision}:${item.ownedByApp ? 'owned' : 'native'}`).join(',') || 'none'} ` +
       `ownedByApp=${ownedByApp}`);
   }
 
@@ -6758,8 +6886,9 @@ export struct BrowserPage {
       kind: 'renderer',
       url: this.getTabErrorUrl(tabId),
       errorCode: 'RENDERER_UNRESPONSIVE',
-      detail: data.reason === RenderProcessNotRespondingReason.NAVIGATION_COMMIT_TIMEOUT ?
-        '网页加载超时，可以重新加载页面。' : '网页进程没有及时响应，可以重新加载页面。',
+      detail: data.reason === RenderProcessNotRespondingReason.NAVIGATION_COMMIT_TIMEOUT
+        ? '网页加载超时，可以重新加载页面。'
+        : '网页进程没有及时响应，可以重新加载页面。',
     }));
   }
 
@@ -6846,7 +6975,8 @@ export struct BrowserPage {
     this.releaseOwnedRuntimeFavicons(removedEntries);
     this.traceFavicon('RUNTIME_CLEARED', tabId, '',
       `removed=${removedEntries.length} ` +
-      `entries=${removedEntries.map((item: TabFaviconPresentation) => `${item.revision}:${item.ownedByApp ? 'owned' : 'native'}`).join(',') || 'none'}`);
+      `entries=${removedEntries.map((item: TabFaviconPresentation) =>
+        `${item.revision}:${item.ownedByApp ? 'owned' : 'native'}`).join(',') || 'none'}`);
   }
 
   private releaseOwnedRuntimeFavicons(entries: TabFaviconPresentation[]): void {
@@ -6909,38 +7039,25 @@ export struct BrowserPage {
     state: ControllerNavigationState | null,
     detail: string = '',
   ): void {
-    const tab = tabId ? this.findTab(tabId) : null;
-    const runtime = tabId ? this.webViewManager.get(tabId) : undefined;
-    const controllerUrl = runtime ? this.readControllerUrl(runtime.controller) : '';
-    const settleUntil = tabId ? (this.navigationStateSettlingUntilByTabId.get(String(tabId)) ?? 0) : 0;
-    const pending = tabId ? (this.pendingNativeNavigationByTabId.get(String(tabId)) ?? 'none') : 'none';
-    const pendingToken = tabId ? (this.nativeNavigationCommandTokenByTabId.get(String(tabId)) ?? 0) : 0;
-    const pendingRuntimeRevision = tabId ?
-      (this.nativeNavigationCommandRuntimeRevisionByTabId.get(String(tabId)) ?? 0) : 0;
-    const runtimeState = tabId ? this.getTabWebRuntimeState(tabId) : null;
-    const snapshotCurrent = this.isNavigationSnapshotCurrent(tabId, state);
-    const message =
-      '%{public}s tab=%{public}s tabUrl=%{public}s controllerUrl=%{public}s ' +
-      'loadState=%{public}s loading=%{public}s appBack=%{public}s appForward=%{public}s ' +
-      'controllerBack=%{public}s controllerForward=%{public}s snapshot=%{public}s ' +
-      'accessBack=%{public}s accessForward=%{public}s knownBack=%{public}s knownForward=%{public}s ' +
-      'history=%{public}d/%{public}d historyUrl=%{public}s snapshotCurrent=%{public}s ' +
-      'settlingUntil=%{public}d pending=%{public}s pendingToken=%{public}d ' +
-      'pendingRuntimeRevision=%{public}d runtimeRevision=%{public}d navigationRevision=%{public}d %{public}s';
-    hilog.info(FAVICON_LOG_DOMAIN, NAVIGATION_LOG_TAG, message,
-      stage, tabId ? String(tabId) : 'none', tab?.url ?? 'none', controllerUrl || 'none',
-      tab?.loadState ?? 'none', String(tab?.isLoading ?? false), String(tab?.canGoBack ?? false),
-      String(tab?.canGoForward ?? false), String(state?.canGoBack ?? false),
-      String(state?.canGoForward ?? false), String(state?.hasHistorySnapshot ?? false),
-      String(state?.accessBackward ?? false), String(state?.accessForward ?? false),
-      String(state?.accessBackwardKnown ?? false), String(state?.accessForwardKnown ?? false),
-      state?.historyIndex ?? -1, state?.historySize ?? -1, state?.historyUrl ?? 'none',
-      String(snapshotCurrent), settleUntil, pending, pendingToken, pendingRuntimeRevision,
-      runtimeState?.runtimeRevision ?? 0,
-      runtimeState?.navigationRevision ?? 0, detail);
-    // Keep the historical tag so existing log filters continue to work.
-    hilog.info(FAVICON_LOG_DOMAIN, FAVICON_LOG_TAG,
-      '%{public}s tab=%{public}s detail=%{public}s', stage, tabId ? String(tabId) : 'none', detail);
+    // Navigation state may contain URLs, history entries and runtime identifiers.
+    // Keep this diagnostic event constant so no page or runtime data reaches logs.
+    hilog.info(FAVICON_LOG_DOMAIN, NAVIGATION_LOG_TAG, 'NAV_STATE_UPDATED');
+  }
+
+  /** Keep navigation diagnostics useful without exposing full paths/query strings. */
+  private describeNavigationUrl(url: string): string {
+    const value = url.trim();
+    if (value.length === 0) {
+      return 'none';
+    }
+    try {
+      const match = /^(?:[a-z][a-z0-9+.-]*:)?\/\/([^/?#]+)/i.exec(value);
+      if (match && match[1]) {
+        return match[1];
+      }
+    } catch (_) {
+    }
+    return value.split(/[/?#]/, 1)[0] || 'present';
   }
 
   private describeNavigationLifecycle(state: WebNavigationLifecycleState): string {
@@ -6985,7 +7102,7 @@ export struct BrowserPage {
 
   private shouldRenderTabWeb(tab: Tab): boolean {
     // Read the revision so an LRU eviction invalidates this render decision and
-    // unmounts the native Web surface whose runtime was released.
+    // unmounts the native Web view whose runtime was released.
     const mountRevision = this.runtimeMountRevision;
     if (mountRevision < 0) {
       return false;
@@ -6998,7 +7115,7 @@ export struct BrowserPage {
   }
 
   private getTabWebWidth(tabId: TabId): Length {
-    // ArkWeb uses a native surface. Opacity alone does not reliably stop an
+    // ArkWeb uses a native rendering layer. Opacity alone does not reliably stop an
     // inactive Web from covering the ArkUI new-tab home page.
     const tab = this.findTab(tabId);
     return this.isActiveTabId(tabId) && tab?.loadState !== 'home' ? '100%' : 1;
@@ -7092,7 +7209,10 @@ export struct BrowserPage {
       `type=${activeRequest.permissionType} decision=allow prompt=custom`);
     this.ensureSystemPermission(activeRequest.permissionType)
       .then((granted: boolean) => {
-        this.permissionManager.resolveActiveRequest(granted ? 'allow' : 'deny', granted ? this.permissionRememberChoice : false);
+        this.permissionManager.resolveActiveRequest(
+          granted ? 'allow' : 'deny',
+          granted ? this.permissionRememberChoice : false
+        );
       })
       .catch(() => {
         this.tracePermission('SYSTEM_PERMISSION_GATE_ERROR', `type=${activeRequest.permissionType}`);
@@ -7175,7 +7295,8 @@ export struct BrowserPage {
         allow = await this.ensureSystemPermission('location');
       }
       this.tracePermission('GEOLOCATION_RESULT',
-        `tab=${String(tabId)} origin=${origin} decision=${result.decision} source=${result.source} systemGranted=${String(allow)}`);
+        `tab=${String(tabId)} origin=${origin} decision=${result.decision} ` +
+        `source=${result.source} systemGranted=${String(allow)}`);
       const shouldPersistKernelDecision = allow && !tab.isPrivate ? result.rememberChoice : false;
       event.geolocation.invoke(origin, allow, shouldPersistKernelDecision);
     } catch (_) {
@@ -7183,7 +7304,11 @@ export struct BrowserPage {
     }
   }
 
-  private async handleProtectedPermissionRequest(tabId: TabId, runtime: WebRuntime, event: OnPermissionRequestEvent): Promise<void> {
+  private async handleProtectedPermissionRequest(
+    tabId: TabId,
+    runtime: WebRuntime,
+    event: OnPermissionRequestEvent
+  ): Promise<void> {
     this.tracePermission('PROTECTED_PERMISSION_RECEIVED',
       `tab=${String(tabId)} currentRuntime=${String(this.isCurrentTabRuntime(tabId, runtime))}`);
     if (!this.isCurrentTabRuntime(tabId, runtime)) {
@@ -7470,7 +7595,12 @@ export struct BrowserPage {
           .fontSize(18)
           .fontWeight(FontWeight.Medium)
           .fontColor('#20252d');
-        Text(`确定要删除“${this.bookmarkDeleteTitle}”吗？${this.bookmarkManager.getBookmarkById(this.bookmarkDeleteId)?.isFolder ? '文件夹中的内容也会被删除。' : ''}`)
+        Text(
+          `确定要删除“${this.bookmarkDeleteTitle}”吗？` +
+          this.bookmarkManager.getBookmarkById(this.bookmarkDeleteId)?.isFolder
+            ? '文件夹中的内容也会被删除。'
+            : ''
+        )
           .fontSize(14)
           .fontColor('#555b66')
           .maxLines(3)
@@ -7732,7 +7862,10 @@ export struct BrowserPage {
                 .fontSize(14)
                 .fontColor('#c4b5fd');
 
-              Text('无痕模式：不会保存浏览历史、Cookie、站点数据或表单输入；下载的文件和创建的书签仍会保留。')
+              Text(
+                '无痕模式：不会保存浏览历史、Cookie、站点数据或表单输入；' +
+                '下载的文件和创建的书签仍会保留。'
+              )
                 .layoutWeight(1)
                 .fontSize(12)
                 .fontColor('#d7dce5')
@@ -7786,7 +7919,12 @@ export struct BrowserPage {
           ForEach(this.viewState.tabs, (tab: Tab) => {
             if (this.shouldRenderTabWeb(tab)) {
               Column() {
-              Web({ src: '', controller: this.ensureRuntimeForTab(tab.id).controller, incognitoMode: tab.isPrivate })                  .zoomAccess(true)
+              Web({
+                src: '',
+                controller: this.ensureRuntimeForTab(tab.id).controller,
+                incognitoMode: tab.isPrivate
+              })
+                .zoomAccess(true)
                   // The tab strip needs to know when a page starts or stops
                   // playing media even while the page keeps itself muted, so the
                   // monitor is injected before the document runs and reports
@@ -7888,22 +8026,22 @@ export struct BrowserPage {
             // 因此设置页顶边正好落在地址栏底边，地址栏及其以上区域始终可见可用。
             SettingsShellPage({
               initialSectionId: this.getSettingsSectionForRoute(),
-              onBack: () => (this.route = AppRouter.Browser),
+              onBack: () => (this.route = AppRouter.browser),
               onOpenUrl: (url: string) => {
                 this.pendingUrl = url;
-                this.route = AppRouter.Browser;
+                this.route = AppRouter.browser;
               },
               onOpenUrlInNewTab: (url: string) => {
                 this.pendingNewTabUrl = url;
-                this.route = AppRouter.Browser;
+                this.route = AppRouter.browser;
               },
               onOpenUrlInNewWindow: (url: string) => {
                 this.pendingNewWindowUrl = url;
-                this.route = AppRouter.Browser;
+                this.route = AppRouter.browser;
               },
               onOpenUrlInPrivateWindow: (url: string) => {
                 this.pendingPrivateWindowUrl = url;
-                this.route = AppRouter.Browser;
+                this.route = AppRouter.browser;
               },
             })
               .width('100%')

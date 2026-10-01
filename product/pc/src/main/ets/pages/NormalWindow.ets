@@ -4,7 +4,7 @@ import { AppRoute, AppRouter } from '../core/appRouter';
 @Entry
 @Component
 struct NormalWindow {
-  @State private route: AppRoute = AppRouter.Browser;
+  @State private route: AppRoute = AppRouter.browser;
   @State private pendingUrl: string = '';
   @State private pendingNewTabUrl: string = '';
   @State private pendingNewWindowUrl: string = '';

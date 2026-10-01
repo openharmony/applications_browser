@@ -550,16 +550,22 @@ export struct SettingsBookmarksManager {
   }
 
   private async importBookmarks(): Promise<void> {
-    if (this.isImporting) return;
+    if (this.isImporting) {
+      return;
+    }
     this.isImporting = true;
     this.statusMessage = '正在选择书签文件...';
     try {
       const context = this.getUIContext().getHostContext();
-      if (!context) throw new Error('当前页面上下文不可用');
+      if (!context) {
+        throw new Error('当前页面上下文不可用');
+      }
       const result = await this.viewModel.importFromPicker(context);
       this.applyState(this.viewModel.getViewState());
       this.statusMessage =
-        `导入完成：新增文件夹 ${result.importedFolders} 个，新增书签 ${result.importedBookmarks} 条，更新 ${result.updatedBookmarks} 条，跳过 ${result.skippedBookmarks} 条。`;
+        `导入完成：新增文件夹 ${result.importedFolders} 个，` +
+        `新增书签 ${result.importedBookmarks} 条，更新 ${result.updatedBookmarks} 条，` +
+        `跳过 ${result.skippedBookmarks} 条。`;
     } catch (error) {
       const err = error as Error;
       this.statusMessage = err.message ? `导入失败：${err.message}` : '导入失败';
@@ -569,14 +575,19 @@ export struct SettingsBookmarksManager {
   }
 
   private async exportBookmarks(): Promise<void> {
-    if (this.isExporting) return;
+    if (this.isExporting) {
+      return;
+    }
     this.isExporting = true;
     this.statusMessage = '正在选择导出位置...';
     try {
       const context = this.getUIContext().getHostContext();
-      if (!context) throw new Error('当前页面上下文不可用');
+      if (!context) {
+        throw new Error('当前页面上下文不可用');
+      }
       const result = await this.viewModel.exportToPicker(context);
-      this.statusMessage = `导出完成：文件夹 ${result.totalFolders} 个，书签 ${result.totalBookmarks} 条。`;
+      this.statusMessage =
+        `导出完成：文件夹 ${result.totalFolders} 个，书签 ${result.totalBookmarks} 条。`;
     } catch (error) {
       const err = error as Error;
       this.statusMessage = err.message ? `导出失败：${err.message}` : '导出失败';
@@ -1045,7 +1056,11 @@ export struct SettingsBookmarksManager {
                 .borderRadius(15)
                 .onClick(() => this.goParent());
             }
-            Text(this.keyword.length > 0 ? `搜索结果 ${this.viewState.items.length} 项` : this.viewState.parentTitle)
+            Text(
+              this.keyword.length > 0
+                ? `搜索结果 ${this.viewState.items.length} 项`
+                : this.viewState.parentTitle
+            )
               .layoutWeight(1)
               .fontSize(13)
               .fontColor('#555555')
@@ -1119,7 +1134,9 @@ export struct SettingsBookmarksManager {
                   ListItem() {
                     this.BookmarkRow(item, index < this.viewState.items.length - 1);
                   }
-                }, (item: BookmarksPageListItem) => `${item.id}:${item.title}:${item.faviconUrl ?? ''}:${item.url ?? ''}`);
+                }, (item: BookmarksPageListItem) =>
+                  `${item.id}:${item.title}:${item.faviconUrl ?? ''}:${item.url ?? ''}`
+              );
               }
               .width('100%')
               .layoutWeight(1)
@@ -1141,7 +1158,9 @@ export struct SettingsBookmarksManager {
                   ListItem() {
                     this.BookmarkRow(item, index < this.viewState.items.length - 1);
                   }
-                }, (item: BookmarksPageListItem) => `${item.id}:${item.title}:${item.faviconUrl ?? ''}:${item.url ?? ''}`);
+                }, (item: BookmarksPageListItem) =>
+                  `${item.id}:${item.title}:${item.faviconUrl ?? ''}:${item.url ?? ''}`
+              );
               }
               .width('100%')
               .layoutWeight(1)

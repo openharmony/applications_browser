@@ -293,7 +293,12 @@ export class DownloadService {
     }
   }
 
-  async start(browserTaskId: string, hostContext: object, requestInfo: DownloadStartRequest, callbacks: DownloadServiceCallbacks): Promise<void> {
+  async start(
+    browserTaskId: string,
+    hostContext: object,
+    requestInfo: DownloadStartRequest,
+    callbacks: DownloadServiceCallbacks,
+  ): Promise<void> {
     let downloadTask: request.DownloadTask;
     const origin = getDownloadOrigin(requestInfo.sourceUrl);
     const imageDownload = isImageDownloadRequest(requestInfo);
@@ -324,10 +329,14 @@ export class DownloadService {
       if (targetFilePath) {
         config.filePath = targetFilePath;
       }
-      hilog.info(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
-        'REQUEST_START task=%{public}s origin=%{public}s private=%{public}s cookie=%{public}s referer=%{public}s ua=%{public}s',
-        browserTaskId, origin, String(requestInfo.isPrivate === true), String(headers['Cookie'] !== undefined),
-        String(headers['Referer'] !== undefined), String(headers['User-Agent'] !== undefined));
+      hilog.info(
+        DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+        'REQUEST_START task=%{public}s origin=%{public}s private=%{public}s ' +
+          'cookie=%{public}s referer=%{public}s ua=%{public}s',
+        browserTaskId, origin, String(requestInfo.isPrivate === true),
+        String(headers['Cookie'] !== undefined), String(headers['Referer'] !== undefined),
+        String(headers['User-Agent'] !== undefined)
+      );
       downloadTask = await request.downloadFile(hostContext as never, config);
     } catch (error) {
       hilog.error(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,

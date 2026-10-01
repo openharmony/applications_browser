@@ -59,9 +59,12 @@ export struct NavigationBar {
       // the value from the render that created it while navigation state is
       // being updated asynchronously.
       const currentEnabled = this.isActionEnabled(action);
-      hilog.info(NAVIGATION_LOG_DOMAIN, NAVIGATION_LOG_TAG,
-        'NAV_BUTTON_CLICK action=%{public}s rendered=%{public}s current=%{public}s canBack=%{public}s canForward=%{public}s',
-        action, String(enabled), String(currentEnabled), String(this.canGoBack), String(this.canGoForward));
+      hilog.info(
+        NAVIGATION_LOG_DOMAIN, NAVIGATION_LOG_TAG,
+        'NAV_BUTTON_CLICK action=%{public}s rendered=%{public}s current=%{public}s ' +
+          'canBack=%{public}s canForward=%{public}s',
+        action, String(enabled), String(currentEnabled), String(this.canGoBack), String(this.canGoForward)
+      );
       if (currentEnabled) {
         onPress();
       }

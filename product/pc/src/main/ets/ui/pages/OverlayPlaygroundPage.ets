@@ -87,7 +87,13 @@ export struct OverlayPlaygroundPage {
     this.logs = [`${timestamp}  ${message}`, ...this.logs].slice(0, 14);
   }
 
-  private markOverlayOpened(kind: PlaygroundOverlayKind, title: string, x: number, y: number, focusTarget: string): void {
+  private markOverlayOpened(
+    kind: PlaygroundOverlayKind,
+    title: string,
+    x: number,
+    y: number,
+    focusTarget: string
+  ): void {
     this.overlayKind = kind;
     this.overlayTitle = title;
     this.anchorX = x;
@@ -104,7 +110,13 @@ export struct OverlayPlaygroundPage {
   }
 
   private openContextMenu(): void {
-    this.markOverlayOpened('context_menu', '标签页右键菜单', this.contextMenuX, this.contextMenuY, '标签页右键触发区');
+    this.markOverlayOpened(
+      'context_menu',
+      '标签页右键菜单',
+      this.contextMenuX,
+      this.contextMenuY,
+      '标签页右键触发区'
+    );
   }
 
   private openPanel(): void {
@@ -195,7 +207,10 @@ export struct OverlayPlaygroundPage {
 
     if (this.isMenuOverlay()) {
       if (event.keyCode === KeyCode.KEYCODE_DPAD_DOWN) {
-        this.activeMenuIndex = this.getEnabledMenuIndex((this.activeMenuIndex + 1) % this.getCurrentMenuItems().length, 1);
+        this.activeMenuIndex = this.getEnabledMenuIndex(
+          (this.activeMenuIndex + 1) % this.getCurrentMenuItems().length,
+          1
+        );
         this.appendLog(`键盘下移高亮到：${this.getCurrentMenuItems()[this.activeMenuIndex].label}`);
         return true;
       }
@@ -377,11 +392,17 @@ export struct OverlayPlaygroundPage {
         .fontWeight(FontWeight.Bold)
         .fontColor('#111827');
 
-      Text('这是一个测试页面内的确认弹窗，用于验证模态遮罩、主次按钮、Esc 关闭和日志记录。')
+      Text(
+        '这是一个测试页面内的确认弹窗，用于验证模态遮罩、主次按钮、' +
+        'Esc 关闭和日志记录。'
+      )
         .fontSize(13)
         .fontColor('#4b5563');
 
-      Text('建议后续把这类交互迁移到统一的官方 Dialog 封装层，而不是长期保留页面内模拟实现。')
+      Text(
+        '建议后续把这类交互迁移到统一的官方 Dialog 封装层，' +
+        '而不是长期保留页面内模拟实现。'
+      )
         .fontSize(12)
         .fontColor('#6b7280');
 
@@ -427,7 +448,7 @@ export struct OverlayPlaygroundPage {
               .fontColor('#2563eb')
               .borderRadius(17)
               .border({ width: 1, color: '#bfdbfe' })
-              .onClick(() => (this.route = AppRouter.DevLauncher));
+              .onClick(() => (this.route = AppRouter.devLauncher));
 
             Column({ space: 4 }) {
               Text('菜单 / 弹窗单页验证场')
@@ -457,14 +478,34 @@ export struct OverlayPlaygroundPage {
               .fontColor('#111827');
 
             Row({ space: 12 }) {
-              this.TriggerCard('锚点菜单', '模拟浏览器右上角主菜单，验证锚点定位、Esc 关闭、上下键导航。', '打开主菜单', () => this.openMainMenu());
-              this.TriggerCard('右键菜单', '模拟标签页右键菜单，验证上下文命令集、危险项和禁用项样式。', '打开右键菜单', () => this.openContextMenu());
+              this.TriggerCard(
+                '锚点菜单',
+                '模拟浏览器右上角主菜单，验证锚点定位、Esc 关闭、上下键导航。',
+                '打开主菜单',
+                () => this.openMainMenu()
+              );
+              this.TriggerCard(
+                '右键菜单',
+                '模拟标签页右键菜单，验证上下文命令集、危险项和禁用项样式。',
+                '打开右键菜单',
+                () => this.openContextMenu()
+              );
             }
             .width('100%');
 
             Row({ space: 12 }) {
-              this.TriggerCard('轻量面板', '模拟缩放 / 页内查找面板，验证非模态内容刷新和局部操作。', '打开轻面板', () => this.openPanel());
-              this.TriggerCard('确认弹窗', '模拟危险操作确认，验证遮罩、主次操作和关闭链路。', '打开确认弹窗', () => this.openConfirmDialog());
+              this.TriggerCard(
+                '轻量面板',
+                '模拟缩放 / 页内查找面板，验证非模态内容刷新和局部操作。',
+                '打开轻面板',
+                () => this.openPanel()
+              );
+              this.TriggerCard(
+                '确认弹窗',
+                '模拟危险操作确认，验证遮罩、主次操作和关闭链路。',
+                '打开确认弹窗',
+                () => this.openConfirmDialog()
+              );
             }
             .width('100%');
           }
@@ -490,13 +531,19 @@ export struct OverlayPlaygroundPage {
             Text('3. 打开右键菜单后，禁用项是否不可点，危险项是否有明显视觉区分。')
               .fontSize(13)
               .fontColor('#4b5563');
-            Text('4. 打开轻面板后，调整缩放与输入文本时，面板是否保持打开并持续刷新内容。')
+            Text(
+              '4. 打开轻面板后，调整缩放与输入文本时，' +
+              '面板是否保持打开并持续刷新内容。'
+            )
               .fontSize(13)
               .fontColor('#4b5563');
             Text('5. 打开确认弹窗后，遮罩点击、取消按钮、确认按钮是否都按预期关闭。')
               .fontSize(13)
               .fontColor('#4b5563');
-            Text('6. 主菜单中的“设置”项已配置为悬停时不高亮，可用于验证个别菜单项关闭悬停高亮。')
+            Text(
+              '6. 主菜单中的“设置”项已配置为悬停时不高亮，' +
+              '可用于验证个别菜单项关闭悬停高亮。'
+            )
               .fontSize(13)
               .fontColor('#4b5563');
           }

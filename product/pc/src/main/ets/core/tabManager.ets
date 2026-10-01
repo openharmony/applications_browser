@@ -88,7 +88,9 @@ export class TabManager {
       }
       const activeId = session.activeTabId;
       const activeWasClosed = activeId !== null && candidates.some((item) => String(item.id) === String(activeId));
-      const activeIndex = activeId === null ? -1 : session.tabIds.findIndex((tabId) => String(tabId) === String(activeId));
+      const activeIndex = activeId === null ? -1 : session.tabIds.findIndex(
+        (tabId) => String(tabId) === String(activeId)
+      );
       candidates.forEach((item) => {
         if (!item.tab.isPrivate) {
           this.pushRecentlyClosedTab(this.cloneTab(item.tab), item.index);
@@ -187,23 +189,53 @@ export class TabManager {
     }
 
     const next: Tab = this.cloneTab(tab);
-    if (partial.title !== undefined) next.title = partial.title;
-    if (partial.url !== undefined) next.url = partial.url;
-    if (this.hasPartialField(partial, 'faviconUrl')) next.faviconUrl = partial.faviconUrl;
-    if (this.hasPartialField(partial, 'pendingUrl')) next.pendingUrl = partial.pendingUrl;
-    if (partial.isActive !== undefined) next.isActive = partial.isActive;
-    if (partial.isPrivate !== undefined) next.isPrivate = partial.isPrivate;
-    if (partial.isLoading !== undefined) next.isLoading = partial.isLoading;
-    if (partial.loadState !== undefined) next.loadState = partial.loadState;
-    if (partial.canGoBack !== undefined) next.canGoBack = partial.canGoBack;
-    if (partial.canGoForward !== undefined) next.canGoForward = partial.canGoForward;
-    if (partial.audible !== undefined) next.audible = partial.audible;
-    if (partial.muted !== undefined) next.muted = partial.muted;
+    if (partial.title !== undefined) {
+      next.title = partial.title;
+    }
+    if (partial.url !== undefined) {
+      next.url = partial.url;
+    }
+    if (this.hasPartialField(partial, 'faviconUrl')) {
+      next.faviconUrl = partial.faviconUrl;
+    }
+    if (this.hasPartialField(partial, 'pendingUrl')) {
+      next.pendingUrl = partial.pendingUrl;
+    }
+    if (partial.isActive !== undefined) {
+      next.isActive = partial.isActive;
+    }
+    if (partial.isPrivate !== undefined) {
+      next.isPrivate = partial.isPrivate;
+    }
+    if (partial.isLoading !== undefined) {
+      next.isLoading = partial.isLoading;
+    }
+    if (partial.loadState !== undefined) {
+      next.loadState = partial.loadState;
+    }
+    if (partial.canGoBack !== undefined) {
+      next.canGoBack = partial.canGoBack;
+    }
+    if (partial.canGoForward !== undefined) {
+      next.canGoForward = partial.canGoForward;
+    }
+    if (partial.audible !== undefined) {
+      next.audible = partial.audible;
+    }
+    if (partial.muted !== undefined) {
+      next.muted = partial.muted;
+    }
     // Ignore legacy pin state. Pinning is no longer supported.
     next.isPinned = false;
-    if (partial.closeGuard !== undefined) next.closeGuard = partial.closeGuard;
-    if (partial.createdAt !== undefined) next.createdAt = partial.createdAt;
-    if (partial.lastActiveAt !== undefined) next.lastActiveAt = partial.lastActiveAt;
+    if (partial.closeGuard !== undefined) {
+      next.closeGuard = partial.closeGuard;
+    }
+    if (partial.createdAt !== undefined) {
+      next.createdAt = partial.createdAt;
+    }
+    if (partial.lastActiveAt !== undefined) {
+      next.lastActiveAt = partial.lastActiveAt;
+    }
     this.tabs.set(id, next);
     return this.cloneTab(next);
   }
@@ -304,7 +336,9 @@ export class TabManager {
 
   restoreFromSessionSnapshot(snapshot: BrowserSessionSnapshot, windowId?: WindowId): boolean {
     const targetWindowId = windowId ?? this.getDefaultWindowId();
-    const sourceWindow = snapshot.windows.find((session: BrowserWindowSession) => String(session.id) === String(targetWindowId)) ?? snapshot.windows[0];
+    const sourceWindow = snapshot.windows.find(
+      (session: BrowserWindowSession) => String(session.id) === String(targetWindowId)
+    ) ?? snapshot.windows[0];
     if (!sourceWindow) {
       return false;
     }
@@ -340,7 +374,10 @@ export class TabManager {
       this.tabs.set(tab.id, tab);
     });
 
-    const preferredActiveId = sourceWindow.activeTabId && restoredTabs.some((tab: Tab) => String(tab.id) === String(sourceWindow.activeTabId)) ? sourceWindow.activeTabId : restoredTabs[0].id;
+    const hasPreferredActiveTab = sourceWindow.activeTabId && restoredTabs.some(
+      (tab: Tab) => String(tab.id) === String(sourceWindow.activeTabId)
+    );
+    const preferredActiveId = hasPreferredActiveTab ? sourceWindow.activeTabId : restoredTabs[0].id;
     this.setActiveTab(preferredActiveId);
     return true;
   }
@@ -504,7 +541,9 @@ export class TabManager {
     return {
       id: tab.id,
       windowId,
-      title: tab.title && tab.title.trim().length > 0 ? tab.title : (tab.url === 'about:blank' ? '新标签页' : tab.url),
+      title: tab.title && tab.title.trim().length > 0
+        ? tab.title
+        : (tab.url === 'about:blank' ? '新标签页' : tab.url),
       url: tab.url && tab.url.trim().length > 0 ? tab.url : 'about:blank',
       faviconUrl: tab.faviconUrl,
       pendingUrl: undefined,

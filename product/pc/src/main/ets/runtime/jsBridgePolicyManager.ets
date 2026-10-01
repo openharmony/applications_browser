@@ -10,10 +10,10 @@ export enum JSBridgePolicyMode {
 }
 
 export class JSBridgePolicy {
-  enabled: boolean;
-  allowedHosts: string[];
-  capabilities: string[];
-  capabilityGateEnabled: boolean;
+  public enabled: boolean;
+  public allowedHosts: string[];
+  public capabilities: string[];
+  public capabilityGateEnabled: boolean;
 
   constructor(enabled: boolean, allowedHosts: string[], capabilities: string[], capabilityGateEnabled: boolean) {
     this.enabled = enabled;
@@ -31,7 +31,9 @@ export class JSBridgePolicyManager {
   private static instance: JSBridgePolicyManager | null = null;
 
   static getInstance(): JSBridgePolicyManager {
-    if (JSBridgePolicyManager.instance) return JSBridgePolicyManager.instance;
+    if (JSBridgePolicyManager.instance) {
+      return JSBridgePolicyManager.instance;
+    }
     JSBridgePolicyManager.instance = new JSBridgePolicyManager();
     return JSBridgePolicyManager.instance;
   }
@@ -92,7 +94,9 @@ export class JSBridgePolicyManager {
   private static extractHost(url: string): string {
     try {
       const m = String(url || '').match(/^https?:\/\/([^\/]+)/i);
-      if (!m || !m[1]) return '';
+      if (!m || !m[1]) {
+        return '';
+      }
       return String(m[1]).split(':')[0].toLowerCase();
     } catch (_) {
       return '';

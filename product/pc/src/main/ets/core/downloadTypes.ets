@@ -143,15 +143,33 @@ export function appendImageExtensionIfNeeded(fileName: string, sourceUrl: string
 }
 
 function getImageExtensionForMimeType(mimeType: string): string {
-  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') return 'jpg';
-  if (mimeType === 'image/png') return 'png';
-  if (mimeType === 'image/gif') return 'gif';
-  if (mimeType === 'image/webp') return 'webp';
-  if (mimeType === 'image/bmp') return 'bmp';
-  if (mimeType === 'image/avif') return 'avif';
-  if (mimeType === 'image/svg+xml') return 'svg';
-  if (mimeType === 'image/heic') return 'heic';
-  if (mimeType === 'image/heif') return 'heif';
+  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+    return 'jpg';
+  }
+  if (mimeType === 'image/png') {
+    return 'png';
+  }
+  if (mimeType === 'image/gif') {
+    return 'gif';
+  }
+  if (mimeType === 'image/webp') {
+    return 'webp';
+  }
+  if (mimeType === 'image/bmp') {
+    return 'bmp';
+  }
+  if (mimeType === 'image/avif') {
+    return 'avif';
+  }
+  if (mimeType === 'image/svg+xml') {
+    return 'svg';
+  }
+  if (mimeType === 'image/heic') {
+    return 'heic';
+  }
+  if (mimeType === 'image/heif') {
+    return 'heif';
+  }
   return '';
 }
 
@@ -282,12 +300,24 @@ export function extractFileNameFromContentDisposition(contentDisposition?: strin
 }
 
 export function getDownloadTaskStateText(state: DownloadTaskState): string {
-  if (state === 'created') return '已创建';
-  if (state === 'pending') return '等待中';
-  if (state === 'downloading') return '下载中';
-  if (state === 'paused') return '已暂停';
-  if (state === 'completed') return '已完成';
-  if (state === 'failed') return '失败';
+  if (state === 'created') {
+    return '已创建';
+  }
+  if (state === 'pending') {
+    return '等待中';
+  }
+  if (state === 'downloading') {
+    return '下载中';
+  }
+  if (state === 'paused') {
+    return '已暂停';
+  }
+  if (state === 'completed') {
+    return '已完成';
+  }
+  if (state === 'failed') {
+    return '失败';
+  }
   return '已取消';
 }
 

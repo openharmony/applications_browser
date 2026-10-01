@@ -193,7 +193,7 @@ struct PopupWindow {
             this.windowName, event.url);
         })
         .onSslErrorEventReceive((event: OnSslErrorEventReceiveEvent) => {
-          // 证书错误（过期/自签/域不匹配等）直接放行，保证 https://expired.badssl.com/ 等站点可正常访问。
+          // 证书错误（过期/自签/域不匹配等）直接放行，便于验证异常证书页面。
           try {
             event.handler.handleConfirm();
           } catch (_) {

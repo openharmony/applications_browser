@@ -15,7 +15,11 @@ export struct BookmarkBar {
   @State private dragOverBookmarkId: string = '';
 
   onOpenBookmark: (bookmark: BookmarkItem) => void = (_: BookmarkItem) => {};
-  onOpenFolder: (folder: BookmarkItem, x: number, y: number) => void = (_folder: BookmarkItem, _x: number, _y: number) => {};
+  onOpenFolder: (
+    folder: BookmarkItem,
+    x: number,
+    y: number
+  ) => void = (_folder: BookmarkItem, _x: number, _y: number) => {};
   onBookmarkContextMenu: (bookmark: BookmarkItem, x: number, y: number) => void =
     (_bookmark: BookmarkItem, _x: number, _y: number) => {};
   onBookmarkBarContextMenu: (x: number, y: number) => void = (_x: number, _y: number) => {};
@@ -108,8 +112,8 @@ export struct BookmarkBar {
   }
 
   private handleBookmarkDrop(bookmark: BookmarkItem): void {
-    let source = this.bookmarks.find((item: BookmarkItem) => item.id === this.draggingBookmarkId)
-      ?? this.resolveExternalDragSource() ?? undefined;
+    let source = this.bookmarks.find((item: BookmarkItem) => item.id === this.draggingBookmarkId) ??
+      this.resolveExternalDragSource() ?? undefined;
     if (!source) {
       this.clearDragState();
       return;
@@ -327,8 +331,8 @@ export struct BookmarkBar {
       this.onBookmarkBarContextMenu(x, y);
     })
     .onDrop(() => {
-      let source = this.bookmarks.find((item: BookmarkItem) => item.id === this.draggingBookmarkId)
-        ?? this.resolveExternalDragSource() ?? undefined;
+      let source = this.bookmarks.find((item: BookmarkItem) => item.id === this.draggingBookmarkId) ??
+        this.resolveExternalDragSource() ?? undefined;
       if (source) {
         this.onBookmarkDrop(source, null, this.bookmarks.length);
       }

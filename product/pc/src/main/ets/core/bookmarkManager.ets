@@ -115,7 +115,7 @@ type BookmarkListener = (bookmarks: BookmarkItem[]) => void;
 
 export class BookmarkManager implements BookmarkDataProvider {
   private static instance: BookmarkManager = new BookmarkManager();
-  static readonly ROOT_FOLDER_ID: string = '';
+  public static readonly ROOT_FOLDER_ID: string = '';
 
   private readonly bookmarksByUrl: Map<string, BookmarkRecord> = new Map();
   private readonly nodesById: Map<string, StoredBookmarkNode> = new Map();
@@ -297,7 +297,11 @@ export class BookmarkManager implements BookmarkDataProvider {
     return this.cloneFolder(folder);
   }
 
-  createFolder(title: string, parentId: string = BookmarkManager.ROOT_FOLDER_ID, sortOrder?: number): BookmarkItem | null {
+  createFolder(
+    title: string,
+    parentId: string = BookmarkManager.ROOT_FOLDER_ID,
+    sortOrder?: number
+  ): BookmarkItem | null {
     const folder = this.addFolder(title, parentId);
     if (!folder) {
       return null;
@@ -452,7 +456,11 @@ export class BookmarkManager implements BookmarkDataProvider {
     return this.nodeToBookmarkItem(node);
   }
 
-  moveBookmark(url: string, parentId: string = BookmarkManager.ROOT_FOLDER_ID, sortOrder?: number): BookmarkItem | null {
+  moveBookmark(
+    url: string,
+    parentId: string = BookmarkManager.ROOT_FOLDER_ID,
+    sortOrder?: number
+  ): BookmarkItem | null {
     const normalizedUrl = this.normalizeUrl(url);
     const bookmark = this.bookmarksByUrl.get(normalizedUrl);
     if (!bookmark) {
@@ -596,9 +604,15 @@ export class BookmarkManager implements BookmarkDataProvider {
       throw new Error('RdbStore is not initialized');
     }
     try {
-      await this.rdbStore.executeSql(`CREATE INDEX IF NOT EXISTS idx_bookmark_nodes_parent_sort ON ${this.TABLE_NAME}(parentId, sortOrder);`);
-      await this.rdbStore.executeSql(`CREATE INDEX IF NOT EXISTS idx_bookmark_nodes_url ON ${this.TABLE_NAME}(normalizedUrl);`);
-      await this.rdbStore.executeSql(`CREATE INDEX IF NOT EXISTS idx_bookmark_nodes_updated_at ON ${this.TABLE_NAME}(updatedAt DESC);`);
+      const parentSortIndexSql =
+        `CREATE INDEX IF NOT EXISTS idx_bookmark_nodes_parent_sort ON ${this.TABLE_NAME}(parentId, sortOrder);`;
+      const urlIndexSql =
+        `CREATE INDEX IF NOT EXISTS idx_bookmark_nodes_url ON ${this.TABLE_NAME}(normalizedUrl);`;
+      const updatedAtIndexSql =
+        `CREATE INDEX IF NOT EXISTS idx_bookmark_nodes_updated_at ON ${this.TABLE_NAME}(updatedAt DESC);`;
+      await this.rdbStore.executeSql(parentSortIndexSql);
+      await this.rdbStore.executeSql(urlIndexSql);
+      await this.rdbStore.executeSql(updatedAtIndexSql);
     } catch (error) {
       const errorMessage = (error as BusinessError).message || 'Unknown error';
       console.error(`Failed to create bookmark indexes: ${errorMessage}`);

@@ -22,20 +22,32 @@ export struct SettingsSidebar {
   @State private isBackHovered: boolean = false;
 
   private getItemBackgroundColor(item: SettingsNavigationItem): string {
-    if (this.activeItemId === item.id) return '#e3f2fd';
-    if (this.hoveredItemId === item.id) return item.enabled ? '#f1f6fd' : '#f7f7f7';
-    if (this.focusedItemId === item.id) return '#f1f6fd';
+    if (this.activeItemId === item.id) {
+      return '#e3f2fd';
+    }
+    if (this.hoveredItemId === item.id) {
+      return item.enabled ? '#f1f6fd' : '#f7f7f7';
+    }
+    if (this.focusedItemId === item.id) {
+      return '#f1f6fd';
+    }
     return '#ffffff';
   }
 
   private getItemAccentColor(item: SettingsNavigationItem): string {
-    if (this.activeItemId === item.id) return '#1976d2';
-    if (this.focusedItemId === item.id) return '#7aa7dc';
+    if (this.activeItemId === item.id) {
+      return '#1976d2';
+    }
+    if (this.focusedItemId === item.id) {
+      return '#7aa7dc';
+    }
     return '#00000000';
   }
 
   private getItemTextColor(item: SettingsNavigationItem): string {
-    if (!item.enabled) return '#8a8a8a';
+    if (!item.enabled) {
+      return '#8a8a8a';
+    }
     return this.activeItemId === item.id || this.hoveredItemId === item.id ? '#1976d2' : '#333333';
   }
 

@@ -108,7 +108,8 @@ export struct SettingsHistoryManager {
     const day = date.getDate();
     const hour = date.getHours();
     const minute = date.getMinutes();
-    return `${month < 10 ? '0' : ''}${month}-${day < 10 ? '0' : ''}${day} ${hour < 10 ? '0' : ''}${hour}:${minute < 10 ? '0' : ''}${minute}`;
+    return `${month < 10 ? '0' : ''}${month}-${day < 10 ? '0' : ''}${day} ` +
+      `${hour < 10 ? '0' : ''}${hour}:${minute < 10 ? '0' : ''}${minute}`;
   }
 
   @Builder

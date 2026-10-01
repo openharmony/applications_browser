@@ -183,7 +183,9 @@ export class BrowserPageViewModel {
 
     this.seedNavigationFromCurrentTab(activeTab);
     this.navigationController.navigateTo(activeTab.id, resolved.targetUrl);
-    this.tabManager.updateTabLoadState(activeTab.id, 'loading', this.resolveLoadingTitle(resolved.targetUrl), resolved.targetUrl);
+    this.tabManager.updateTabLoadState(
+      activeTab.id, 'loading', this.resolveLoadingTitle(resolved.targetUrl), resolved.targetUrl
+    );
     this.tabManager.updateTabNavigationState(
       activeTab.id,
       this.navigationController.canGoBack(activeTab.id),
@@ -274,7 +276,9 @@ export class BrowserPageViewModel {
       return this.getViewState();
     }
     if (activeTab.loadState !== 'home') {
-      this.tabManager.updateTabLoadState(activeTab.id, 'loading', this.resolveLoadingTitle(activeTab.url), activeTab.url);
+      this.tabManager.updateTabLoadState(
+        activeTab.id, 'loading', this.resolveLoadingTitle(activeTab.url), activeTab.url
+      );
     }
     return this.getViewState();
   }

@@ -138,7 +138,9 @@ export class SessionManager {
       .filter((windowSession: BrowserWindowSession) => !windowSession.isPrivateWindow)
       .map((windowSession: BrowserWindowSession): BrowserWindowSession => {
         const tabIds = windowSession.tabIds.filter((tabId): boolean => validTabIds.has(String(tabId)));
-        const activeTabId = windowSession.activeTabId && validTabIds.has(String(windowSession.activeTabId)) ? windowSession.activeTabId : (tabIds[0] ?? null);
+        const hasActiveTab = windowSession.activeTabId &&
+          validTabIds.has(String(windowSession.activeTabId));
+        const activeTabId = hasActiveTab ? windowSession.activeTabId : (tabIds[0] ?? null);
         const sanitizedWindow: BrowserWindowSession = {
           id: windowSession.id,
           tabIds,
@@ -168,9 +170,13 @@ export class SessionManager {
   private cloneSnapshot(snapshot: BrowserSessionSnapshot): BrowserSessionSnapshot {
     return {
       version: snapshot.version,
-      windows: snapshot.windows.map((windowSession: BrowserWindowSession): BrowserWindowSession => this.cloneWindowSession(windowSession)),
+      windows: snapshot.windows.map(
+        (windowSession: BrowserWindowSession): BrowserWindowSession => this.cloneWindowSession(windowSession)
+      ),
       tabs: snapshot.tabs.map((tab: Tab) => this.cloneTabForPersistence(tab)),
-      recentlyClosedTabs: (snapshot.recentlyClosedTabs ?? []).map((record: ClosedTabSessionRecord): ClosedTabSessionRecord => this.cloneClosedTabRecord(record)),
+      recentlyClosedTabs: (snapshot.recentlyClosedTabs ?? []).map(
+        (record: ClosedTabSessionRecord): ClosedTabSessionRecord => this.cloneClosedTabRecord(record)
+      ),
       activeWindowId: snapshot.activeWindowId,
       savedAt: snapshot.savedAt,
     };

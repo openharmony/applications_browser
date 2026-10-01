@@ -94,7 +94,10 @@ export class DownloadManager {
     this.hostContext = context;
   }
 
-  private normalizeStartRequest(requestOrUrl: DownloadStartRequest | string, suggestedFileName?: string): DownloadStartRequest {
+  private normalizeStartRequest(
+    requestOrUrl: DownloadStartRequest | string,
+    suggestedFileName?: string
+  ): DownloadStartRequest {
     if (typeof requestOrUrl === 'string') {
       const request: DownloadStartRequest = {
         sourceUrl: requestOrUrl,
@@ -134,7 +137,11 @@ export class DownloadManager {
     return cloneDownloadTask(task);
   }
 
-  async startManagedDownload(requestOrUrl: DownloadStartRequest | string, suggestedFileName?: string, hostContext?: object): Promise<DownloadTask> {
+  async startManagedDownload(
+    requestOrUrl: DownloadStartRequest | string,
+    suggestedFileName?: string,
+    hostContext?: object
+  ): Promise<DownloadTask> {
     const request: DownloadStartRequest = this.normalizeStartRequest(requestOrUrl, suggestedFileName);
     const task = this.startDownload(request);
     this.requestContexts.set(task.id, request);
@@ -151,23 +158,33 @@ export class DownloadManager {
     try {
       await this.downloadService.start(task.id, effectiveContext, request, {
         onProgress: (receivedBytes: number, totalBytes: number, percentComplete?: number) => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) return;
+          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+            return;
+          }
           this.markDownloading(task.id, receivedBytes, totalBytes, percentComplete);
         },
         onComplete: (filePath?: string) => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) return;
+          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+            return;
+          }
           this.markCompleted(task.id, filePath);
         },
         onFail: (code: number) => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) return;
+          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+            return;
+          }
           this.markFailed(task.id, `下载失败，错误码：${code}`, String(code));
         },
         onPause: () => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) return;
+          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+            return;
+          }
           this.updateDownload(task.id, { state: 'paused', canResume: true, canRetry: false });
         },
         onRemove: () => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) return;
+          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+            return;
+          }
           this.cancelDownload(task.id);
         },
       });
@@ -202,15 +219,21 @@ export class DownloadManager {
     try {
       this.downloadService.startArkWebDownload(task.id, effectiveContext, request, item, {
         onProgress: (receivedBytes: number, totalBytes: number, percentComplete?: number) => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) return;
+          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+            return;
+          }
           this.markDownloading(task.id, receivedBytes, totalBytes, percentComplete);
         },
         onComplete: (filePath?: string) => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) return;
+          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+            return;
+          }
           this.markCompleted(task.id, filePath);
         },
         onFail: (code: number) => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) return;
+          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+            return;
+          }
           this.markFailed(task.id, `网页下载失败，错误码：${code}`, String(code));
         },
       });
@@ -545,16 +568,36 @@ export class DownloadManager {
       return null;
     }
 
-    if (update.receivedBytes !== undefined) task.receivedBytes = Math.max(0, update.receivedBytes);
-    if (update.totalBytes !== undefined) task.totalBytes = update.totalBytes;
-    if (update.progress !== undefined) task.progress = this.normalizeProgress(update.progress);
-    if (update.state !== undefined) task.state = update.state;
-    if (update.filePath !== undefined) task.filePath = update.filePath;
-    if (update.errorCode !== undefined) task.errorCode = update.errorCode;
-    if (update.errorMessage !== undefined) task.errorMessage = update.errorMessage;
-    if (update.canResume !== undefined) task.canResume = update.canResume;
-    if (update.canRetry !== undefined) task.canRetry = update.canRetry;
-    if (update.completedAt !== undefined) task.completedAt = update.completedAt;
+    if (update.receivedBytes !== undefined) {
+      task.receivedBytes = Math.max(0, update.receivedBytes);
+    }
+    if (update.totalBytes !== undefined) {
+      task.totalBytes = update.totalBytes;
+    }
+    if (update.progress !== undefined) {
+      task.progress = this.normalizeProgress(update.progress);
+    }
+    if (update.state !== undefined) {
+      task.state = update.state;
+    }
+    if (update.filePath !== undefined) {
+      task.filePath = update.filePath;
+    }
+    if (update.errorCode !== undefined) {
+      task.errorCode = update.errorCode;
+    }
+    if (update.errorMessage !== undefined) {
+      task.errorMessage = update.errorMessage;
+    }
+    if (update.canResume !== undefined) {
+      task.canResume = update.canResume;
+    }
+    if (update.canRetry !== undefined) {
+      task.canRetry = update.canRetry;
+    }
+    if (update.completedAt !== undefined) {
+      task.completedAt = update.completedAt;
+    }
     task.updatedAt = Date.now();
 
     if (task.state === 'completed' && !task.completedAt) {
@@ -690,7 +733,9 @@ export class DownloadManager {
         this.endAction(id, 'cancel');
       })
       .catch((error: Object) => {
-        this.restoreControlStateAfterFailure(id, previous, 'cancel_failed', '取消下载失败，请重试', 'cancel', 'canceled');
+        this.restoreControlStateAfterFailure(
+          id, previous, 'cancel_failed', '取消下载失败，请重试', 'cancel', 'canceled'
+        );
       });
   }
 
@@ -713,7 +758,9 @@ export class DownloadManager {
         this.endAction(id, 'pause');
       })
       .catch((error: Object) => {
-        this.restoreControlStateAfterFailure(id, previous, 'pause_failed', '暂停下载失败，请重试', 'pause', 'paused');
+        this.restoreControlStateAfterFailure(
+          id, previous, 'pause_failed', '暂停下载失败，请重试', 'pause', 'paused'
+        );
       });
   }
 
@@ -787,25 +834,35 @@ export class DownloadManager {
     }
     this.downloadService.start(id, effectiveContext, request, {
       onProgress: (receivedBytes: number, totalBytes: number, percentComplete?: number) => {
-        if (!this.isCurrentAttempt(id, attemptGeneration)) return;
+        if (!this.isCurrentAttempt(id, attemptGeneration)) {
+          return;
+        }
         this.markDownloading(id, receivedBytes, totalBytes, percentComplete);
       },
         onComplete: (filePath?: string) => {
-          if (!this.isCurrentAttempt(id, attemptGeneration)) return;
+          if (!this.isCurrentAttempt(id, attemptGeneration)) {
+            return;
+          }
           this.markCompleted(id, filePath);
           this.endAction(id, 'retry');
         },
         onFail: (code: number) => {
-          if (!this.isCurrentAttempt(id, attemptGeneration)) return;
+          if (!this.isCurrentAttempt(id, attemptGeneration)) {
+            return;
+          }
           this.markFailed(id, `下载失败，错误码：${code}`, String(code));
           this.endAction(id, 'retry');
         },
       onPause: () => {
-        if (!this.isCurrentAttempt(id, attemptGeneration)) return;
+        if (!this.isCurrentAttempt(id, attemptGeneration)) {
+          return;
+        }
         this.updateDownload(id, { state: 'paused', canResume: true, canRetry: false });
       },
       onRemove: () => {
-        if (!this.isCurrentAttempt(id, attemptGeneration)) return;
+        if (!this.isCurrentAttempt(id, attemptGeneration)) {
+          return;
+        }
         this.cancelDownload(id);
       },
     }).catch((error: Object) => {
@@ -900,9 +957,15 @@ export class DownloadManager {
     }
 
     try {
-      await this.rdbStore.executeSql(`CREATE INDEX IF NOT EXISTS idx_download_tasks_created_at ON ${this.TABLE_NAME}(createdAt DESC);`);
-      await this.rdbStore.executeSql(`CREATE INDEX IF NOT EXISTS idx_download_tasks_updated_at ON ${this.TABLE_NAME}(updatedAt DESC);`);
-      await this.rdbStore.executeSql(`CREATE INDEX IF NOT EXISTS idx_download_tasks_state ON ${this.TABLE_NAME}(state);`);
+      const createdAtIndexSql =
+        `CREATE INDEX IF NOT EXISTS idx_download_tasks_created_at ON ${this.TABLE_NAME}(createdAt DESC);`;
+      const updatedAtIndexSql =
+        `CREATE INDEX IF NOT EXISTS idx_download_tasks_updated_at ON ${this.TABLE_NAME}(updatedAt DESC);`;
+      const stateIndexSql =
+        `CREATE INDEX IF NOT EXISTS idx_download_tasks_state ON ${this.TABLE_NAME}(state);`;
+      await this.rdbStore.executeSql(createdAtIndexSql);
+      await this.rdbStore.executeSql(updatedAtIndexSql);
+      await this.rdbStore.executeSql(stateIndexSql);
     } catch (error) {
       const errorMessage = (error as BusinessError).message || 'Unknown error';
       console.error(`Failed to create download indexes: ${errorMessage}`);
@@ -1054,11 +1117,21 @@ export class DownloadManager {
   }
 
   private getActionLabel(action?: string): string {
-    if (action === 'pause') return '正在暂停';
-    if (action === 'resume') return '正在继续';
-    if (action === 'cancel') return '正在取消';
-    if (action === 'retry') return '正在重试';
-    if (action === 'remove') return '正在删除';
+    if (action === 'pause') {
+      return '正在暂停';
+    }
+    if (action === 'resume') {
+      return '正在继续';
+    }
+    if (action === 'cancel') {
+      return '正在取消';
+    }
+    if (action === 'retry') {
+      return '正在重试';
+    }
+    if (action === 'remove') {
+      return '正在删除';
+    }
     return '';
   }
 

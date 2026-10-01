@@ -3,15 +3,15 @@
 export type AppRoute = 'browser' | 'dev' | 'settings' | 'downloads' | 'bookmarks' | 'history' | 'overlay_playground';
 
 export class AppRouter {
-  static readonly Browser: AppRoute = 'browser';
-  static readonly DevLauncher: AppRoute = 'dev';
-  static readonly Settings: AppRoute = 'settings';
-  static readonly Downloads: AppRoute = 'downloads';
-  static readonly Bookmarks: AppRoute = 'bookmarks';
-  static readonly History: AppRoute = 'history';
-  static readonly OverlayPlayground: AppRoute = 'overlay_playground';
+  public static readonly browser: AppRoute = 'browser';
+  public static readonly devLauncher: AppRoute = 'dev';
+  public static readonly settings: AppRoute = 'settings';
+  public static readonly downloads: AppRoute = 'downloads';
+  public static readonly bookmarks: AppRoute = 'bookmarks';
+  public static readonly history: AppRoute = 'history';
+  public static readonly overlayPlayground: AppRoute = 'overlay_playground';
 
   static getStartupRoute(shouldLaunchToDevLauncher: boolean): AppRoute {
-    return shouldLaunchToDevLauncher ? AppRouter.DevLauncher : AppRouter.Browser;
+    return shouldLaunchToDevLauncher ? AppRouter.devLauncher : AppRouter.browser;
   }
 }
