@@ -1,6 +1,7 @@
 // SearchEngineManager：管理搜索引擎定义与搜索 URL 生成。
 
 import { CustomSearchEngineSetting, SettingsManager } from './settingsManager';
+import { SearchEngineConfig, SearchEngineConfigEntry, SearchEngineConfigProvider } from './searchEngineConfig';
 
 export type SearchEngineId = string;
 
@@ -13,18 +14,29 @@ export interface SearchEngineDefinition {
 
 export class SearchEngineManager {
   private readonly settingsManager: SettingsManager;
+  private readonly config: SearchEngineConfig;
+  private fallbackEngineId: SearchEngineId;
   private readonly builtInEngines: Map<SearchEngineId, SearchEngineDefinition> = new Map();
 
-  constructor(settingsManager?: SettingsManager) {
+  constructor(settingsManager?: SettingsManager, config?: SearchEngineConfig) {
     this.settingsManager = settingsManager ?? SettingsManager.getInstance();
+    this.config = config ?? SearchEngineConfigProvider.getDefault();
+    this.fallbackEngineId = this.config.fallbackEngineId;
     this.registerBuiltInEngines();
+    if (!this.builtInEngines.has(this.fallbackEngineId)) {
+      this.builtInEngines.forEach((engine: SearchEngineDefinition) => {
+        if (this.fallbackEngineId.length === 0) {
+          this.fallbackEngineId = engine.id;
+        }
+      });
+    }
   }
 
   getSupportedEngines(): SearchEngineDefinition[] {
-    const engines: SearchEngineDefinition[] = [
-      this.getEngineDefinition('baidu'),
-      this.getEngineDefinition('so360'),
-    ];
+    const engines: SearchEngineDefinition[] = [];
+    this.builtInEngines.forEach((engine: SearchEngineDefinition) => {
+      engines.push(engine);
+    });
     this.settingsManager.getSettings().customSearchEngines.forEach((engine: CustomSearchEngineSetting) => {
       engines.push(this.toDefinition(engine));
     });
@@ -36,7 +48,7 @@ export class SearchEngineManager {
     if (this.hasEngine(engineId)) {
       return engineId;
     }
-    return 'baidu';
+    return this.fallbackEngineId;
   }
 
   getDefaultEngine(): SearchEngineDefinition {
@@ -58,7 +70,7 @@ export class SearchEngineManager {
     const customEngine = this.settingsManager.getSettings().customSearchEngines
       .find((engine: CustomSearchEngineSetting) => engine.id === engineId);
     return customEngine ? this.toDefinition(customEngine) :
-      this.builtInEngines.get('baidu') as SearchEngineDefinition;
+      this.builtInEngines.get(this.fallbackEngineId) as SearchEngineDefinition;
   }
 
   hasEngine(engineId: SearchEngineId): boolean {
@@ -108,7 +120,8 @@ export class SearchEngineManager {
     }
     this.settingsManager.updateSettings({
       customSearchEngines: nextEngines,
-      defaultSearchEngineId: settings.defaultSearchEngineId === engineId ? 'baidu' : settings.defaultSearchEngineId,
+      defaultSearchEngineId: settings.defaultSearchEngineId === engineId ? this.fallbackEngineId :
+        settings.defaultSearchEngineId,
     });
     return true;
   }
@@ -122,17 +135,16 @@ export class SearchEngineManager {
   }
 
   private registerBuiltInEngines(): void {
-    this.builtInEngines.set('baidu', {
-      id: 'baidu',
-      name: '百度',
-      searchUrlTemplate: 'https://www.baidu.com/s?wd={query}',
-      builtIn: true,
-    });
-    this.builtInEngines.set('so360', {
-      id: 'so360',
-      name: '360 搜索',
-      searchUrlTemplate: 'https://www.so.com/s?q={query}',
-      builtIn: true,
+    this.config.builtInEngines.forEach((engine: SearchEngineConfigEntry) => {
+      if (engine.id.trim().length === 0 || engine.name.trim().length === 0) {
+        return;
+      }
+      this.builtInEngines.set(engine.id, {
+        id: engine.id,
+        name: engine.name,
+        searchUrlTemplate: this.normalizeSearchUrlTemplate(engine.searchUrlTemplate),
+        builtIn: true,
+      });
     });
   }
 

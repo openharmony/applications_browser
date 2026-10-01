@@ -11,6 +11,7 @@ import { SessionManager } from '../core/sessionManager';
 import { SettingsManager } from '../core/settingsManager';
 import { DownloadManager } from '../core/downloadManager';
 import { ScriptStore } from '../runtime/scriptStore';
+import { SearchEngineConfigProvider } from '../core/searchEngineConfig';
 import {
   AppLifecycleEvents,
   AppLifecyclePayload,
@@ -167,14 +168,19 @@ export default class EntryAbility extends UIAbility {
     // 主窗口创建完成，为该 Ability 加载主页面。
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
     AppStorage.setOrCreate('browserWindowStage', windowStage);
-
-    windowStage.loadContent('pages/Index', (err) => {
-      if (err.code) {
-        hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
-        return;
-      }
-      hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
-    });
+    SearchEngineConfigProvider.load(this.context)
+      .catch((err: object) => {
+        hilog.error(DOMAIN, 'SearchEngine', 'Load config failed: %{public}s', JSON.stringify(err));
+      })
+      .finally(() => {
+        windowStage.loadContent('pages/Index', (err) => {
+          if (err.code) {
+            hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
+            return;
+          }
+          hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
+        });
+      });
   }
 
   onWindowStageDestroy(): void {
