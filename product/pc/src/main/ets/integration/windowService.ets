@@ -308,7 +308,10 @@ export class WindowService {
     try {
       const mainWindow = await this.resolveWindow(hostContext, windowName);
       mainWindow.setWindowDecorVisible(false);
-      mainWindow.setWindowDecorHeight(56);
+      // 系统窗口按钮（最小化/缩放/关闭）在此装饰高度内垂直居中。
+      // 标签栏行高为 40（BrowserPage 顶部行），取 40 才能与标签栏上下居中对齐；
+      // 之前取 56 会导致按钮中心落在 28px，比标签栏中心（20px）偏下 8px。
+      mainWindow.setWindowDecorHeight(40);
     } catch (error) {
       throw new Error(this.getErrorMessage(error));
     }
