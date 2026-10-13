@@ -374,10 +374,9 @@ export class TabManager {
       this.tabs.set(tab.id, tab);
     });
 
-    const hasPreferredActiveTab = sourceWindow.activeTabId && restoredTabs.some(
+    const preferredActiveId: TabId = sourceWindow.activeTabId !== null && restoredTabs.some(
       (tab: Tab) => String(tab.id) === String(sourceWindow.activeTabId)
-    );
-    const preferredActiveId = hasPreferredActiveTab ? sourceWindow.activeTabId : restoredTabs[0].id;
+    ) ? sourceWindow.activeTabId : restoredTabs[0].id;
     this.setActiveTab(preferredActiveId);
     return true;
   }

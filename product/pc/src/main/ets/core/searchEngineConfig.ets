@@ -12,6 +12,14 @@ export interface SearchEngineConfig {
   fallbackEngineId: string;
 }
 
+interface RawResourceManagerLike {
+  getRawFileContent(path: string): Promise<Uint8Array>;
+}
+
+interface HostContextLike {
+  resourceManager?: RawResourceManagerLike;
+}
+
 export class SearchEngineConfigProvider {
   private static readonly CONFIG_FILE: string = 'search_engines.json';
   private static config: SearchEngineConfig = {
@@ -48,11 +56,7 @@ export class SearchEngineConfigProvider {
   }
 
   private static async readConfig(context: object): Promise<void> {
-    const hostContext = context as {
-      resourceManager?: {
-        getRawFileContent: (path: string) => Promise<Uint8Array>;
-      };
-    };
+    const hostContext = context as HostContextLike;
     if (!hostContext.resourceManager) {
       throw new Error('search_engine_config_resource_manager_missing');
     }
