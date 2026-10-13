@@ -102,7 +102,9 @@ export struct BrowserErrorPage {
     }
     .width('100%')
     .height('100%')
-    .padding({ left: 28, right: 28, top: 72, bottom: 32 })
+    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Center)
+    .padding({ left: 28, right: 28, top: 32, bottom: 32 })
     .backgroundColor(this.isPrivate ? '#171a21' : '#ffffff');
   }
 }
