@@ -162,7 +162,6 @@ const SITE_PERMISSION_DECISIONS: SitePermissionSettingDecision[] = ['ask', 'allo
 
 // About values mirror the product metadata shown by the settings design.
 const ABOUT_VERSION: string = '1.0.0';
-const ABOUT_BUILD_NUMBER: string = '12345';
 const ABOUT_RELEASE_DATE: string = '2023-10-01';
 
 @Component
@@ -789,7 +788,6 @@ export struct SettingsPage {
           .margin({ top: 22, bottom: 4 });
 
         this.AboutInfoRow('版本', ABOUT_VERSION);
-        this.AboutInfoRow('构建号', ABOUT_BUILD_NUMBER);
         this.AboutInfoRow('发布日期', ABOUT_RELEASE_DATE, false);
       }
       .width('100%');
