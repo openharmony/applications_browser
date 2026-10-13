@@ -394,7 +394,7 @@ export struct BrowserPage {
   @State bookmarksSubMenuOffsetY: number = 0;
   @State uaSubMenuOffsetX: number = 328;
   @State uaSubMenuOffsetY: number = 0;
-  @State selectedUaMode: UaMode = 'default';
+  @State selectedUaMode: UaMode = 'desktop';
   @State uaRenderRevision: number = 0;
   @State appliedWebSettings: AppliedWebSettings = {
     javaScriptAccess: true,
@@ -546,7 +546,6 @@ export struct BrowserPage {
   ];
 
   private readonly uaSubMenuItems: BrowserMenuItem[] = [
-    { id: 'default', label: '默认 UA' },
     { id: 'desktop', label: '桌面版 UA' },
     { id: 'mobile', label: '手机版 UA' },
   ];
@@ -1538,6 +1537,16 @@ export struct BrowserPage {
     this.appliedWebSettings = this.webSettingsAdapter.getAppliedWebSettings();
     this.applyCookieSettings();
     this.clearRequestedUrlsForAllTabs();
+    // UA 标识跨启动持久化：启动时存储异步加载完成会经 notify 走到这里，
+    // 把上次选择的 UA 恢复到 selectedUaMode；若 Web 运行时已创建则整体重建，
+    // 保证恢复后首个请求即携带正确 UA（与菜单内切换同一套重建流程）。
+    const persistedUaMode = this.uaManager.normalizeMode(settings.uaMode);
+    if (persistedUaMode !== this.selectedUaMode) {
+      this.selectedUaMode = persistedUaMode;
+      hilog.info(FAVICON_LOG_DOMAIN, NAVIGATION_LOG_TAG,
+        'UA_RESTORE mode=%{public}s action=recreate_web_context', persistedUaMode);
+      this.restartWebRuntimesForUaMode();
+    }
     const defaultZoomPercent = this.clampPageZoomPercent(settings.defaultZoomPercent);
     if (forceApplyPageDefaults || defaultZoomPercent !== this.lastDefaultZoomPercent) {
       this.pageZoomPercent = defaultZoomPercent;
@@ -3655,6 +3664,8 @@ export struct BrowserPage {
     const nextMode = this.uaManager.normalizeMode(item.id);
     if (nextMode !== this.selectedUaMode) {
       this.selectedUaMode = nextMode;
+      // 持久化 UA 选择，重启后由 settingsListener 同步回来（见 applyBrowserSettingsChange）。
+      SettingsManager.getInstance().updateSettings({ uaMode: nextMode });
       hilog.info(FAVICON_LOG_DOMAIN, NAVIGATION_LOG_TAG,
         'UA_SWITCH mode=%{public}s action=recreate_web_context', nextMode);
       this.restartWebRuntimesForUaMode();

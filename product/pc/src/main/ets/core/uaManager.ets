@@ -2,7 +2,7 @@
 
 import webview from '@ohos.web.webview';
 
-export type UaMode = 'default' | 'desktop' | 'mobile';
+export type UaMode = 'desktop' | 'mobile';
 
 const DESKTOP_USER_AGENT: string =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
@@ -15,21 +15,14 @@ export class UaManager {
     if (value === 'desktop' || value === 'mobile') {
       return value;
     }
-    return 'default';
+    return 'desktop';
   }
 
   getUserAgent(mode: UaMode): string {
-    if (mode === 'desktop') {
-      return DESKTOP_USER_AGENT;
-    }
     if (mode === 'mobile') {
       return MOBILE_USER_AGENT;
     }
-    try {
-      return webview.WebviewController.getDefaultUserAgent();
-    } catch (_) {
-      return '';
-    }
+    return DESKTOP_USER_AGENT;
   }
 
   apply(controller: webview.WebviewController, mode: UaMode): boolean {

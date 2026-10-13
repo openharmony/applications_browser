@@ -1,6 +1,7 @@
 // SettingsManager：管理浏览器设置，并在变更时通知监听者。
 
 import { preferences } from '@kit.ArkData';
+import { UaMode } from './uaManager';
 
 export interface CustomSearchEngineSetting {
   id: string;
@@ -26,6 +27,9 @@ export interface BrowserSettings {
   cookiesEnabled: boolean;
   blockThirdPartyCookies: boolean;
   blockThirdPartyCookiesInPrivate: boolean;
+
+  // 浏览器 UA 标识（右上角菜单可切换，需跨启动持久化）。
+  uaMode: UaMode;
 }
 
 export type StartupBehavior = 'restore_session' | 'new_tab' | 'home_page';
@@ -133,6 +137,9 @@ export class SettingsManager {
     if (partial.blockThirdPartyCookiesInPrivate !== undefined) {
       nextSettings.blockThirdPartyCookiesInPrivate = partial.blockThirdPartyCookiesInPrivate;
     }
+    if (partial.uaMode !== undefined) {
+      nextSettings.uaMode = this.readUaMode(partial.uaMode, nextSettings.uaMode);
+    }
     this.settings = nextSettings;
     this.notify();
     this.persistSettings();
@@ -218,6 +225,7 @@ export class SettingsManager {
       cookiesEnabled: true,
       blockThirdPartyCookies: false,
       blockThirdPartyCookiesInPrivate: false,
+      uaMode: 'desktop',
     };
   }
 
@@ -236,6 +244,7 @@ export class SettingsManager {
       cookiesEnabled: settings.cookiesEnabled,
       blockThirdPartyCookies: settings.blockThirdPartyCookies,
       blockThirdPartyCookiesInPrivate: settings.blockThirdPartyCookiesInPrivate,
+      uaMode: settings.uaMode,
     };
   }
 
@@ -269,6 +278,7 @@ export class SettingsManager {
         storedSettings.blockThirdPartyCookiesInPrivate,
         defaultSettings.blockThirdPartyCookiesInPrivate
       ),
+      uaMode: this.readUaMode(storedSettings.uaMode, defaultSettings.uaMode),
     };
   }
 
@@ -338,5 +348,9 @@ export class SettingsManager {
 
   private readBoolean(value: boolean | undefined, fallback: boolean): boolean {
     return value !== undefined ? value : fallback;
+  }
+
+  private readUaMode(value: UaMode | undefined, fallback: UaMode): UaMode {
+    return value === 'desktop' || value === 'mobile' ? value : fallback;
   }
 }

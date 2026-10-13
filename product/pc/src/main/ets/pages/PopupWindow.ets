@@ -45,7 +45,7 @@ struct PopupWindow {
     const uaKey = `browserPopupUserAgent:${this.windowName}`;
     const storedUa = AppStorage.get<string>(uaKey) ?? '';
     AppStorage.delete(uaKey);
-    this.userAgent = storedUa.length > 0 ? storedUa : this.uaManager.getUserAgent('default');
+    this.userAgent = storedUa.length > 0 ? storedUa : this.uaManager.getUserAgent('desktop');
     const urlKey = `browserSubWindowPendingUrl:${this.windowName}`;
     this.pendingUrl = (AppStorage.get<string>(urlKey) ?? '').trim();
     AppStorage.delete(urlKey);
