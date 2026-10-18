@@ -1,5 +1,8 @@
 // AddressBar：地址/搜索输入框，联想建议与书签切换入口。
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import { KeyCode } from '@kit.InputKit';
+import { ClipboardService } from '../../integration/clipboardService';
+import { PermissionService } from '../../integration/permissionService';
 
 export const ADDRESS_BAR_INPUT_ID: string = 'browser_address_bar_input';
 export const ADDRESS_BAR_FAVORITE_ID: string = 'browser_address_bar_favorite';
@@ -18,7 +21,9 @@ export struct AddressBar {
   @Prop @Watch('handleSelectionRevisionChanged') selectionRevision: number = 0;
 
   private inputController: TextInputController = new TextInputController();
-  // 焦点状态追踪：用于区分“点击进入未聚焦的输入框”与“聚焦状态下点击调整光标”。
+  private readonly clipboardService: ClipboardService = new ClipboardService();
+  private readonly permissionService: PermissionService = new PermissionService();
+  // 焦点状态追踪：用于区分点击进入未聚焦的输入框与聚焦状态下调整光标。
   // 使用响应式状态驱动外层描边，确保输入框获得/失去焦点时立即刷新视觉状态。
   @State private inputFocused: boolean = false;
   private inputFocusedAtPress: boolean = false;
@@ -27,6 +32,19 @@ export struct AddressBar {
   // 会静默失败；全选若跑在焦点之前，也会被随后的焦点初始化重置。
   private selectAfterFocus: boolean = false;
   private enterEditingFocusTimer: number = -1;
+  private selectionStart: number = 0;
+  private selectionEnd: number = 0;
+  private pasteFallbackTimer: number = -1;
+  private pasteRequestId: number = 0;
+  private nativePasteRequestId: number = -1;
+  private inputChangeRevision: number = 0;
+  private pastePermissionReady: boolean = false;
+  private pastePermissionPromise: Promise<boolean> | null = null;
+
+  // The native TextInput paste operation is the primary path. If the system
+  // pasteboard is temporarily busy, the native callback may not arrive; the
+  // fallback then retries the read without stealing the normal Ctrl+V event.
+  private static readonly PASTE_FALLBACK_DELAY_MS: number = 420;
 
   onChangeValue: (value: string) => void = () => {};
   onSubmitValue: (value: string) => void = () => {};
@@ -41,6 +59,7 @@ export struct AddressBar {
     if (this.readonlyMode) {
       return;
     }
+    this.inputChangeRevision += 1;
     this.text = value;
     this.onChangeValue(value);
   }
@@ -70,13 +89,15 @@ export struct AddressBar {
 
   private handleEditingChanged(): void {
     if (this.editing) {
+      this.selectionStart = 0;
+      this.selectionEnd = this.text.length;
       hilog.info(0x0000, ADDRESS_FOCUS_LOG_TAG, 'EDITING_ON selectAfterFocus=%{public}s focused=%{public}s',
         String(this.selectAfterFocus), String(this.inputFocused));
       this.selectAfterFocus = true;
       if (this.enterEditingFocusTimer >= 0) {
         clearTimeout(this.enterEditingFocusTimer);
       }
-      // 等 TextInput 挂载完成后再补一次焦点请求（defaultFocus 对动态插入的组件不保证生效）。
+      // 等 TextInput 挂载完成后再补一次焦点请求，动态插入的组件不保证 defaultFocus 生效。
       this.enterEditingFocusTimer = setTimeout(() => {
         this.enterEditingFocusTimer = -1;
         try {
@@ -114,6 +135,7 @@ export struct AddressBar {
       clearTimeout(this.enterEditingFocusTimer);
       this.enterEditingFocusTimer = -1;
     }
+    this.cancelPasteFallback();
   }
 
   private selectAllInputText(): void {
@@ -133,11 +155,149 @@ export struct AddressBar {
   }
 
   private handleInputClick(): void {
-    // 按下时输入框没有焦点（鼠标/焦点在别处）→ 本次点击是“进入输入框”，全选文本；
+    // 按下时输入框没有焦点（鼠标/焦点在别处）→ 本次点击是“进入输入框”，
+    // 全选文本；
     // 已经聚焦时点击 → 保持系统默认行为（光标定位），不打断用户编辑。
     if (!this.inputFocusedAtPress) {
       this.selectAllInputText();
     }
+  }
+
+  private isCtrlPressed(event: KeyEvent): boolean {
+    if (!event.getModifierKeyState) {
+      return false;
+    }
+    try {
+      return event.getModifierKeyState(['ctrl']);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  private isShiftPressed(event: KeyEvent): boolean {
+    if (!event.getModifierKeyState) {
+      return false;
+    }
+    try {
+      return event.getModifierKeyState(['shift']);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  private handleInputKeyEvent(event: KeyEvent): boolean {
+    const isKeyboardPaste = event.keyCode === KeyCode.KEYCODE_V && this.isCtrlPressed(event);
+    const isPasteKey = event.keyCode === KeyCode.KEYCODE_PASTE;
+    const isShiftInsert = event.keyCode === KeyCode.KEYCODE_INSERT && this.isShiftPressed(event);
+    if (event.type !== KeyType.Down || (!isKeyboardPaste && !isPasteKey && !isShiftInsert) ||
+      this.readonlyMode) {
+      return false;
+    }
+    this.schedulePasteFallback();
+    // Let TextInput perform its normal paste first. Returning true here would
+    // suppress the native operation and make a transient failure more likely.
+    return false;
+  }
+
+  private schedulePasteFallback(): void {
+    this.cancelPasteFallback();
+    const requestId = this.pasteRequestId + 1;
+    this.pasteRequestId = requestId;
+    const requestText = this.text;
+    const requestRevision = this.inputChangeRevision;
+    const requestStart = this.selectionStart;
+    const requestEnd = this.selectionEnd;
+    hilog.info(0x0000, ADDRESS_FOCUS_LOG_TAG,
+      'PASTE_KEY request=%{public}s textLength=%{public}s selection=%{public}s-%{public}s',
+      String(requestId), String(requestText.length), String(requestStart), String(requestEnd));
+    this.pasteFallbackTimer = setTimeout(() => {
+      this.pasteFallbackTimer = -1;
+      if (this.nativePasteRequestId === requestId ||
+        this.inputChangeRevision !== requestRevision || this.text !== requestText) {
+        hilog.info(0x0000, ADDRESS_FOCUS_LOG_TAG,
+          'PASTE_FALLBACK_SKIP request=%{public}s native=%{public}s changed=%{public}s',
+          String(requestId), String(this.nativePasteRequestId === requestId),
+          String(this.inputChangeRevision !== requestRevision || this.text !== requestText));
+        return;
+      }
+      void this.applyPasteFallback(requestId, requestText, requestStart, requestEnd);
+    }, AddressBar.PASTE_FALLBACK_DELAY_MS);
+  }
+
+  private cancelPasteFallback(): void {
+    if (this.pasteFallbackTimer >= 0) {
+      clearTimeout(this.pasteFallbackTimer);
+      this.pasteFallbackTimer = -1;
+    }
+  }
+
+  private ensurePastePermission(): Promise<boolean> {
+    if (this.pastePermissionReady) {
+      return Promise.resolve(true);
+    }
+    if (this.pastePermissionPromise) {
+      return this.pastePermissionPromise;
+    }
+    const context = this.getUIContext().getHostContext();
+    this.pastePermissionPromise = this.permissionService.ensureForPasteboard(context)
+      .then((granted: boolean) => {
+        this.pastePermissionReady = granted;
+        return granted;
+      })
+      .catch(() => false)
+      .finally(() => {
+        this.pastePermissionPromise = null;
+      });
+    return this.pastePermissionPromise;
+  }
+
+  private async applyPasteFallback(
+    requestId: number,
+    requestText: string,
+    requestStart: number,
+    requestEnd: number,
+  ): Promise<void> {
+    hilog.info(0x0000, ADDRESS_FOCUS_LOG_TAG,
+      'PASTE_FALLBACK_BEGIN request=%{public}s', String(requestId));
+    const granted = await this.ensurePastePermission();
+    if (!granted) {
+      hilog.warn(0x0000, ADDRESS_FOCUS_LOG_TAG,
+        'PASTE_FALLBACK_DENIED request=%{public}s', String(requestId));
+      return;
+    }
+    const pastedText = await this.clipboardService.readText();
+    // Do not overwrite input entered while the fallback was waiting for the
+    // permission or pasteboard retry window.
+    if (this.nativePasteRequestId === requestId || this.text !== requestText) {
+      hilog.info(0x0000, ADDRESS_FOCUS_LOG_TAG,
+        'PASTE_FALLBACK_ABORT request=%{public}s native=%{public}s changed=%{public}s',
+        String(requestId), String(this.nativePasteRequestId === requestId),
+        String(this.text !== requestText));
+      return;
+    }
+    if (pastedText.length === 0) {
+      hilog.warn(0x0000, ADDRESS_FOCUS_LOG_TAG,
+        'PASTE_FALLBACK_EMPTY request=%{public}s', String(requestId));
+      return;
+    }
+
+    const start = Math.max(0, Math.min(requestStart, this.text.length));
+    const end = Math.max(start, Math.min(requestEnd, this.text.length));
+    const nextText = this.text.slice(0, start) + pastedText + this.text.slice(end);
+    this.text = nextText;
+    this.selectionStart = start + pastedText.length;
+    this.selectionEnd = this.selectionStart;
+    this.inputChangeRevision += 1;
+    this.onChangeValue(nextText);
+    hilog.info(0x0000, ADDRESS_FOCUS_LOG_TAG,
+      'PASTE_FALLBACK_APPLIED request=%{public}s length=%{public}s',
+      String(requestId), String(pastedText.length));
+    setTimeout(() => {
+      try {
+        this.inputController.setTextSelection(this.selectionStart, this.selectionEnd);
+      } catch (_) {
+      }
+    }, 0);
   }
 
   build() {
@@ -161,6 +321,22 @@ export struct AddressBar {
           .selectAll(true)
           .onChange((value: string) => this.handleChange(value))
           .onSubmit(() => this.handleSubmit())
+          .onPaste((value: string) => {
+            // Native context-menu/selection-menu paste is still supported. The
+            // value is applied by TextInput.onChange; this callback is only a
+            // diagnostic signal and intentionally does not read the clipboard
+            // a second time.
+            this.nativePasteRequestId = this.pasteRequestId;
+            this.cancelPasteFallback();
+            hilog.info(0x0000, ADDRESS_FOCUS_LOG_TAG,
+              'PASTE_NATIVE request=%{public}s length=%{public}s',
+              String(this.nativePasteRequestId), String(value.length));
+          })
+          .onKeyEvent((event: KeyEvent): boolean => this.handleInputKeyEvent(event))
+          .onTextSelectionChange((selectionStart: number, selectionEnd: number) => {
+            this.selectionStart = selectionStart;
+            this.selectionEnd = selectionEnd;
+          })
           .onFocus(() => {
             this.inputFocused = true;
             hilog.info(0x0000, ADDRESS_FOCUS_LOG_TAG, 'INPUT_FOCUSED');

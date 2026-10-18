@@ -128,6 +128,11 @@ struct PopupWindow {
 
   private async handleArkWebDownload(item: webview.WebDownloadItem): Promise<void> {
     try {
+      const hostContext = this.getUIContext().getHostContext();
+      if (!hostContext) {
+        item.cancel();
+        return;
+      }
       let pageUrl = this.pendingUrl;
       let pageTitle = this.windowName;
       try {
@@ -137,7 +142,7 @@ struct PopupWindow {
       }
       const fileName = item.getSuggestedFileName() || 'download';
       const fileUri = await this.downloadSettingsService.chooseDownloadFile(
-        this.getUIContext().getHostContext(), fileName, item.getMimeType());
+        hostContext, fileName, item.getMimeType());
       if (fileUri.trim().length === 0) {
         item.cancel();
         return;
