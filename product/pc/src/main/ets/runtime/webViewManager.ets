@@ -7,6 +7,8 @@ import { AbilityConstant } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { TabId } from '../core/types';
 import { JSBridgeFacade, JSBridgeFacadeOptions } from './jsBridgeFacade';
+import { WebMicCaptureService } from '../integration/webMicCaptureService';
+import { TabMicBridge } from './tabMicMonitor';
 
 const RUNTIME_MEMORY_LOG_DOMAIN: number = 0x0000;
 const RUNTIME_MEMORY_LOG_TAG: string = 'RuntimeMemory';
@@ -19,6 +21,8 @@ export const WEB_RUNTIME_CRITICAL_MEMORY_LIMIT: number = 2;
 export interface WebRuntime {
   controller: webview.WebviewController;
   jsBridge: JSBridgeFacade;
+  micCapture: WebMicCaptureService;
+  micBridge: TabMicBridge;
   downloadDelegate?: webview.WebDownloadDelegate;
   /** Monotonic identity for the WebView runtime bound to a tab. */
   revision: number;
@@ -111,10 +115,12 @@ export class WebViewManager {
     }
     const jsBridge = new JSBridgeFacade(controller, effective);
     jsBridge.setSdkSource(this.sdkSource);
+    const micCapture = new WebMicCaptureService();
+    const micBridge = new TabMicBridge(micCapture);
 
     const revision = (this.runtimeRevisionsByTabId.get(key) ?? 0) + 1;
     this.runtimeRevisionsByTabId.set(key, revision);
-    const rt: WebRuntime = { controller, jsBridge, revision };
+    const rt: WebRuntime = { controller, jsBridge, micCapture, micBridge, revision };
     this.runtimes.set(key, rt);
     this.touch(key);
     this.logState('RUNTIME_CREATED', key);
@@ -177,12 +183,17 @@ export class WebViewManager {
 
   destroy(tabId: TabId): void {
     const key = String(tabId);
+    const runtime = this.runtimes.get(key);
+    if (runtime) {
+      runtime.micCapture.stop();
+    }
     this.runtimes.delete(key);
     this.lastUsedAtByTabId.delete(key);
     this.logState('RUNTIME_DESTROYED', key);
   }
 
   destroyAll(): void {
+    this.runtimes.forEach((runtime: WebRuntime) => runtime.micCapture.stop());
     this.runtimes.clear();
     this.lastUsedAtByTabId.clear();
     this.logState('RUNTIMES_DESTROYED_ALL', '');
@@ -243,6 +254,10 @@ export class WebViewManager {
       const tabId = candidates.shift();
       if (!tabId) {
         break;
+      }
+      const runtime = this.runtimes.get(tabId);
+      if (runtime) {
+        runtime.micCapture.stop();
       }
       this.runtimes.delete(tabId);
       this.lastUsedAtByTabId.delete(tabId);

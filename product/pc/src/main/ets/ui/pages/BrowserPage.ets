@@ -37,6 +37,11 @@ import {
   TAB_MEDIA_MONITOR_SCRIPT,
   TAB_MEDIA_PLAYING_METHOD,
 } from '../../runtime/tabMediaMonitor';
+import {
+  TAB_MIC_BRIDGE_NAME,
+  TAB_MIC_METHODS,
+} from '../../runtime/tabMicMonitor';
+import { WEB_MIC_GUM_POLYFILL } from '../../runtime/webMicGumPolyfill';
 import { AppliedCookieSettings, AppliedWebSettings, WebSettingsAdapter } from '../../runtime/webSettingsAdapter';
 import { AppRoute, AppRouter } from '../../core/appRouter';
 import { DebugGate } from '../../core/debugGate';
@@ -321,6 +326,11 @@ export struct BrowserPage {
   // tabs because the bridge instance, not the page, carries the tab id.
   private mediaMonitorScripts: ScriptItem[] = [
     { script: TAB_MEDIA_MONITOR_SCRIPT, scriptRules: ['*'] },
+  ];
+  // The mobile implementation uses a native AudioCapturer bridge because
+  // ArkWeb's audio capture path can return an authorized but silent stream.
+  private micGumScripts: ScriptItem[] = [
+    { script: WEB_MIC_GUM_POLYFILL, scriptRules: ['*'] },
   ];
   private lastDefaultZoomPercent: number = 100;
   private settingsListener: (settings: BrowserSettings) => void = (settings: BrowserSettings) => {
@@ -6108,6 +6118,9 @@ export struct BrowserPage {
     if (!this.isCurrentTabRuntime(tabId, runtime)) {
       return;
     }
+    // A new document invalidates the previous document's MediaStream. Stop
+    // the native capturer before the old Web runtime can be reused.
+    runtime.micCapture.stop();
     const runtimeState = this.syncTabRuntimeRevision(tabId, runtime);
     if (this.showContextMenu && this.pendingContextMenu?.tabId === String(tabId)) {
       this.closeContextMenu();
@@ -7413,6 +7426,16 @@ export struct BrowserPage {
         const resource = resources[index];
         const permissionType = mapProtectedResourceToSitePermissionType(resource);
 
+        // Audio is handled by the per-runtime native AudioCapturer bridge
+        // injected at document start. Do not grant ArkWeb's audioBus as well:
+        // on affected PC builds it reports success but delivers silent PCM,
+        // and running both paths can also make the microphone device contend.
+        if (permissionType === 'microphone') {
+          this.tracePermission('MICROPHONE_NATIVE_BYPASS',
+            `tab=${String(tabId)} origin=${origin} resource=${resource}`);
+          continue;
+        }
+
         // During the temporary bypass, skip the browser's per-site prompt.
         // Keep the OS-level permission gate for camera/microphone, and allow
         // other ArkWeb resources so resource-name variations do not block a
@@ -8016,7 +8039,13 @@ export struct BrowserPage {
                     methodList: [TAB_MEDIA_PLAYING_METHOD],
                     controller: this.ensureRuntimeForTab(tab.id).controller,
                   })
-                  .runJavaScriptOnDocumentStart(this.mediaMonitorScripts)
+                  .javaScriptProxy({
+                    object: this.ensureRuntimeForTab(tab.id).micBridge,
+                    name: TAB_MIC_BRIDGE_NAME,
+                    methodList: TAB_MIC_METHODS,
+                    controller: this.ensureRuntimeForTab(tab.id).controller,
+                  })
+                  .runJavaScriptOnDocumentStart(this.mediaMonitorScripts.concat(this.micGumScripts))
                   .forceEnableZoom(true)
                   .javaScriptAccess(this.appliedWebSettings.javaScriptAccess)
                   .imageAccess(this.appliedWebSettings.imageAccess)

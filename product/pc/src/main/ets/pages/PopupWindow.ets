@@ -12,6 +12,9 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { UaManager } from '../core/uaManager';
 import { DownloadManager } from '../core/downloadManager';
 import { DownloadSettingsService } from '../integration/downloadSettingsService';
+import { WebMicCaptureService } from '../integration/webMicCaptureService';
+import { TAB_MIC_BRIDGE_NAME, TAB_MIC_METHODS, TabMicBridge } from '../runtime/tabMicMonitor';
+import { WEB_MIC_GUM_POLYFILL } from '../runtime/webMicGumPolyfill';
 import { WindowManager } from '../core/windowManager';
 import { extractUrlScheme, isExternalAppSchemeUrl } from '../core/urlNormalizer';
 
@@ -28,6 +31,8 @@ struct PopupWindow {
   private downloadManager: DownloadManager = DownloadManager.getInstance();
   private downloadSettingsService: DownloadSettingsService = new DownloadSettingsService();
   private downloadDelegate: webview.WebDownloadDelegate | null = null;
+  private micCapture: WebMicCaptureService = new WebMicCaptureService();
+  private micBridge: TabMicBridge = new TabMicBridge(this.micCapture);
   private windowName: string = '';
   // 是否挂载的是内核已绑定的 controller（正常路径）。
   private tookBoundController: boolean = false;
@@ -59,6 +64,7 @@ struct PopupWindow {
 
   aboutToDisappear(): void {
     this.isDestroyed = true;
+    this.micCapture.stop();
   }
 
   private cancelHandler(handler: ControllerHandler): void {
@@ -157,7 +163,7 @@ struct PopupWindow {
         contentLength: item.getTotalBytes(),
         isPrivate: false,
         downloadFileUri: fileUri,
-      }, this.getUIContext().getHostContext());
+      }, hostContext);
     } catch (error) {
       hilog.error(DOMAIN, 'DownloadTrace',
         'ARKWEB_BEFORE_DOWNLOAD_FAILED popup=%{public}s error=%{public}s', this.windowName, String(error));
@@ -179,6 +185,13 @@ struct PopupWindow {
         .onlineImageAccess(true)
         .zoomAccess(true)
         .forceEnableZoom(true)
+        .javaScriptProxy({
+          object: this.micBridge,
+          name: TAB_MIC_BRIDGE_NAME,
+          methodList: TAB_MIC_METHODS,
+          controller: this.controller,
+        })
+        .runJavaScriptOnDocumentStart([{ script: WEB_MIC_GUM_POLYFILL, scriptRules: ['*'] }])
         .userAgent(this.userAgent)
         .onLoadIntercept((event: OnLoadInterceptEvent) => {
           let requestUrl = '';
@@ -202,6 +215,7 @@ struct PopupWindow {
           }
         })
         .onPageBegin((event: OnPageBeginEvent) => {
+          this.micCapture.stop();
           hilog.info(DOMAIN, LOG_TAG, 'Page begin window=%{public}s url=%{public}s',
             this.windowName, event.url);
         })
@@ -216,7 +230,7 @@ struct PopupWindow {
           } catch (_) {
           }
         })
-        .onErrorReceive((event) => {
+        .onErrorReceive((event: OnErrorReceiveEvent) => {
           if (event && event.request.getRequestUrl().startsWith('http')) {
             hilog.error(DOMAIN, LOG_TAG, 'Page error window=%{public}s url=%{public}s error=%{public}s',
               this.windowName, event.request.getRequestUrl(), event.error.getErrorInfo());

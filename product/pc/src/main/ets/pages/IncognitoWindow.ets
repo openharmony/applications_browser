@@ -27,6 +27,9 @@ import { BrowserContextMenu, BrowserContextMenuItem } from '../ui/components/Bro
 import { ClipboardService } from '../integration/clipboardService';
 import { DownloadSettingsService } from '../integration/downloadSettingsService';
 import { PermissionService } from '../integration/permissionService';
+import { WebMicCaptureService } from '../integration/webMicCaptureService';
+import { TAB_MIC_BRIDGE_NAME, TAB_MIC_METHODS, TabMicBridge } from '../runtime/tabMicMonitor';
+import { WEB_MIC_GUM_POLYFILL } from '../runtime/webMicGumPolyfill';
 import {
   extractSiteOriginFromUrl,
   mapProtectedResourceToSitePermissionType,
@@ -80,6 +83,8 @@ struct IncognitoWindow {
   private downloadDelegate: webview.WebDownloadDelegate | null = null;
   private clipboardService: ClipboardService = new ClipboardService();
   private permissionService: PermissionService = new PermissionService();
+  private micCapture: WebMicCaptureService = new WebMicCaptureService(false);
+  private micBridge: TabMicBridge = new TabMicBridge(this.micCapture);
   private shortcutManager: ShortcutManager = new ShortcutManager();
   private windowManager: WindowManager = WindowManager.getInstance();
   private privateSessionCoordinator: PrivateSessionCoordinator = PrivateSessionCoordinator.getInstance();
@@ -189,6 +194,7 @@ struct IncognitoWindow {
   }
 
   aboutToDisappear(): void {
+    this.micCapture.stop();
     if (this.privateSessionOwnerActive) {
       this.privateSessionCoordinator.release(this.privateSessionOwnerId);
       this.privateSessionOwnerActive = false;
@@ -314,6 +320,8 @@ struct IncognitoWindow {
     if (!acceptWebPageBegin(this.navigationLifecycle, url)) {
       return;
     }
+    // A new document invalidates the previous document's MediaStream.
+    this.micCapture.stop();
     this.closeContextMenu();
     this.clearBrowserError();
     this.requestedUrl = url;
@@ -1438,6 +1446,12 @@ struct IncognitoWindow {
     for (let index = 0; index < resources.length; index++) {
       const resource = resources[index];
       const permissionType: SitePermissionType | null = mapProtectedResourceToSitePermissionType(resource);
+      // The injected native microphone stream replaces ArkWeb's audioBus.
+      // Keep camera requests on the normal ArkWeb path, but do not grant the
+      // microphone resource because it is intentionally handled by the bridge.
+      if (permissionType === 'microphone') {
+        continue;
+      }
       const granted = permissionType
         ? await this.permissionService.ensureForSitePermission(this.getUIContext().getHostContext(), permissionType)
         : true;
@@ -1620,6 +1634,13 @@ struct IncognitoWindow {
 
       Stack() {
         Web({ src: '', controller: this.controller, incognitoMode: true })
+          .javaScriptProxy({
+            object: this.micBridge,
+            name: TAB_MIC_BRIDGE_NAME,
+            methodList: TAB_MIC_METHODS,
+            controller: this.controller,
+          })
+          .runJavaScriptOnDocumentStart([{ script: WEB_MIC_GUM_POLYFILL, scriptRules: ['*'] }])
           .width('100%')
           .height('100%')
           .opacity(this.showHome ? 0 : 1)
