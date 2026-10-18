@@ -15,6 +15,8 @@ export interface DownloadStartRequest {
   totalBytes?: number;
   isPrivate?: boolean;
   downloadDirectoryUri?: string;
+  /** 用户在本次下载确认中选择的目标文件 URI。 */
+  downloadFileUri?: string;
 }
 
 export interface WebDownloadStartInput {
@@ -27,6 +29,7 @@ export interface WebDownloadStartInput {
   userAgent?: string;
   contentLength?: number;
   isPrivate?: boolean;
+  downloadFileUri?: string;
 }
 
 export interface DownloadTask {
@@ -125,6 +128,7 @@ export function buildDownloadStartRequest(input: WebDownloadStartInput): Downloa
     userAgent: input.userAgent,
     totalBytes: input.contentLength !== undefined && input.contentLength > 0 ? input.contentLength : undefined,
     isPrivate: input.isPrivate === true,
+    downloadFileUri: input.downloadFileUri,
   };
 }
 

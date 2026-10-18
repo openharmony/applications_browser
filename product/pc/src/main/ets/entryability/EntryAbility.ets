@@ -10,6 +10,7 @@ import { SiteSettingsManager } from '../core/siteSettingsManager';
 import { SessionManager } from '../core/sessionManager';
 import { SettingsManager } from '../core/settingsManager';
 import { DownloadManager } from '../core/downloadManager';
+import { DownloadNetworkWatcher } from '../integration/downloadNetworkWatcher';
 import { ScriptStore } from '../runtime/scriptStore';
 import { SearchEngineConfigProvider } from '../core/searchEngineConfig';
 import {
@@ -141,6 +142,7 @@ export default class EntryAbility extends UIAbility {
       const downloadManager = DownloadManager.getInstance();
       downloadManager.init(this.context)
         .then(() => {
+          DownloadNetworkWatcher.getInstance().start();
           hilog.info(DOMAIN, 'testTag', 'DownloadManager initialized successfully');
         })
         .catch((err: object) => {
@@ -161,6 +163,7 @@ export default class EntryAbility extends UIAbility {
   }
 
   onDestroy(): void {
+    DownloadNetworkWatcher.getInstance().stop();
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onDestroy');
   }
 

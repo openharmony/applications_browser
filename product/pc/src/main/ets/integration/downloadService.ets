@@ -2,7 +2,7 @@ import request from '@ohos.request';
 import uri from '@ohos.uri';
 import webview from '@ohos.web.webview';
 import { fileIo } from '@kit.CoreFileKit';
-import { http } from '@kit.NetworkKit';
+import { connection, http } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DownloadStartRequest } from '../core/downloadTypes';
@@ -36,6 +36,12 @@ interface OpenedDownloadTarget {
 }
 
 interface ImageFallbackHandle {
+  request: http.HttpRequest;
+  path: string;
+  fd: number;
+}
+
+interface ResumedHttpHandle {
   request: http.HttpRequest;
   path: string;
   fd: number;
@@ -203,10 +209,13 @@ export function buildDownloadTargetFilePath(directoryUri?: string, fileName?: st
 export class DownloadService {
   private taskHandles: Map<string, DownloadServiceTaskHandle> = new Map();
   private arkWebHandles: Map<string, ArkWebDownloadHandle> = new Map();
+  private pendingArkWebItems: Map<string, webview.WebDownloadItem> = new Map();
   private arkWebTaskIdByGuid: Map<string, string> = new Map();
   private imageFallbackHandles: Map<string, ImageFallbackHandle> = new Map();
   private imageFallbackTaskIds: Set<string> = new Set();
   private interruptedImageFallbacks: Set<string> = new Set();
+  private resumedHttpHandles: Map<string, ResumedHttpHandle> = new Map();
+  private interruptedResumedHttp: Set<string> = new Set();
 
   createArkWebDownloadDelegate(onBeforeDownload: (item: webview.WebDownloadItem) => void): webview.WebDownloadDelegate {
     const delegate = new webview.WebDownloadDelegate();
@@ -270,8 +279,13 @@ export class DownloadService {
     return delegate;
   }
 
+  registerPendingArkWebDownload(browserTaskId: string, item: webview.WebDownloadItem): void {
+    this.pendingArkWebItems.set(browserTaskId, item);
+  }
+
   startArkWebDownload(browserTaskId: string, hostContext: object, requestInfo: DownloadStartRequest,
     item: webview.WebDownloadItem, callbacks: DownloadServiceCallbacks): void {
+    this.pendingArkWebItems.delete(browserTaskId);
     const guid = item.getGuid();
     const path = this.buildArkWebDownloadPath(hostContext, requestInfo);
     const handle: ArkWebDownloadHandle = {
@@ -326,7 +340,10 @@ export class DownloadService {
         background: true,
       };
       const targetFilePath = buildDownloadTargetFilePath(requestInfo.downloadDirectoryUri, requestInfo.fileName);
-      if (targetFilePath) {
+      const selectedFileUri = (requestInfo.downloadFileUri ?? '').trim();
+      if (selectedFileUri.length > 0) {
+        config.filePath = selectedFileUri;
+      } else if (targetFilePath) {
         config.filePath = targetFilePath;
       }
       hilog.info(
@@ -372,8 +389,16 @@ export class DownloadService {
     downloadTask.on('fail', (code: number) => {
       hilog.error(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
         'REQUEST_FAILED task=%{public}s origin=%{public}s code=%{public}d', browserTaskId, origin, code);
-      this.taskHandles.delete(browserTaskId);
+      const networkAvailable = this.isNetworkAvailable();
+      if (networkAvailable) {
+        this.taskHandles.delete(browserTaskId);
+      }
       if (!imageDownload) {
+        this.safeInvoke(() => callbacks.onFail?.(code));
+        return;
+      }
+      if (!networkAvailable) {
+        this.taskHandles.delete(browserTaskId);
         this.safeInvoke(() => callbacks.onFail?.(code));
         return;
       }
@@ -382,6 +407,15 @@ export class DownloadService {
   }
 
   async cancel(browserTaskId: string): Promise<void> {
+    const pendingArkWebItem = this.pendingArkWebItems.get(browserTaskId);
+    if (pendingArkWebItem) {
+      this.pendingArkWebItems.delete(browserTaskId);
+      try {
+        pendingArkWebItem.cancel();
+      } catch (_) {
+      }
+      return;
+    }
     const arkWebHandle = this.arkWebHandles.get(browserTaskId);
     if (arkWebHandle) {
       try {
@@ -393,6 +427,10 @@ export class DownloadService {
     }
     if (this.imageFallbackTaskIds.has(browserTaskId)) {
       this.stopImageFallback(browserTaskId);
+      return;
+    }
+    if (this.resumedHttpHandles.has(browserTaskId)) {
+      this.stopResumedHttp(browserTaskId);
       return;
     }
     const handle = this.taskHandles.get(browserTaskId);
@@ -423,6 +461,10 @@ export class DownloadService {
     if (this.imageFallbackTaskIds.has(browserTaskId)) {
       throw new Error('当前图片下载阶段暂不支持暂停');
     }
+    if (this.resumedHttpHandles.has(browserTaskId)) {
+      this.stopResumedHttp(browserTaskId);
+      return;
+    }
     const handle = this.taskHandles.get(browserTaskId);
     if (!handle) {
       return;
@@ -434,25 +476,287 @@ export class DownloadService {
     }
   }
 
-  async resume(browserTaskId: string): Promise<void> {
+  /** 断网专用暂停：ArkWeb 任务取消后由 DownloadManager 通过 Range 恢复。 */
+  async pauseForNetwork(browserTaskId: string): Promise<void> {
+    const pendingArkWebItem = this.pendingArkWebItems.get(browserTaskId);
+    if (pendingArkWebItem) {
+      return;
+    }
     const arkWebHandle = this.arkWebHandles.get(browserTaskId);
     if (arkWebHandle) {
+      this.clearArkWebHandle(arkWebHandle.guid);
       try {
-        arkWebHandle.item.resume();
-      } catch (error) {
-        throw new Error(String(error));
+        arkWebHandle.item.cancel();
+      } catch (_) {
       }
+      return;
+    }
+    if (this.resumedHttpHandles.has(browserTaskId)) {
+      this.stopResumedHttp(browserTaskId);
       return;
     }
     const handle = this.taskHandles.get(browserTaskId);
     if (!handle) {
       return;
     }
+    await handle.task.suspend();
+  }
+
+  async resume(browserTaskId: string): Promise<boolean> {
+    const arkWebHandle = this.arkWebHandles.get(browserTaskId);
+    if (arkWebHandle) {
+      try {
+        arkWebHandle.item.resume();
+      } catch (error) {
+        this.clearArkWebHandle(arkWebHandle.guid);
+        throw new Error(String(error));
+      }
+      return true;
+    }
+    const handle = this.taskHandles.get(browserTaskId);
+    if (!handle) {
+      return false;
+    }
     try {
       await handle.task.restore();
     } catch (error) {
+      this.taskHandles.delete(browserTaskId);
       throw new Error(String(error));
     }
+    return true;
+  }
+
+  /**
+   * 从已有的部分文件开始恢复下载。系统 DownloadTask 不保证 restore()
+   * 在断网失败后仍保留偏移，因此这里优先使用 HTTP Range + APPEND。
+   * 如果目标 URI 不是应用可直接写入的文件路径，则回退到系统下载任务。
+   */
+  async startResumed(
+    browserTaskId: string,
+    hostContext: object,
+    requestInfo: DownloadStartRequest,
+    callbacks: DownloadServiceCallbacks,
+  ): Promise<void> {
+    const targetPath = this.resolveResumeTargetPath(hostContext, requestInfo);
+    const startByte = this.getFileSize(targetPath);
+    if (startByte <= 0 || !parseHttpUrl(requestInfo.sourceUrl) ||
+      !this.canOpenResumeTarget(targetPath)) {
+      await this.start(browserTaskId, hostContext, requestInfo, callbacks);
+      return;
+    }
+    try {
+      const headers = await buildDownloadRequestHeaders(requestInfo);
+      let savedPath: string;
+      try {
+        savedPath = await this.downloadHttpFileWithRange(
+          browserTaskId,
+          requestInfo,
+          targetPath,
+          headers,
+          startByte,
+          callbacks,
+        );
+      } catch (error) {
+        if (!String(error).includes('range response ignored')) {
+          throw error;
+        }
+        savedPath = await this.downloadHttpFileWithRange(
+          browserTaskId,
+          requestInfo,
+          targetPath,
+          headers,
+          0,
+          callbacks,
+        );
+      }
+      this.safeInvoke(() => callbacks.onComplete?.(savedPath));
+    } catch (error) {
+      if (this.interruptedResumedHttp.has(browserTaskId)) {
+        this.interruptedResumedHttp.delete(browserTaskId);
+        return;
+      }
+      throw error;
+    }
+  }
+
+  private resolveResumeTargetPath(hostContext: object, requestInfo: DownloadStartRequest): string {
+    const selectedFileUri = (requestInfo.downloadFileUri ?? '').trim();
+    if (selectedFileUri.length > 0) {
+      return selectedFileUri;
+    }
+    const configuredPath = buildDownloadTargetFilePath(
+      requestInfo.downloadDirectoryUri,
+      requestInfo.fileName,
+    );
+    if (configuredPath) {
+      return configuredPath;
+    }
+    const context = hostContext as DownloadHostContext;
+    const sandboxBase = (context.filesDir ?? context.cacheDir ?? '').trim();
+    if (sandboxBase.length === 0) {
+      return '';
+    }
+    return `${sandboxBase.replace(/\/+$/, '')}/downloads/${this.sanitizeFileName(requestInfo.fileName)}`;
+  }
+
+  private getFileSize(path: string): number {
+    if (path.trim().length === 0) {
+      return 0;
+    }
+    try {
+      const stat = fileIo.statSync(path);
+      return stat.size > 0 ? stat.size : 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  private canOpenResumeTarget(path: string): boolean {
+    if (path.trim().length === 0) {
+      return false;
+    }
+    try {
+      const file = fileIo.openSync(path, fileIo.OpenMode.READ_WRITE);
+      fileIo.closeSync(file.fd);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  private downloadHttpFileWithRange(
+    taskId: string,
+    requestInfo: DownloadStartRequest,
+    targetPath: string,
+    headers: Record<string, string>,
+    startByte: number,
+    callbacks: DownloadServiceCallbacks,
+  ): Promise<string> {
+    this.ensureParentDirectory(targetPath);
+    const httpRequest = http.createHttp();
+    const append = startByte > 0;
+    const openMode = append
+      ? fileIo.OpenMode.CREATE | fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.APPEND
+      : fileIo.OpenMode.CREATE | fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.TRUNC;
+    const opened = fileIo.openSync(targetPath, openMode);
+    const handle: ResumedHttpHandle = {
+      request: httpRequest,
+      path: targetPath,
+      fd: opened.fd,
+    };
+    this.resumedHttpHandles.set(taskId, handle);
+    const requestHeaders: Record<string, string> = {};
+    const headerKeys = Object.keys(headers);
+    for (let index = 0; index < headerKeys.length; index++) {
+      requestHeaders[headerKeys[index]] = headers[headerKeys[index]];
+    }
+    if (append) {
+      requestHeaders['Range'] = `bytes=${startByte}-`;
+    }
+
+    return new Promise<string>((resolve, reject) => {
+      let responseCode = 0;
+      let responseReady = false;
+      let dataEnded = false;
+      let settled = false;
+      let writeError: Error | null = null;
+
+      const cleanup = (): void => {
+        this.resumedHttpHandles.delete(taskId);
+        try {
+          fileIo.closeSync(opened.fd);
+        } catch (_) {
+        }
+        try {
+          httpRequest.off('dataReceive');
+          httpRequest.off('dataReceiveProgress');
+          httpRequest.off('dataEnd');
+          httpRequest.destroy();
+        } catch (_) {
+        }
+      };
+
+      const settle = (error?: Error): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(targetPath);
+      };
+
+      const finish = (): void => {
+        if (!responseReady || !dataEnded) {
+          return;
+        }
+        if (writeError) {
+          settle(writeError);
+          return;
+        }
+        if (responseCode === 416) {
+          const expected = requestInfo.totalBytes ?? 0;
+          const actual = this.getFileSize(targetPath);
+          if (expected > 0 && actual >= expected) {
+            settle();
+            return;
+          }
+        }
+        const expectedResponseCode = append ? 206 : 200;
+        if (responseCode !== expectedResponseCode) {
+          settle(new Error(`range response invalid: ${responseCode}`));
+          return;
+        }
+        settle();
+      };
+
+      httpRequest.on('dataReceive', (data: ArrayBuffer) => {
+        if (settled) {
+          return;
+        }
+        try {
+          fileIo.writeSync(opened.fd, data);
+        } catch (error) {
+          writeError = error as Error;
+        }
+      });
+      httpRequest.on('dataReceiveProgress', (progress: http.DataReceiveProgressInfo) => {
+        const received = startByte + Math.max(0, progress.receiveSize);
+        const responseTotal = Math.max(0, progress.totalSize);
+        const total = requestInfo.totalBytes && requestInfo.totalBytes > 0
+          ? requestInfo.totalBytes
+          : startByte + responseTotal;
+        const percent = total > 0 ? Math.floor((received * 100) / total) : undefined;
+        this.safeInvoke(() => callbacks.onProgress?.(received, total, percent));
+      });
+      httpRequest.on('dataEnd', () => {
+        dataEnded = true;
+        finish();
+      });
+
+      const options: http.HttpRequestOptions = {
+        method: http.RequestMethod.GET,
+        header: requestHeaders,
+        connectTimeout: 60000,
+        readTimeout: 600000,
+      };
+      httpRequest.requestInStream(requestInfo.sourceUrl, options)
+        .then((code: number) => {
+          responseCode = code;
+          responseReady = true;
+          if (append && code === 200) {
+            settle(new Error('range response ignored'));
+            return;
+          }
+          finish();
+        })
+        .catch((error: Error) => {
+          settle(error);
+        });
+    });
   }
 
   private async queryFilePath(downloadTask: request.DownloadTask): Promise<string | undefined> {
@@ -485,6 +789,10 @@ export class DownloadService {
 
   private buildArkWebDownloadPath(hostContext: object, requestInfo: DownloadStartRequest): string {
     const candidates: string[] = [];
+    const selectedFileUri = (requestInfo.downloadFileUri ?? '').trim();
+    if (selectedFileUri.length > 0) {
+      candidates.push(selectedFileUri);
+    }
     const configuredDirectory = (requestInfo.downloadDirectoryUri ?? '').trim();
     if (configuredDirectory.length > 0 && !/^[a-z][a-z0-9+.-]*:/i.test(configuredDirectory)) {
       candidates.push(`${configuredDirectory.replace(/\/+$/, '')}/${this.sanitizeFileName(requestInfo.fileName)}`);
@@ -572,7 +880,9 @@ export class DownloadService {
           return;
         }
         if (responseCode < 200 || responseCode >= 300) {
-          this.removeDownloadTarget(target.path);
+          if (this.isNetworkAvailable()) {
+            this.removeDownloadTarget(target.path);
+          }
           reject(new Error(`http status ${responseCode}`));
           return;
         }
@@ -618,7 +928,9 @@ export class DownloadService {
           settled = true;
           this.closeImageTarget(target.fd);
           this.destroyHttpRequest(httpRequest);
-          this.removeDownloadTarget(target.path);
+          if (this.isNetworkAvailable()) {
+            this.removeDownloadTarget(target.path);
+          }
           reject(error);
         });
     });
@@ -663,6 +975,10 @@ export class DownloadService {
 
   private openImageDownloadTarget(hostContext: object, requestInfo: DownloadStartRequest): OpenedDownloadTarget {
     const candidates: string[] = [];
+    const selectedFileUri = (requestInfo.downloadFileUri ?? '').trim();
+    if (selectedFileUri.length > 0) {
+      candidates.push(selectedFileUri);
+    }
     const configuredPath = buildDownloadTargetFilePath(requestInfo.downloadDirectoryUri, requestInfo.fileName);
     if (configuredPath) {
       candidates.push(configuredPath);
@@ -680,7 +996,9 @@ export class DownloadService {
 
     let lastErrorMessage = 'download target unavailable';
     for (let index = 0; index < candidates.length; index++) {
-      const path = this.resolveUniqueDownloadPath(candidates[index]);
+      const path = index === 0 && selectedFileUri.length > 0
+        ? candidates[index]
+        : this.resolveUniqueDownloadPath(candidates[index]);
       try {
         this.ensureParentDirectory(path);
         const file = fileIo.openSync(path,
@@ -787,6 +1105,25 @@ export class DownloadService {
       this.removeDownloadTarget(handle.path);
     }
     return this.imageFallbackTaskIds.has(browserTaskId);
+  }
+
+  private stopResumedHttp(browserTaskId: string): void {
+    this.interruptedResumedHttp.add(browserTaskId);
+    const handle = this.resumedHttpHandles.get(browserTaskId);
+    if (!handle) {
+      return;
+    }
+    this.resumedHttpHandles.delete(browserTaskId);
+    this.closeImageTarget(handle.fd);
+    this.destroyHttpRequest(handle.request);
+  }
+
+  private isNetworkAvailable(): boolean {
+    try {
+      return connection.hasDefaultNetSync();
+    } catch (_) {
+      return true;
+    }
   }
 
   private safeInvoke(callback: () => void): void {

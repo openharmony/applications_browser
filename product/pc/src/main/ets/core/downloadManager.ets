@@ -18,6 +18,7 @@ import { DownloadService } from '../integration/downloadService';
 import webview from '@ohos.web.webview';
 import relationalStore from '@ohos.data.relationalStore';
 import { BusinessError } from '@ohos.base';
+import { connection } from '@kit.NetworkKit';
 import { SettingsManager } from './settingsManager';
 
 type DownloadListener = (downloads: DownloadTask[]) => void;
@@ -60,6 +61,13 @@ export class DownloadManager {
   private requestContexts: Map<string, DownloadStartRequest> = new Map();
   private queuedPersistence: Map<string, DownloadTask> = new Map();
   private persistenceTail: Promise<void> = Promise.resolve();
+  /** 同时运行的下载任务上限；超出部分保持 pending 并按创建顺序等待。 */
+  private static readonly MAX_CONCURRENT_DOWNLOADS: number = 3;
+  private runningDownloadIds: Set<string> = new Set();
+  private queuedDownloadIds: string[] = [];
+  private queuedDownloadStarts: Map<string, () => Promise<void>> = new Map();
+  private drainingDownloadQueue: boolean = false;
+  private networkPausedDownloadIds: Set<string> = new Set();
 
   constructor(downloadService?: DownloadService, settingsManager?: SettingsManager) {
     if (downloadService) {
@@ -120,6 +128,7 @@ export class DownloadManager {
       totalBytes: request.totalBytes,
       isPrivate: request.isPrivate,
       downloadDirectoryUri: settings.downloadDirectoryUri,
+      downloadFileUri: request.downloadFileUri,
     };
   }
 
@@ -155,44 +164,62 @@ export class DownloadManager {
     this.hostContext = effectiveContext;
     this.updateDownload(task.id, { state: 'pending' });
 
-    try {
-      await this.downloadService.start(task.id, effectiveContext, request, {
-        onProgress: (receivedBytes: number, totalBytes: number, percentComplete?: number) => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
-            return;
+    const startOperation = async (): Promise<void> => {
+      try {
+        await this.downloadService.start(task.id, effectiveContext, request, {
+          onProgress: (receivedBytes: number, totalBytes: number, percentComplete?: number) => {
+            if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+              return;
+            }
+            this.markDownloading(task.id, receivedBytes, totalBytes, percentComplete);
+          },
+          onComplete: (filePath?: string) => {
+            if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+              return;
+            }
+            this.markCompleted(task.id, filePath);
+            this.releaseDownloadSlot(task.id);
+          },
+          onFail: (code: number) => {
+            if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+              return;
+            }
+            if (this.shouldPauseForNetwork(task.id)) {
+              this.networkPausedDownloadIds.add(task.id);
+              this.pauseDownload(task.id);
+              this.releaseDownloadSlot(task.id);
+              return;
+            }
+            this.markFailed(task.id, `下载失败，错误码：${code}`, String(code));
+            this.releaseDownloadSlot(task.id);
+          },
+          onPause: () => {
+            if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+              return;
+            }
+            this.updateDownload(task.id, { state: 'paused', canResume: true, canRetry: false });
+          },
+          onRemove: () => {
+            if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+              return;
+            }
+            this.cancelDownload(task.id);
+            this.releaseDownloadSlot(task.id);
+          },
+        });
+      } catch (error) {
+        if (this.isCurrentAttempt(task.id, attemptGeneration)) {
+          if (this.shouldPauseForNetwork(task.id)) {
+            this.networkPausedDownloadIds.add(task.id);
+            this.pauseDownload(task.id);
+          } else {
+            this.markFailed(task.id, String(error), 'start_failed');
           }
-          this.markDownloading(task.id, receivedBytes, totalBytes, percentComplete);
-        },
-        onComplete: (filePath?: string) => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
-            return;
-          }
-          this.markCompleted(task.id, filePath);
-        },
-        onFail: (code: number) => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
-            return;
-          }
-          this.markFailed(task.id, `下载失败，错误码：${code}`, String(code));
-        },
-        onPause: () => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
-            return;
-          }
-          this.updateDownload(task.id, { state: 'paused', canResume: true, canRetry: false });
-        },
-        onRemove: () => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
-            return;
-          }
-          this.cancelDownload(task.id);
-        },
-      });
-    } catch (error) {
-      if (this.isCurrentAttempt(task.id, attemptGeneration)) {
-        this.markFailed(task.id, String(error), 'start_failed');
+        }
+        this.releaseDownloadSlot(task.id);
       }
-    }
+    };
+    this.enqueueDownloadStart(task.id, startOperation);
 
     return this.getDownload(task.id) ?? task;
   }
@@ -213,36 +240,119 @@ export class DownloadManager {
     const attemptGeneration = this.beginAttempt(task.id);
     const effectiveContext = hostContext ?? this.hostContext;
     if (!effectiveContext) {
+      try {
+        item.cancel();
+      } catch (_) {
+      }
       return this.markFailed(task.id, '下载上下文不可用', 'missing_context') ?? task;
     }
     this.hostContext = effectiveContext;
-    try {
-      this.downloadService.startArkWebDownload(task.id, effectiveContext, request, item, {
-        onProgress: (receivedBytes: number, totalBytes: number, percentComplete?: number) => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
-            return;
+    this.downloadService.registerPendingArkWebDownload(task.id, item);
+    const startOperation = async (): Promise<void> => {
+      try {
+        this.downloadService.startArkWebDownload(task.id, effectiveContext, request, item, {
+          onProgress: (receivedBytes: number, totalBytes: number, percentComplete?: number) => {
+            if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+              return;
+            }
+            this.markDownloading(task.id, receivedBytes, totalBytes, percentComplete);
+          },
+          onComplete: (filePath?: string) => {
+            if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+              return;
+            }
+            this.markCompleted(task.id, filePath);
+            this.releaseDownloadSlot(task.id);
+          },
+          onFail: (code: number) => {
+            if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
+              return;
+            }
+            if (this.shouldPauseForNetwork(task.id)) {
+              this.networkPausedDownloadIds.add(task.id);
+              this.pauseDownload(task.id);
+              this.releaseDownloadSlot(task.id);
+              return;
+            }
+            this.markFailed(task.id, `网页下载失败，错误码：${code}`, String(code));
+            this.releaseDownloadSlot(task.id);
+          },
+        });
+      } catch (error) {
+        if (this.isCurrentAttempt(task.id, attemptGeneration)) {
+          if (this.shouldPauseForNetwork(task.id)) {
+            this.networkPausedDownloadIds.add(task.id);
+            this.pauseDownload(task.id);
+          } else {
+            this.markFailed(task.id, String(error), 'arkweb_start_failed');
           }
-          this.markDownloading(task.id, receivedBytes, totalBytes, percentComplete);
-        },
-        onComplete: (filePath?: string) => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
-            return;
-          }
-          this.markCompleted(task.id, filePath);
-        },
-        onFail: (code: number) => {
-          if (!this.isCurrentAttempt(task.id, attemptGeneration)) {
-            return;
-          }
-          this.markFailed(task.id, `网页下载失败，错误码：${code}`, String(code));
-        },
-      });
-    } catch (error) {
-      if (this.isCurrentAttempt(task.id, attemptGeneration)) {
-        this.markFailed(task.id, String(error), 'arkweb_start_failed');
+        }
+        this.releaseDownloadSlot(task.id);
       }
-    }
+    };
+    this.enqueueDownloadStart(task.id, startOperation);
     return this.getDownload(task.id) ?? task;
+  }
+
+  private enqueueDownloadStart(id: string, operation: () => Promise<void>): void {
+    if (this.runningDownloadIds.has(id) || this.queuedDownloadStarts.has(id)) {
+      return;
+    }
+    this.queuedDownloadIds.push(id);
+    this.queuedDownloadStarts.set(id, operation);
+    this.promoteQueuedDownloads();
+  }
+
+  private promoteQueuedDownloads(): void {
+    if (this.drainingDownloadQueue) {
+      return;
+    }
+    if (!this.hasDefaultNetwork()) {
+      return;
+    }
+    this.drainingDownloadQueue = true;
+    try {
+      while (this.runningDownloadIds.size < DownloadManager.MAX_CONCURRENT_DOWNLOADS &&
+        this.queuedDownloadIds.length > 0) {
+        const id = this.queuedDownloadIds.shift();
+        if (!id) {
+          continue;
+        }
+        const operation = this.queuedDownloadStarts.get(id);
+        this.queuedDownloadStarts.delete(id);
+        const task = this.items.get(id);
+        if (!operation || !task || !isActiveDownloadState(task.state)) {
+          continue;
+        }
+        this.runningDownloadIds.add(id);
+        this.updateDownload(id, {
+          state: 'downloading',
+          canResume: false,
+          canRetry: false,
+        });
+        operation().catch(() => {
+          this.releaseDownloadSlot(id);
+        });
+      }
+    } finally {
+      this.drainingDownloadQueue = false;
+    }
+  }
+
+  private releaseDownloadSlot(id: string): void {
+    if (!this.runningDownloadIds.delete(id)) {
+      return;
+    }
+    this.promoteQueuedDownloads();
+  }
+
+  private removeQueuedDownload(id: string): boolean {
+    const removed = this.queuedDownloadStarts.delete(id);
+    if (!removed) {
+      return false;
+    }
+    this.queuedDownloadIds = this.queuedDownloadIds.filter((queuedId: string) => queuedId !== id);
+    return true;
   }
 
   getDownloads(query?: DownloadTaskQuery): DownloadTask[] {
@@ -273,6 +383,7 @@ export class DownloadManager {
       this.cancelServiceTaskForRemoval(taskId);
       this.items.delete(taskId);
       this.sessionDownloadIds.delete(taskId);
+      this.networkPausedDownloadIds.delete(taskId);
       this.requestContexts.delete(taskId);
       this.queuedPersistence.delete(taskId);
       this.forgetAttempt(taskId);
@@ -303,6 +414,7 @@ export class DownloadManager {
       this.cancelServiceTaskForRemoval(taskId);
       this.items.delete(taskId);
       this.sessionDownloadIds.delete(taskId);
+      this.networkPausedDownloadIds.delete(taskId);
       this.requestContexts.delete(taskId);
       this.queuedPersistence.delete(taskId);
       this.forgetAttempt(taskId);
@@ -388,6 +500,7 @@ export class DownloadManager {
         await this.deletePersistedTaskAwait(taskId);
         this.items.delete(taskId);
         this.sessionDownloadIds.delete(taskId);
+        this.networkPausedDownloadIds.delete(taskId);
         this.requestContexts.delete(taskId);
         this.queuedPersistence.delete(taskId);
         this.invalidateAttempt(taskId);
@@ -420,8 +533,10 @@ export class DownloadManager {
     const wasActive = isActiveDownloadState(task.state);
     try {
       if (wasActive) {
+        this.removeQueuedDownload(id);
         await this.downloadService.cancel(id);
         this.invalidateAttempt(id);
+        this.releaseDownloadSlot(id);
         this.updateDownload(id, {
           state: 'canceled',
           canResume: false,
@@ -434,6 +549,7 @@ export class DownloadManager {
       await this.deletePersistedTaskAwait(id);
       this.items.delete(id);
       this.sessionDownloadIds.delete(id);
+      this.networkPausedDownloadIds.delete(id);
       this.requestContexts.delete(id);
       this.queuedPersistence.delete(id);
       this.forgetAttempt(id);
@@ -650,6 +766,7 @@ export class DownloadManager {
   }
 
   markCompleted(id: string, filePath?: string): DownloadTask | null {
+    this.networkPausedDownloadIds.delete(id);
     const task = this.items.get(id);
     if (task && !task.isPrivate && this.settingsManager.getSettings().showDownloadsWhenFinished) {
       this.hasUnreadCompletedNotice = true;
@@ -664,6 +781,7 @@ export class DownloadManager {
   }
 
   markFailed(id: string, errorMessage?: string, errorCode?: string): DownloadTask | null {
+    this.networkPausedDownloadIds.delete(id);
     const task = this.items.get(id);
     if (task && !task.isPrivate) {
       this.hasUnreadFailedNotice = true;
@@ -677,6 +795,7 @@ export class DownloadManager {
   }
 
   cancelDownload(id: string): DownloadTask | null {
+    this.networkPausedDownloadIds.delete(id);
     return this.updateDownload(id, {
       state: 'canceled',
       canRetry: true,
@@ -718,6 +837,14 @@ export class DownloadManager {
       return;
     }
     const previous = cloneDownloadTask(task);
+    if (this.removeQueuedDownload(id)) {
+      this.downloadService.cancel(id).catch(() => {
+      });
+      this.cancelDownload(id);
+      this.invalidateAttempt(id);
+      this.endAction(id, 'cancel');
+      return;
+    }
     // Optimistically reflect the user's command. The action label and the
     // canceled state are published immediately; a service failure restores
     // the prior active state so the row does not appear canceled falsely.
@@ -730,6 +857,7 @@ export class DownloadManager {
         if (current && current.state === 'canceled') {
           this.invalidateAttempt(id);
         }
+        this.releaseDownloadSlot(id);
         this.endAction(id, 'cancel');
       })
       .catch((error: Object) => {
@@ -746,6 +874,13 @@ export class DownloadManager {
     }
 
     const previous = cloneDownloadTask(task);
+    if (this.removeQueuedDownload(id)) {
+      this.downloadService.cancel(id).catch(() => {
+      });
+      this.pauseDownload(id);
+      this.endAction(id, 'pause');
+      return;
+    }
     // Publish the paused state synchronously. This is important for ArkWeb
     // downloads, whose pause event may arrive asynchronously or not at all.
     this.pauseDownload(id);
@@ -755,6 +890,7 @@ export class DownloadManager {
         if (current && isActiveDownloadState(current.state) && current.state !== 'paused') {
           this.pauseDownload(id);
         }
+        this.releaseDownloadSlot(id);
         this.endAction(id, 'pause');
       })
       .catch((error: Object) => {
@@ -770,17 +906,123 @@ export class DownloadManager {
       return;
     }
 
-    this.downloadService.resume(id)
-      .then(() => {
-        const current = this.items.get(id);
-        if (current && current.state === 'paused') {
-          this.resumeDownload(id);
+    const request = this.requestContexts.get(id) ?? this.applyDownloadSettings({
+      sourceUrl: task.sourceUrl,
+      fileName: task.fileName,
+      mimeType: task.mimeType,
+      pageUrl: task.pageUrl,
+      pageTitle: task.pageTitle,
+      totalBytes: task.totalBytes,
+      isPrivate: task.isPrivate,
+      downloadFileUri: task.filePath,
+    });
+    this.requestContexts.set(id, request);
+    const effectiveContext = this.hostContext;
+    const attemptGeneration = this.attemptGenerations.get(id) ?? this.beginAttempt(id);
+    this.resumeDownload(id);
+    const resumeOperation = async (): Promise<void> => {
+      try {
+        let restored = false;
+        try {
+          restored = await this.downloadService.resume(id);
+        } catch (_) {
+          restored = false;
+        }
+        if (!restored) {
+          if (!request || !effectiveContext) {
+            throw new Error('下载恢复上下文不可用');
+          }
+          await this.downloadService.startResumed(id, effectiveContext, request, {
+            onProgress: (receivedBytes: number, totalBytes: number, percentComplete?: number) => {
+              if (!this.isCurrentAttempt(id, attemptGeneration)) {
+                return;
+              }
+              this.markDownloading(id, receivedBytes, totalBytes, percentComplete);
+            },
+            onComplete: (filePath?: string) => {
+              if (!this.isCurrentAttempt(id, attemptGeneration)) {
+                return;
+              }
+              this.markCompleted(id, filePath);
+              this.releaseDownloadSlot(id);
+              this.endAction(id, 'resume');
+            },
+            onFail: (code: number) => {
+              if (!this.isCurrentAttempt(id, attemptGeneration)) {
+                return;
+              }
+              if (this.shouldPauseForNetwork(id)) {
+                this.networkPausedDownloadIds.add(id);
+                this.pauseDownload(id);
+                this.releaseDownloadSlot(id);
+                this.endAction(id, 'resume');
+                return;
+              }
+              this.markFailed(id, `续传失败，错误码：${code}`, String(code));
+              this.releaseDownloadSlot(id);
+              this.endAction(id, 'resume');
+            },
+          });
         }
         this.endAction(id, 'resume');
-      })
-      .catch((error: Object) => {
-        this.setActionFailure(id, 'resume_failed', '继续下载失败，请重试', 'resume');
-      });
+      } catch (_) {
+        const current = this.items.get(id);
+        if (current && current.state === 'paused') {
+          this.endAction(id, 'resume');
+          this.releaseDownloadSlot(id);
+          return;
+        }
+        if (this.shouldPauseForNetwork(id)) {
+          this.networkPausedDownloadIds.add(id);
+          this.pauseDownload(id);
+          this.endAction(id, 'resume');
+          this.releaseDownloadSlot(id);
+          return;
+        }
+        this.markFailed(id, '继续下载失败，请重试', 'resume_failed');
+        this.endAction(id, 'resume');
+        this.releaseDownloadSlot(id);
+      }
+    };
+    this.enqueueDownloadStart(id, resumeOperation);
+  }
+
+  async pauseAllDownloadsForNetwork(): Promise<void> {
+    const runningIds: string[] = [];
+    this.runningDownloadIds.forEach((id: string) => runningIds.push(id));
+    for (let index = 0; index < runningIds.length; index++) {
+      const id = runningIds[index];
+      const task = this.items.get(id);
+      if (!task || !isActiveDownloadState(task.state) || task.state === 'paused') {
+        continue;
+      }
+      try {
+        await this.downloadService.pauseForNetwork(id);
+        this.networkPausedDownloadIds.add(id);
+        this.pauseDownload(id);
+        this.releaseDownloadSlot(id);
+      } catch (_) {
+        // The native service may already have stopped the task. Keep the
+        // original state so the normal failure callback remains authoritative.
+      }
+    }
+  }
+
+  async resumeNetworkPausedDownloads(): Promise<void> {
+    try {
+      if (!connection.hasDefaultNetSync()) {
+        return;
+      }
+    } catch (_) {
+      return;
+    }
+    const ids: string[] = [];
+    this.networkPausedDownloadIds.forEach((id: string) => ids.push(id));
+    this.networkPausedDownloadIds.clear();
+    for (let index = 0; index < ids.length; index++) {
+      this.resumeManagedDownload(ids[index]);
+    }
+    this.promoteQueuedDownloads();
   }
 
   retryDownload(id: string): DownloadTask | null {
@@ -822,6 +1064,7 @@ export class DownloadManager {
       userAgent: previousRequest?.userAgent,
       totalBytes: task.totalBytes,
       isPrivate: task.isPrivate,
+      downloadFileUri: previousRequest?.downloadFileUri,
     });
     this.requestContexts.set(id, request);
     const attemptGeneration = this.beginAttempt(id);
@@ -832,45 +1075,66 @@ export class DownloadManager {
       this.endAction(id, 'retry');
       return;
     }
-    this.downloadService.start(id, effectiveContext, request, {
-      onProgress: (receivedBytes: number, totalBytes: number, percentComplete?: number) => {
-        if (!this.isCurrentAttempt(id, attemptGeneration)) {
-          return;
-        }
-        this.markDownloading(id, receivedBytes, totalBytes, percentComplete);
-      },
-        onComplete: (filePath?: string) => {
-          if (!this.isCurrentAttempt(id, attemptGeneration)) {
-            return;
+    const startOperation = async (): Promise<void> => {
+      try {
+        await this.downloadService.start(id, effectiveContext, request, {
+          onProgress: (receivedBytes: number, totalBytes: number, percentComplete?: number) => {
+            if (!this.isCurrentAttempt(id, attemptGeneration)) {
+              return;
+            }
+            this.markDownloading(id, receivedBytes, totalBytes, percentComplete);
+          },
+          onComplete: (filePath?: string) => {
+            if (!this.isCurrentAttempt(id, attemptGeneration)) {
+              return;
+            }
+            this.markCompleted(id, filePath);
+            this.releaseDownloadSlot(id);
+            this.endAction(id, 'retry');
+          },
+          onFail: (code: number) => {
+            if (!this.isCurrentAttempt(id, attemptGeneration)) {
+              return;
+            }
+            if (this.shouldPauseForNetwork(id)) {
+              this.networkPausedDownloadIds.add(id);
+              this.pauseDownload(id);
+              this.releaseDownloadSlot(id);
+              this.endAction(id, 'retry');
+              return;
+            }
+            this.markFailed(id, `下载失败，错误码：${code}`, String(code));
+            this.releaseDownloadSlot(id);
+            this.endAction(id, 'retry');
+          },
+          onPause: () => {
+            if (!this.isCurrentAttempt(id, attemptGeneration)) {
+              return;
+            }
+            this.updateDownload(id, { state: 'paused', canResume: true, canRetry: false });
+          },
+          onRemove: () => {
+            if (!this.isCurrentAttempt(id, attemptGeneration)) {
+              return;
+            }
+            this.cancelDownload(id);
+            this.releaseDownloadSlot(id);
+          },
+        });
+      } catch (error) {
+        if (this.isCurrentAttempt(id, attemptGeneration)) {
+          if (this.shouldPauseForNetwork(id)) {
+            this.networkPausedDownloadIds.add(id);
+            this.pauseDownload(id);
+          } else {
+            this.markFailed(id, String(error), 'retry_failed');
           }
-          this.markCompleted(id, filePath);
-          this.endAction(id, 'retry');
-        },
-        onFail: (code: number) => {
-          if (!this.isCurrentAttempt(id, attemptGeneration)) {
-            return;
-          }
-          this.markFailed(id, `下载失败，错误码：${code}`, String(code));
-          this.endAction(id, 'retry');
-        },
-      onPause: () => {
-        if (!this.isCurrentAttempt(id, attemptGeneration)) {
-          return;
         }
-        this.updateDownload(id, { state: 'paused', canResume: true, canRetry: false });
-      },
-      onRemove: () => {
-        if (!this.isCurrentAttempt(id, attemptGeneration)) {
-          return;
-        }
-        this.cancelDownload(id);
-      },
-    }).catch((error: Object) => {
-      if (this.isCurrentAttempt(id, attemptGeneration)) {
-        this.markFailed(id, String(error), 'retry_failed');
+        this.endAction(id, 'retry');
+        this.releaseDownloadSlot(id);
       }
-      this.endAction(id, 'retry');
-    });
+    };
+    this.enqueueDownloadStart(id, startOperation);
   }
 
   removeDownload(id: string): void {
@@ -878,6 +1142,7 @@ export class DownloadManager {
     this.cancelServiceTaskForRemoval(id);
     this.items.delete(id);
     this.sessionDownloadIds.delete(id);
+    this.networkPausedDownloadIds.delete(id);
     this.requestContexts.delete(id);
     this.queuedPersistence.delete(id);
     this.forgetAttempt(id);
@@ -886,8 +1151,30 @@ export class DownloadManager {
   }
 
   private cancelServiceTaskForRemoval(id: string): void {
+    this.removeQueuedDownload(id);
     this.downloadService.cancel(id).catch(() => {
     });
+    this.releaseDownloadSlot(id);
+  }
+
+  private shouldPauseForNetwork(id: string): boolean {
+    const task = this.items.get(id);
+    if (!task || task.state === 'paused' || task.state === 'canceled') {
+      return false;
+    }
+    try {
+      return !connection.hasDefaultNetSync();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  private hasDefaultNetwork(): boolean {
+    try {
+      return connection.hasDefaultNetSync();
+    } catch (_) {
+      return true;
+    }
   }
 
   private async initInternal(context: object): Promise<void> {

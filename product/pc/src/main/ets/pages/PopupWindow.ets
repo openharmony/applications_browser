@@ -11,6 +11,7 @@ import { window } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { UaManager } from '../core/uaManager';
 import { DownloadManager } from '../core/downloadManager';
+import { DownloadSettingsService } from '../integration/downloadSettingsService';
 import { WindowManager } from '../core/windowManager';
 import { extractUrlScheme, isExternalAppSchemeUrl } from '../core/urlNormalizer';
 
@@ -25,6 +26,7 @@ struct PopupWindow {
   private controller: webview.WebviewController = new webview.WebviewController();
   private uaManager: UaManager = new UaManager();
   private downloadManager: DownloadManager = DownloadManager.getInstance();
+  private downloadSettingsService: DownloadSettingsService = new DownloadSettingsService();
   private downloadDelegate: webview.WebDownloadDelegate | null = null;
   private windowName: string = '';
   // 是否挂载的是内核已绑定的 controller（正常路径）。
@@ -111,7 +113,9 @@ struct PopupWindow {
   private attachDownloadDelegate(): void {
     if (!this.downloadDelegate) {
       this.downloadDelegate = this.downloadManager.createArkWebDownloadDelegate(
-        (item: webview.WebDownloadItem) => this.handleArkWebDownload(item));
+        (item: webview.WebDownloadItem) => {
+          void this.handleArkWebDownload(item);
+        });
     }
     try {
       this.controller.setDownloadDelegate(this.downloadDelegate);
@@ -122,7 +126,7 @@ struct PopupWindow {
     }
   }
 
-  private handleArkWebDownload(item: webview.WebDownloadItem): void {
+  private async handleArkWebDownload(item: webview.WebDownloadItem): Promise<void> {
     try {
       let pageUrl = this.pendingUrl;
       let pageTitle = this.windowName;
@@ -131,15 +135,23 @@ struct PopupWindow {
         pageTitle = this.controller.getTitle() || pageTitle;
       } catch (_) {
       }
+      const fileName = item.getSuggestedFileName() || 'download';
+      const fileUri = await this.downloadSettingsService.chooseDownloadFile(
+        this.getUIContext().getHostContext(), fileName, item.getMimeType());
+      if (fileUri.trim().length === 0) {
+        item.cancel();
+        return;
+      }
       this.downloadManager.startArkWebDownload(item, {
         sourceUrl: item.getUrl(),
-        suggestedFileName: item.getSuggestedFileName(),
+        suggestedFileName: fileName,
         mimeType: item.getMimeType(),
         pageUrl: pageUrl,
         pageTitle: pageTitle,
         userAgent: this.userAgent,
         contentLength: item.getTotalBytes(),
         isPrivate: false,
+        downloadFileUri: fileUri,
       }, this.getUIContext().getHostContext());
     } catch (error) {
       hilog.error(DOMAIN, 'DownloadTrace',

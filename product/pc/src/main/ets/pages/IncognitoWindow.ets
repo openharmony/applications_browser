@@ -8,6 +8,7 @@ import { BookmarkManager } from '../core/bookmarkManager';
 import { encodeFaviconDataUri } from '../core/faviconService';
 import { extractUrlScheme, isExternalAppSchemeUrl, isSameHttpNavigationUrl } from '../core/urlNormalizer';
 import { DownloadManager } from '../core/downloadManager';
+import { extractFileNameFromContentDisposition } from '../core/downloadTypes';
 import { PrivateSessionCoordinator } from '../core/privateSessionCoordinator';
 import {
   BrowserResponseHeader,
@@ -20,6 +21,7 @@ import {
 import { BrowserErrorPage } from '../ui/components/BrowserErrorPage';
 import { BrowserContextMenu, BrowserContextMenuItem } from '../ui/components/BrowserContextMenu';
 import { ClipboardService } from '../integration/clipboardService';
+import { DownloadSettingsService } from '../integration/downloadSettingsService';
 import { PermissionService } from '../integration/permissionService';
 import {
   extractSiteOriginFromUrl,
@@ -70,6 +72,7 @@ struct IncognitoWindow {
   private addressInputResolver: AddressInputResolver = new AddressInputResolver();
   private bookmarkManager: BookmarkManager = BookmarkManager.getInstance();
   private downloadManager: DownloadManager = DownloadManager.getInstance();
+  private downloadSettingsService: DownloadSettingsService = new DownloadSettingsService();
   private downloadDelegate: webview.WebDownloadDelegate | null = null;
   private clipboardService: ClipboardService = new ClipboardService();
   private permissionService: PermissionService = new PermissionService();
@@ -335,7 +338,9 @@ struct IncognitoWindow {
   private attachDownloadDelegate(): void {
     if (!this.downloadDelegate) {
       this.downloadDelegate = this.downloadManager.createArkWebDownloadDelegate(
-        (item: webview.WebDownloadItem) => this.handleArkWebDownload(item));
+        (item: webview.WebDownloadItem) => {
+          void this.handleArkWebDownload(item);
+        });
     }
     try {
       this.controller.setDownloadDelegate(this.downloadDelegate);
@@ -346,17 +351,25 @@ struct IncognitoWindow {
     }
   }
 
-  private handleArkWebDownload(item: webview.WebDownloadItem): void {
+  private async handleArkWebDownload(item: webview.WebDownloadItem): Promise<void> {
     try {
+      const fileName = item.getSuggestedFileName() || 'download';
+      const fileUri = await this.downloadSettingsService.chooseDownloadFile(
+        this.getUIContext().getHostContext(), fileName, item.getMimeType());
+      if (fileUri.trim().length === 0) {
+        item.cancel();
+        return;
+      }
       this.downloadManager.startArkWebDownload(item, {
         sourceUrl: item.getUrl(),
-        suggestedFileName: item.getSuggestedFileName(),
+        suggestedFileName: fileName,
         mimeType: item.getMimeType(),
         pageUrl: this.currentUrl,
         pageTitle: this.pageTitle,
         userAgent: this.getCurrentUserAgent(),
         contentLength: item.getTotalBytes(),
         isPrivate: true,
+        downloadFileUri: fileUri,
       }, this.getUIContext().getHostContext());
     } catch (error) {
       hilog.error(0x0000, 'DownloadTrace',
@@ -1251,15 +1264,7 @@ struct IncognitoWindow {
           try {
             this.controller.startDownload(imageUrl);
           } catch (_) {
-            this.downloadManager.startWebDownload({
-              sourceUrl: imageUrl,
-              mimeType: 'image/*',
-              pageUrl: this.currentUrl,
-              pageTitle: this.pageTitle,
-              userAgent: this.getCurrentUserAgent(),
-              isPrivate: true,
-            }, this.getUIContext().getHostContext()).catch(() => {
-            });
+            void this.startFallbackImageDownload(imageUrl);
           }
         }
         return;
@@ -1341,7 +1346,14 @@ struct IncognitoWindow {
     return true;
   }
 
-  private handleDownloadStart(event: OnDownloadStartEvent): void {
+  private async handleDownloadStart(event: OnDownloadStartEvent): Promise<void> {
+    const fileName = extractFileNameFromContentDisposition(event.contentDisposition) ||
+      event.url.split(/[\\/?#]/).pop() || 'download';
+    const fileUri = await this.downloadSettingsService.chooseDownloadFile(
+      this.getUIContext().getHostContext(), fileName, event.mimetype);
+    if (fileUri.trim().length === 0) {
+      return;
+    }
     this.downloadManager.startWebDownload({
       sourceUrl: event.url,
       contentDisposition: event.contentDisposition,
@@ -1351,8 +1363,28 @@ struct IncognitoWindow {
       userAgent: event.userAgent,
       contentLength: event.contentLength,
       isPrivate: true,
+      downloadFileUri: fileUri,
     }, this.getUIContext().getHostContext()).catch(() => {
     });
+  }
+
+  private async startFallbackImageDownload(imageUrl: string): Promise<void> {
+    const fileName = imageUrl.split(/[\\/?#]/).pop() || 'image';
+    const fileUri = await this.downloadSettingsService.chooseDownloadFile(
+      this.getUIContext().getHostContext(), fileName, 'image/*');
+    if (fileUri.trim().length === 0) {
+      return;
+    }
+    await this.downloadManager.startWebDownload({
+      sourceUrl: imageUrl,
+      fileName: fileName,
+      mimeType: 'image/*',
+      pageUrl: this.currentUrl,
+      pageTitle: this.pageTitle,
+      userAgent: this.getCurrentUserAgent(),
+      isPrivate: true,
+      downloadFileUri: fileUri,
+    }, this.getUIContext().getHostContext());
   }
 
   private async handleGeolocationShow(event: OnGeolocationShowEvent): Promise<void> {

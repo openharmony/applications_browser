@@ -64,10 +64,16 @@ import {
 } from '../../core/permissionTypes';
 import { PermissionService } from '../../integration/permissionService';
 import { ClipboardService } from '../../integration/clipboardService';
+import { DownloadSettingsService } from '../../integration/downloadSettingsService';
 import { AddressBarService } from '../../core/addressBarService';
 import { AddressSuggestion } from '../../core/addressSuggestionTypes';
 import { DownloadManager } from '../../core/downloadManager';
-import { createIdleDownloadIndicatorSnapshot, DownloadIndicatorSnapshot, DownloadTask } from '../../core/downloadTypes';
+import {
+  createIdleDownloadIndicatorSnapshot,
+  DownloadIndicatorSnapshot,
+  DownloadTask,
+  extractFileNameFromContentDisposition,
+} from '../../core/downloadTypes';
 import { PrivateSessionCoordinator } from '../../core/privateSessionCoordinator';
 import { UaManager, UaMode } from '../../core/uaManager';
 import {
@@ -229,6 +235,7 @@ export struct BrowserPage {
   private clipboardService: ClipboardService = new ClipboardService();
   private addressBarService: AddressBarService = new AddressBarService();
   private downloadManager: DownloadManager = DownloadManager.getInstance();
+  private downloadSettingsService: DownloadSettingsService = new DownloadSettingsService();
   // Star's bottom-right corner in window vp coordinates (from onAreaChange).
   private starAnchorRight: number = 0;
   private starAnchorBottom: number = 0;
@@ -4882,7 +4889,9 @@ export struct BrowserPage {
   private attachTabDownloadDelegate(tabId: TabId, runtime: WebRuntime): void {
     if (!runtime.downloadDelegate) {
       runtime.downloadDelegate = this.downloadManager.createArkWebDownloadDelegate(
-        (item: webview.WebDownloadItem) => this.handleArkWebDownload(tabId, runtime, item));
+        (item: webview.WebDownloadItem) => {
+          void this.handleArkWebDownload(tabId, runtime, item);
+        });
     }
     try {
       runtime.controller.setDownloadDelegate(runtime.downloadDelegate);
@@ -4894,7 +4903,8 @@ export struct BrowserPage {
     }
   }
 
-  private handleArkWebDownload(tabId: TabId, runtime: WebRuntime, item: webview.WebDownloadItem): void {
+  private async handleArkWebDownload(tabId: TabId, runtime: WebRuntime,
+    item: webview.WebDownloadItem): Promise<void> {
     if (!this.isCurrentTabRuntime(tabId, runtime)) {
       try {
         item.cancel();
@@ -4911,15 +4921,23 @@ export struct BrowserPage {
       return;
     }
     try {
+      const fileName = item.getSuggestedFileName() || 'download';
+      const fileUri = await this.downloadSettingsService.chooseDownloadFile(
+        this.getUIContext().getHostContext(), fileName, item.getMimeType());
+      if (fileUri.trim().length === 0) {
+        item.cancel();
+        return;
+      }
       this.downloadManager.startArkWebDownload(item, {
         sourceUrl: item.getUrl(),
-        suggestedFileName: item.getSuggestedFileName(),
+        suggestedFileName: fileName,
         mimeType: item.getMimeType(),
         pageUrl: tab.url,
         pageTitle: tab.title,
         userAgent: this.uaManager.getUserAgent(this.selectedUaMode),
         contentLength: item.getTotalBytes(),
         isPrivate: tab.isPrivate,
+        downloadFileUri: fileUri,
       }, this.getUIContext().getHostContext());
     } catch (error) {
       hilog.error(FAVICON_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
@@ -5524,15 +5542,7 @@ export struct BrowserPage {
           try {
             runtime.controller.startDownload(imageUrl);
           } catch (_) {
-            this.downloadManager.startWebDownload({
-              sourceUrl: imageUrl,
-              mimeType: 'image/*',
-              pageUrl: tab.url,
-              pageTitle: tab.title,
-              userAgent: this.uaManager.getUserAgent(this.selectedUaMode),
-              isPrivate: tab.isPrivate,
-            }, this.getUIContext().getHostContext()).catch(() => {
-            });
+            void this.startFallbackImageDownload(imageUrl, tab);
           }
         }
         return;
@@ -5633,7 +5643,7 @@ export struct BrowserPage {
     const runtime = this.webViewManager.get(tabId);
     return (event: OnDownloadStartEvent): void => {
       if (runtime) {
-        this.handleDownloadStart(tabId, runtime, event);
+        void this.handleDownloadStart(tabId, runtime, event);
       }
     };
   }
@@ -7175,7 +7185,8 @@ export struct BrowserPage {
     this.handleAddressSubmit(bookmark.url);
   }
 
-  private handleDownloadStart(tabId: TabId, runtime: WebRuntime, event: OnDownloadStartEvent): void {
+  private async handleDownloadStart(tabId: TabId, runtime: WebRuntime,
+    event: OnDownloadStartEvent): Promise<void> {
     if (!this.isCurrentTabRuntime(tabId, runtime)) {
       return;
     }
@@ -7193,6 +7204,13 @@ export struct BrowserPage {
       }
     }
 
+    const fileName = extractFileNameFromContentDisposition(event.contentDisposition) ||
+      event.url.split(/[\\/?#]/).pop() || 'download';
+    const fileUri = await this.downloadSettingsService.chooseDownloadFile(
+      this.getUIContext().getHostContext(), fileName, event.mimetype);
+    if (fileUri.trim().length === 0) {
+      return;
+    }
     this.downloadManager.startWebDownload({
       sourceUrl: event.url,
       contentDisposition: event.contentDisposition,
@@ -7202,8 +7220,28 @@ export struct BrowserPage {
       userAgent: event.userAgent,
       contentLength: event.contentLength,
       isPrivate: tab.isPrivate,
+      downloadFileUri: fileUri,
     }, this.getUIContext().getHostContext()).catch(() => {
     });
+  }
+
+  private async startFallbackImageDownload(imageUrl: string, tab: Tab): Promise<void> {
+    const fileName = imageUrl.split(/[\\/?#]/).pop() || 'image';
+    const fileUri = await this.downloadSettingsService.chooseDownloadFile(
+      this.getUIContext().getHostContext(), fileName, 'image/*');
+    if (fileUri.trim().length === 0) {
+      return;
+    }
+    await this.downloadManager.startWebDownload({
+      sourceUrl: imageUrl,
+      fileName: fileName,
+      mimeType: 'image/*',
+      pageUrl: tab.url,
+      pageTitle: tab.title,
+      userAgent: this.uaManager.getUserAgent(this.selectedUaMode),
+      isPrivate: tab.isPrivate,
+      downloadFileUri: fileUri,
+    }, this.getUIContext().getHostContext());
   }
 
   private handlePermissionDialogDecision(): void {
