@@ -8,7 +8,11 @@ import { BookmarkManager } from '../core/bookmarkManager';
 import { encodeFaviconDataUri } from '../core/faviconService';
 import { extractUrlScheme, isExternalAppSchemeUrl, isSameHttpNavigationUrl } from '../core/urlNormalizer';
 import { DownloadManager } from '../core/downloadManager';
-import { extractFileNameFromContentDisposition } from '../core/downloadTypes';
+import {
+  buildImageDownloadFileName,
+  extractFileNameFromContentDisposition,
+  inferImageMimeType,
+} from '../core/downloadTypes';
 import { PrivateSessionCoordinator } from '../core/privateSessionCoordinator';
 import {
   BrowserResponseHeader,
@@ -353,9 +357,14 @@ struct IncognitoWindow {
 
   private async handleArkWebDownload(item: webview.WebDownloadItem): Promise<void> {
     try {
+      const hostContext = this.getUIContext().getHostContext();
+      if (!hostContext) {
+        item.cancel();
+        return;
+      }
       const fileName = item.getSuggestedFileName() || 'download';
       const fileUri = await this.downloadSettingsService.chooseDownloadFile(
-        this.getUIContext().getHostContext(), fileName, item.getMimeType());
+        hostContext, fileName, item.getMimeType());
       if (fileUri.trim().length === 0) {
         item.cancel();
         return;
@@ -370,7 +379,7 @@ struct IncognitoWindow {
         contentLength: item.getTotalBytes(),
         isPrivate: true,
         downloadFileUri: fileUri,
-      }, this.getUIContext().getHostContext());
+      }, hostContext);
     } catch (error) {
       hilog.error(0x0000, 'DownloadTrace',
         'ARKWEB_BEFORE_DOWNLOAD_FAILED private=true error=%{public}s', String(error));
@@ -1259,13 +1268,16 @@ struct IncognitoWindow {
         return;
       case 'save_image': {
         const imageUrl = pending.sourceUrl || pending.linkUrl;
+        hilog.info(0x0000, 'DownloadTrace',
+          'IMAGE_MENU_SELECTED private=true sourceLength=%{public}d linkLength=%{public}d pageLength=%{public}d',
+          pending.sourceUrl.length, pending.linkUrl.length, this.currentUrl.length);
         this.executeContextMenuResult((result: WebContextMenuResult) => result.closeContextMenu());
         if (imageUrl.length > 0) {
-          try {
-            this.controller.startDownload(imageUrl);
-          } catch (_) {
-            void this.startFallbackImageDownload(imageUrl);
-          }
+          // Keep image saving on the managed HTTP path. Calling ArkWeb
+          // startDownload() loses the page request context and its async
+          // failures bypass the image fallback service.
+          void this.startImageDownload(imageUrl).catch(() => {
+          });
         }
         return;
       }
@@ -1349,8 +1361,12 @@ struct IncognitoWindow {
   private async handleDownloadStart(event: OnDownloadStartEvent): Promise<void> {
     const fileName = extractFileNameFromContentDisposition(event.contentDisposition) ||
       event.url.split(/[\\/?#]/).pop() || 'download';
+    const hostContext = this.getUIContext().getHostContext();
+    if (!hostContext) {
+      return;
+    }
     const fileUri = await this.downloadSettingsService.chooseDownloadFile(
-      this.getUIContext().getHostContext(), fileName, event.mimetype);
+      hostContext, fileName, event.mimetype);
     if (fileUri.trim().length === 0) {
       return;
     }
@@ -1364,27 +1380,45 @@ struct IncognitoWindow {
       contentLength: event.contentLength,
       isPrivate: true,
       downloadFileUri: fileUri,
-    }, this.getUIContext().getHostContext()).catch(() => {
+    }, hostContext).catch(() => {
     });
   }
 
-  private async startFallbackImageDownload(imageUrl: string): Promise<void> {
-    const fileName = imageUrl.split(/[\\/?#]/).pop() || 'image';
-    const fileUri = await this.downloadSettingsService.chooseDownloadFile(
-      this.getUIContext().getHostContext(), fileName, 'image/*');
-    if (fileUri.trim().length === 0) {
+  private async startImageDownload(imageUrl: string): Promise<void> {
+    const imageMimeType = inferImageMimeType(imageUrl, 'image/*');
+    const fileName = buildImageDownloadFileName(imageUrl);
+    hilog.info(0x0000, 'DownloadTrace',
+      'IMAGE_SAVE_BEGIN private=true sourceLength=%{public}d fileNameLength=%{public}d pageLength=%{public}d',
+      imageUrl.length, fileName.length, this.currentUrl.length);
+    const hostContext = this.getUIContext().getHostContext();
+    if (!hostContext) {
+      hilog.error(0x0000, 'DownloadTrace',
+        'IMAGE_SAVE_ABORT private=true reason=no_host_context');
       return;
     }
-    await this.downloadManager.startWebDownload({
+    const fileUri = await this.downloadSettingsService.chooseDownloadFile(
+      hostContext, fileName, imageMimeType);
+    hilog.info(0x0000, 'DownloadTrace',
+      'IMAGE_SAVE_PICKER_RESULT private=true fileUriPresent=%{public}s fileNameLength=%{public}d',
+      String(fileUri.trim().length > 0), fileName.length);
+    if (fileUri.trim().length === 0) {
+      hilog.info(0x0000, 'DownloadTrace',
+        'IMAGE_SAVE_ABORT private=true reason=picker_cancelled');
+      return;
+    }
+    const task = await this.downloadManager.startWebDownload({
       sourceUrl: imageUrl,
-      fileName: fileName,
-      mimeType: 'image/*',
+      suggestedFileName: fileName,
+      mimeType: imageMimeType,
       pageUrl: this.currentUrl,
       pageTitle: this.pageTitle,
       userAgent: this.getCurrentUserAgent(),
       isPrivate: true,
       downloadFileUri: fileUri,
-    }, this.getUIContext().getHostContext());
+    }, hostContext);
+    hilog.info(0x0000, 'DownloadTrace',
+      'IMAGE_SAVE_TASK_CREATED private=true task=%{public}s fileUriPresent=%{public}s',
+      task.id, String(fileUri.trim().length > 0));
   }
 
   private async handleGeolocationShow(event: OnGeolocationShowEvent): Promise<void> {

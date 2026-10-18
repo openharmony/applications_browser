@@ -69,10 +69,12 @@ import { AddressBarService } from '../../core/addressBarService';
 import { AddressSuggestion } from '../../core/addressSuggestionTypes';
 import { DownloadManager } from '../../core/downloadManager';
 import {
+  buildImageDownloadFileName,
   createIdleDownloadIndicatorSnapshot,
   DownloadIndicatorSnapshot,
   DownloadTask,
   extractFileNameFromContentDisposition,
+  inferImageMimeType,
 } from '../../core/downloadTypes';
 import { PrivateSessionCoordinator } from '../../core/privateSessionCoordinator';
 import { UaManager, UaMode } from '../../core/uaManager';
@@ -4921,9 +4923,14 @@ export struct BrowserPage {
       return;
     }
     try {
+      const hostContext = this.getUIContext().getHostContext();
+      if (!hostContext) {
+        item.cancel();
+        return;
+      }
       const fileName = item.getSuggestedFileName() || 'download';
       const fileUri = await this.downloadSettingsService.chooseDownloadFile(
-        this.getUIContext().getHostContext(), fileName, item.getMimeType());
+        hostContext, fileName, item.getMimeType());
       if (fileUri.trim().length === 0) {
         item.cancel();
         return;
@@ -4938,7 +4945,7 @@ export struct BrowserPage {
         contentLength: item.getTotalBytes(),
         isPrivate: tab.isPrivate,
         downloadFileUri: fileUri,
-      }, this.getUIContext().getHostContext());
+      }, hostContext);
     } catch (error) {
       hilog.error(FAVICON_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
         'ARKWEB_BEFORE_DOWNLOAD_FAILED tab=%{public}s error=%{public}s', String(tabId), String(error));
@@ -5536,14 +5543,17 @@ export struct BrowserPage {
       case 'save_image': {
         const imageUrl = pending.sourceUrl || pending.linkUrl;
         const tab = this.findTab(pending.tabId as TabId);
-        const runtime = this.webViewManager.get(pending.tabId as TabId);
+        hilog.info(FAVICON_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+          'IMAGE_MENU_SELECTED tab=%{public}s sourceLength=%{public}d linkLength=%{public}d pageLength=%{public}d',
+          String(pending.tabId), pending.sourceUrl.length, pending.linkUrl.length,
+          tab?.url.length ?? 0);
         this.executeContextMenuResult((result: WebContextMenuResult) => result.closeContextMenu());
-        if (imageUrl.length > 0 && tab && runtime) {
-          try {
-            runtime.controller.startDownload(imageUrl);
-          } catch (_) {
-            void this.startFallbackImageDownload(imageUrl, tab);
-          }
+        if (imageUrl.length > 0 && tab) {
+          // Keep image saving on the managed HTTP path. Calling ArkWeb
+          // startDownload() loses the page request context and its async
+          // failures bypass the image fallback service.
+          void this.startImageDownload(imageUrl, tab).catch(() => {
+          });
         }
         return;
       }
@@ -7206,8 +7216,12 @@ export struct BrowserPage {
 
     const fileName = extractFileNameFromContentDisposition(event.contentDisposition) ||
       event.url.split(/[\\/?#]/).pop() || 'download';
+    const hostContext = this.getUIContext().getHostContext();
+    if (!hostContext) {
+      return;
+    }
     const fileUri = await this.downloadSettingsService.chooseDownloadFile(
-      this.getUIContext().getHostContext(), fileName, event.mimetype);
+      hostContext, fileName, event.mimetype);
     if (fileUri.trim().length === 0) {
       return;
     }
@@ -7221,27 +7235,45 @@ export struct BrowserPage {
       contentLength: event.contentLength,
       isPrivate: tab.isPrivate,
       downloadFileUri: fileUri,
-    }, this.getUIContext().getHostContext()).catch(() => {
+    }, hostContext).catch(() => {
     });
   }
 
-  private async startFallbackImageDownload(imageUrl: string, tab: Tab): Promise<void> {
-    const fileName = imageUrl.split(/[\\/?#]/).pop() || 'image';
-    const fileUri = await this.downloadSettingsService.chooseDownloadFile(
-      this.getUIContext().getHostContext(), fileName, 'image/*');
-    if (fileUri.trim().length === 0) {
+  private async startImageDownload(imageUrl: string, tab: Tab): Promise<void> {
+    const imageMimeType = inferImageMimeType(imageUrl, 'image/*');
+    const fileName = buildImageDownloadFileName(imageUrl);
+    hilog.info(FAVICON_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+      'IMAGE_SAVE_BEGIN sourceLength=%{public}d fileNameLength=%{public}d pageLength=%{public}d private=%{public}s',
+      imageUrl.length, fileName.length, tab.url.length, String(tab.isPrivate));
+    const hostContext = this.getUIContext().getHostContext();
+    if (!hostContext) {
+      hilog.error(FAVICON_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+        'IMAGE_SAVE_ABORT reason=no_host_context');
       return;
     }
-    await this.downloadManager.startWebDownload({
+    const fileUri = await this.downloadSettingsService.chooseDownloadFile(
+      hostContext, fileName, imageMimeType);
+    hilog.info(FAVICON_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+      'IMAGE_SAVE_PICKER_RESULT fileUriPresent=%{public}s fileNameLength=%{public}d',
+      String(fileUri.trim().length > 0), fileName.length);
+    if (fileUri.trim().length === 0) {
+      hilog.info(FAVICON_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+        'IMAGE_SAVE_ABORT reason=picker_cancelled');
+      return;
+    }
+    const task = await this.downloadManager.startWebDownload({
       sourceUrl: imageUrl,
-      fileName: fileName,
-      mimeType: 'image/*',
+      suggestedFileName: fileName,
+      mimeType: imageMimeType,
       pageUrl: tab.url,
       pageTitle: tab.title,
       userAgent: this.uaManager.getUserAgent(this.selectedUaMode),
       isPrivate: tab.isPrivate,
       downloadFileUri: fileUri,
-    }, this.getUIContext().getHostContext());
+    }, hostContext);
+    hilog.info(FAVICON_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+      'IMAGE_SAVE_TASK_CREATED task=%{public}s fileUriPresent=%{public}s',
+      task.id, String(fileUri.trim().length > 0));
   }
 
   private handlePermissionDialogDecision(): void {

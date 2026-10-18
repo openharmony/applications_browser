@@ -19,7 +19,11 @@ import webview from '@ohos.web.webview';
 import relationalStore from '@ohos.data.relationalStore';
 import { BusinessError } from '@ohos.base';
 import { connection } from '@kit.NetworkKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 import { SettingsManager } from './settingsManager';
+
+const DOWNLOAD_LOG_DOMAIN: number = 0x0000;
+const DOWNLOAD_LOG_TAG: string = 'DownloadTrace';
 
 type DownloadListener = (downloads: DownloadTask[]) => void;
 
@@ -153,6 +157,11 @@ export class DownloadManager {
   ): Promise<DownloadTask> {
     const request: DownloadStartRequest = this.normalizeStartRequest(requestOrUrl, suggestedFileName);
     const task = this.startDownload(request);
+    hilog.info(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+      'MANAGED_START task=%{public}s sourceLength=%{public}d fileNameLength=%{public}d mime=%{public}s private=%{public}s targetPresent=%{public}s',
+      task.id, request.sourceUrl.length, request.fileName?.length ?? 0,
+      request.mimeType ?? 'none', String(request.isPrivate === true),
+      String((request.downloadFileUri ?? '').trim().length > 0));
     this.requestContexts.set(task.id, request);
     const attemptGeneration = this.beginAttempt(task.id);
     const effectiveContext = hostContext ?? this.hostContext;
@@ -208,6 +217,9 @@ export class DownloadManager {
           },
         });
       } catch (error) {
+        hilog.error(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+          'MANAGED_START_FAILED task=%{public}s sourceLength=%{public}d',
+          task.id, request.sourceUrl.length);
         if (this.isCurrentAttempt(task.id, attemptGeneration)) {
           if (this.shouldPauseForNetwork(task.id)) {
             this.networkPausedDownloadIds.add(task.id);

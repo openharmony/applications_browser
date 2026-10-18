@@ -114,15 +114,16 @@ export function createDownloadTask(request: DownloadStartRequest, id: string): D
 export function buildDownloadStartRequest(input: WebDownloadStartInput): DownloadStartRequest {
   const fileNameFromHeader = extractFileNameFromContentDisposition(input.contentDisposition);
   const suggestedFileName = fileNameFromHeader || input.suggestedFileName;
+  const resolvedMimeType = inferImageMimeType(input.sourceUrl, input.mimeType);
   const fileName = appendImageExtensionIfNeeded(
     buildDownloadFileName(input.sourceUrl, suggestedFileName),
     input.sourceUrl,
-    input.mimeType,
+    resolvedMimeType,
   );
   return {
     sourceUrl: input.sourceUrl,
     fileName: fileName,
-    mimeType: input.mimeType,
+    mimeType: resolvedMimeType || input.mimeType,
     pageUrl: input.pageUrl,
     pageTitle: input.pageTitle,
     userAgent: input.userAgent,
@@ -137,13 +138,160 @@ export function appendImageExtensionIfNeeded(fileName: string, sourceUrl: string
   if (/\.[a-z0-9]{2,8}$/i.test(normalizedName)) {
     return normalizedName;
   }
-  let normalizedMime = (mimeType ?? '').trim().toLowerCase();
-  if (normalizedMime.length === 0 || normalizedMime === 'image/*') {
-    const dataMime = sourceUrl.trim().match(/^data:(image\/[\w.+-]+)(?:;[^,]*)?,/i);
-    normalizedMime = dataMime && dataMime[1] ? dataMime[1].toLowerCase() : normalizedMime;
-  }
+  const normalizedMime = inferImageMimeType(sourceUrl, mimeType);
   const extension = getImageExtensionForMimeType(normalizedMime);
   return extension.length > 0 ? `${normalizedName}.${extension}` : normalizedName;
+}
+
+/**
+ * Resolves an exact image MIME type from the response hint, URL extension, or
+ * common image-format query parameters used by image CDNs.
+ */
+export function inferImageMimeType(sourceUrl: string, mimeType?: string): string {
+  const normalizedMime = (mimeType ?? '').trim().toLowerCase();
+  if (normalizedMime.startsWith('image/') && normalizedMime !== 'image/*') {
+    return normalizedMime;
+  }
+
+  const dataMime = sourceUrl.trim().match(/^data:(image\/[\w.+-]+)(?:;[^,]*)?,/i);
+  if (dataMime && dataMime[1]) {
+    return dataMime[1].toLowerCase();
+  }
+
+  const extension = inferImageExtension(sourceUrl);
+  if (extension.length > 0) {
+    return getImageMimeTypeForExtension(extension);
+  }
+  return normalizedMime;
+}
+
+/** Builds a stable image filename for save-image actions, including CDN URLs. */
+export function buildImageDownloadFileName(sourceUrl: string, suggestedFileName?: string): string {
+  const preferred = (suggestedFileName ?? '').trim();
+  let baseName = preferred;
+  if (baseName.length === 0) {
+    baseName = extractImageNameCandidate(sourceUrl);
+  }
+  if (baseName.length === 0) {
+    baseName = 'downloaded-image';
+  }
+  baseName = sanitizeImageBaseName(baseName);
+  return appendImageExtensionIfNeeded(baseName, sourceUrl, inferImageMimeType(sourceUrl, 'image/*'));
+}
+
+function extractImageNameCandidate(sourceUrl: string): string {
+  const url = sourceUrl.trim();
+  const pathMatch = url.match(/\/([^\/?#]+)(?:\?[^#]*)?(?:#.*)?$/);
+  const pathName = pathMatch && pathMatch[1] ? decodeUrlComponent(pathMatch[1]) : '';
+  const pathCandidate = extractNamedValue(pathName);
+  if (pathCandidate.length > 0) {
+    return pathCandidate;
+  }
+
+  const queryIndex = url.indexOf('?');
+  if (queryIndex >= 0) {
+    const queryEnd = url.indexOf('#', queryIndex);
+    const query = url.substring(queryIndex + 1, queryEnd >= 0 ? queryEnd : url.length);
+    const queryCandidate = extractNamedValue(query);
+    if (queryCandidate.length > 0) {
+      return queryCandidate;
+    }
+  }
+  if (pathName.length > 0 && !/[=&]/.test(pathName) && !isGenericImageName(pathName)) {
+    return pathName;
+  }
+  return '';
+}
+
+function isGenericImageName(value: string): boolean {
+  if (/\.[a-z0-9]{2,8}$/i.test(value.trim())) {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase().replace(/\.[a-z0-9]{2,8}$/i, '');
+  return normalized === 'image' || normalized === 'img' || normalized === 'file' ||
+    normalized === 'download' || normalized === 'resource';
+}
+
+function extractNamedValue(parameters: string): string {
+  const preferredKeys: string[] = ['filename', 'file', 'name', 'image', 'img', 'id', 'u', 'key'];
+  const entries = parameters.split('&');
+  for (let index = 0; index < entries.length; index++) {
+    const separator = entries[index].indexOf('=');
+    if (separator <= 0) {
+      continue;
+    }
+    const key = entries[index].substring(0, separator).trim().toLowerCase();
+    if (!preferredKeys.includes(key)) {
+      continue;
+    }
+    const value = decodeUrlComponent(entries[index].substring(separator + 1).trim());
+    if (value.length > 0 && value.toLowerCase() !== 'auto') {
+      return value;
+    }
+  }
+  return '';
+}
+
+function sanitizeImageBaseName(value: string): string {
+  let sanitized = decodeUrlComponent(value).trim();
+  const extensionMatch = sanitized.match(/\.[a-z0-9]{2,8}$/i);
+  if (extensionMatch && extensionMatch[0]) {
+    sanitized = sanitized.substring(0, sanitized.length - extensionMatch[0].length);
+  }
+  sanitized = sanitized.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_');
+  sanitized = sanitized.replace(/[\s,]+/g, '_').replace(/_+/g, '_');
+  sanitized = sanitized.replace(/^[_\.]+|[_\.]+$/g, '');
+  return sanitized.substring(0, 120);
+}
+
+function inferImageExtension(sourceUrl: string): string {
+  const url = sourceUrl.trim();
+  const pathMatch = url.match(/\/([^\/?#]+)(?:[?#].*)?$/);
+  const pathName = pathMatch && pathMatch[1] ? pathMatch[1] : '';
+  const pathExtension = pathName.match(/\.([a-z0-9]{2,8})$/i);
+  if (pathExtension && pathExtension[1]) {
+    const extension = normalizeImageExtension(pathExtension[1]);
+    if (extension.length > 0) {
+      return extension;
+    }
+  }
+
+  const formatMatch = url.match(/[?&](?:f|format|fmt|type|ext)=([^&#?]+)/i);
+  if (!formatMatch || !formatMatch[1]) {
+    return '';
+  }
+  return normalizeImageExtension(decodeUrlComponent(formatMatch[1]).split(/[.;_\s-]/)[0]);
+}
+
+function normalizeImageExtension(value: string): string {
+  const normalized = value.trim().toLowerCase().replace(/^image\//, '');
+  if (normalized === 'jpeg' || normalized === 'jpg' || normalized === 'jpe') {
+    return 'jpg';
+  }
+  if (normalized === 'png' || normalized === 'gif' || normalized === 'webp' ||
+    normalized === 'bmp' || normalized === 'avif' || normalized === 'heic' ||
+    normalized === 'heif' || normalized === 'svg' || normalized === 'svg+xml') {
+    return normalized === 'svg+xml' ? 'svg' : normalized;
+  }
+  return '';
+}
+
+function getImageMimeTypeForExtension(extension: string): string {
+  if (extension === 'jpg') {
+    return 'image/jpeg';
+  }
+  if (extension === 'svg') {
+    return 'image/svg+xml';
+  }
+  return `image/${extension}`;
+}
+
+function decodeUrlComponent(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch (_) {
+    return value;
+  }
 }
 
 function getImageExtensionForMimeType(mimeType: string): string {
@@ -166,6 +314,9 @@ function getImageExtensionForMimeType(mimeType: string): string {
     return 'avif';
   }
   if (mimeType === 'image/svg+xml') {
+    return 'svg';
+  }
+  if (mimeType === 'image/svg') {
     return 'svg';
   }
   if (mimeType === 'image/heic') {

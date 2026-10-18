@@ -25,6 +25,13 @@ interface DownloadServiceTaskHandle {
   task: request.DownloadTask;
 }
 
+interface AgentDownloadTaskHandle {
+  task: request.agent.Task;
+  callbacks: DownloadServiceCallbacks;
+  path: string;
+  origin: string;
+}
+
 interface DownloadHostContext {
   filesDir?: string;
   cacheDir?: string;
@@ -139,6 +146,13 @@ function getDownloadOrigin(sourceUrl: string): string {
   return parseHttpUrl(sourceUrl)?.origin ?? 'unsupported';
 }
 
+function isUserFilePath(path?: string): boolean {
+  const value = (path ?? '').trim().toLowerCase();
+  // File picker results are user-file URIs. Application sandbox file URIs use
+  // the bundle name as authority and must continue through request.downloadFile.
+  return value.startsWith('file://docs/') || value.startsWith('file://media/');
+}
+
 function isDataImageUrl(sourceUrl: string): boolean {
   return /^data:image\/[\w.+-]+(?:;[^,]*)?,/i.test(sourceUrl.trim());
 }
@@ -179,7 +193,13 @@ async function buildDownloadRequestHeaders(requestInfo: DownloadStartRequest): P
       // No cookie is a normal condition. Keep the download usable for public resources.
     }
   }
-  return composeDownloadRequestHeaders(requestInfo, cookie, fallbackUserAgent);
+  const headers = composeDownloadRequestHeaders(requestInfo, cookie, fallbackUserAgent);
+  hilog.info(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+    'REQUEST_HEADERS origin=%{public}s private=%{public}s cookie=%{public}s referer=%{public}s ua=%{public}s',
+    getDownloadOrigin(requestInfo.sourceUrl), String(requestInfo.isPrivate === true),
+    String(headers['Cookie'] !== undefined), String(headers['Referer'] !== undefined),
+    String(headers['User-Agent'] !== undefined));
+  return headers;
 }
 
 export function buildDownloadTargetFilePath(directoryUri?: string, fileName?: string): string | undefined {
@@ -208,6 +228,7 @@ export function buildDownloadTargetFilePath(directoryUri?: string, fileName?: st
 
 export class DownloadService {
   private taskHandles: Map<string, DownloadServiceTaskHandle> = new Map();
+  private agentTaskHandles: Map<string, AgentDownloadTaskHandle> = new Map();
   private arkWebHandles: Map<string, ArkWebDownloadHandle> = new Map();
   private pendingArkWebItems: Map<string, webview.WebDownloadItem> = new Map();
   private arkWebTaskIdByGuid: Map<string, string> = new Map();
@@ -317,6 +338,11 @@ export class DownloadService {
     const origin = getDownloadOrigin(requestInfo.sourceUrl);
     const imageDownload = isImageDownloadRequest(requestInfo);
     this.interruptedImageFallbacks.delete(browserTaskId);
+    hilog.info(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+      'REQUEST_BEGIN task=%{public}s origin=%{public}s image=%{public}s sourceLength=%{public}d fileNameLength=%{public}d targetPresent=%{public}s',
+      browserTaskId, origin, String(imageDownload), requestInfo.sourceUrl.length,
+      requestInfo.fileName?.length ?? 0,
+      String((requestInfo.downloadFileUri ?? '').trim().length > 0));
     try {
       if (isDataImageUrl(requestInfo.sourceUrl)) {
         const savedPath = this.saveDataImage(hostContext, requestInfo);
@@ -341,6 +367,19 @@ export class DownloadService {
       };
       const targetFilePath = buildDownloadTargetFilePath(requestInfo.downloadDirectoryUri, requestInfo.fileName);
       const selectedFileUri = (requestInfo.downloadFileUri ?? '').trim();
+      const userFilePath = selectedFileUri.length > 0 ? selectedFileUri : (targetFilePath ?? '');
+      if (isUserFilePath(userFilePath)) {
+        await this.startUserFileDownload(
+          browserTaskId,
+          hostContext,
+          requestInfo,
+          userFilePath,
+          headers,
+          callbacks,
+          origin,
+        );
+        return;
+      }
       if (selectedFileUri.length > 0) {
         config.filePath = selectedFileUri;
       } else if (targetFilePath) {
@@ -355,6 +394,9 @@ export class DownloadService {
         String(headers['User-Agent'] !== undefined)
       );
       downloadTask = await request.downloadFile(hostContext as never, config);
+      hilog.info(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+        'REQUEST_TASK_CREATED task=%{public}s origin=%{public}s image=%{public}s',
+        browserTaskId, origin, String(imageDownload));
     } catch (error) {
       hilog.error(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
         'REQUEST_START_FAILED task=%{public}s origin=%{public}s error=%{public}s',
@@ -390,6 +432,9 @@ export class DownloadService {
       hilog.error(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
         'REQUEST_FAILED task=%{public}s origin=%{public}s code=%{public}d', browserTaskId, origin, code);
       const networkAvailable = this.isNetworkAvailable();
+      hilog.error(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+        'REQUEST_FAILED_DETAIL task=%{public}s image=%{public}s network=%{public}s',
+        browserTaskId, String(imageDownload), String(networkAvailable));
       if (networkAvailable) {
         this.taskHandles.delete(browserTaskId);
       }
@@ -404,6 +449,106 @@ export class DownloadService {
       }
       this.startImageFallback(browserTaskId, hostContext, requestInfo, callbacks, code);
     });
+  }
+
+  private async startUserFileDownload(
+    browserTaskId: string,
+    hostContext: object,
+    requestInfo: DownloadStartRequest,
+    targetPath: string,
+    headers: Record<string, string>,
+    callbacks: DownloadServiceCallbacks,
+    origin: string,
+  ): Promise<void> {
+    const config: request.agent.Config = {
+      action: request.agent.Action.DOWNLOAD,
+      url: requestInfo.sourceUrl,
+      title: requestInfo.fileName,
+      description: requestInfo.pageTitle ?? '网页下载',
+      mode: request.agent.Mode.FOREGROUND,
+      overwrite: true,
+      method: 'GET',
+      headers: headers,
+      saveas: targetPath,
+      metered: true,
+      roaming: true,
+    };
+    hilog.info(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+      'AGENT_START task=%{public}s origin=%{public}s targetPresent=%{public}s',
+      browserTaskId, origin, String(targetPath.length > 0));
+    let task: request.agent.Task;
+    try {
+      task = await request.agent.create(hostContext as never, config);
+    } catch (error) {
+      hilog.error(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+        'AGENT_CREATE_FAILED task=%{public}s origin=%{public}s error=%{public}s',
+        browserTaskId, origin, getSafeErrorSummary(error as Object));
+      throw new Error(String(error));
+    }
+
+    const handle: AgentDownloadTaskHandle = {
+      task: task,
+      callbacks: callbacks,
+      path: targetPath,
+      origin: origin,
+    };
+    this.agentTaskHandles.set(browserTaskId, handle);
+    let agentErrorCode: number = -1;
+    task.on('faultOccur', (fault: request.agent.Faults) => {
+      agentErrorCode = Number(fault);
+      hilog.error(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+        'AGENT_FAULT task=%{public}s origin=%{public}s code=%{public}d',
+        browserTaskId, origin, agentErrorCode);
+    });
+    task.on('progress', (progress: request.agent.Progress) => {
+      const receivedBytes = Math.max(0, progress.processed);
+      const totalBytes = progress.sizes.length > progress.index
+        ? Math.max(0, progress.sizes[progress.index])
+        : 0;
+      const percentComplete = totalBytes > 0
+        ? Math.min(100, Math.max(0, Math.floor((receivedBytes * 100) / totalBytes)))
+        : undefined;
+      this.safeInvoke(() => callbacks.onProgress?.(receivedBytes, totalBytes, percentComplete));
+    });
+    task.on('completed', () => {
+      hilog.info(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+        'AGENT_COMPLETE task=%{public}s origin=%{public}s', browserTaskId, origin);
+      this.agentTaskHandles.delete(browserTaskId);
+      this.safeInvoke(() => callbacks.onComplete?.(targetPath));
+    });
+    task.on('pause', () => {
+      this.safeInvoke(() => callbacks.onPause?.());
+    });
+    task.on('failed', () => {
+      hilog.error(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+        'AGENT_FAILED task=%{public}s origin=%{public}s code=%{public}d',
+        browserTaskId, origin, agentErrorCode);
+      // Keep a failed task while the network is unavailable so a later
+      // resume can continue through the agent instead of starting from zero.
+      if (this.isNetworkAvailable()) {
+        this.agentTaskHandles.delete(browserTaskId);
+      }
+      this.safeInvoke(() => callbacks.onFail?.(agentErrorCode));
+    });
+    task.on('remove', () => {
+      this.agentTaskHandles.delete(browserTaskId);
+      this.safeInvoke(() => callbacks.onRemove?.());
+    });
+    try {
+      await task.start();
+      hilog.info(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+        'AGENT_TASK_STARTED task=%{public}s origin=%{public}s', browserTaskId, origin);
+    } catch (error) {
+      this.agentTaskHandles.delete(browserTaskId);
+      try {
+        await request.agent.remove(task.tid);
+      } catch (_) {
+      }
+      hilog.error(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+        'AGENT_START_FAILED task=%{public}s origin=%{public}s error=%{public}s',
+        browserTaskId, origin, getSafeErrorSummary(error as Object));
+      throw new Error(String(error));
+    }
   }
 
   async cancel(browserTaskId: string): Promise<void> {
@@ -431,6 +576,16 @@ export class DownloadService {
     }
     if (this.resumedHttpHandles.has(browserTaskId)) {
       this.stopResumedHttp(browserTaskId);
+      return;
+    }
+    const agentHandle = this.agentTaskHandles.get(browserTaskId);
+    if (agentHandle) {
+      this.agentTaskHandles.delete(browserTaskId);
+      try {
+        await request.agent.remove(agentHandle.task.tid);
+      } catch (error) {
+        throw new Error(String(error));
+      }
       return;
     }
     const handle = this.taskHandles.get(browserTaskId);
@@ -465,6 +620,15 @@ export class DownloadService {
       this.stopResumedHttp(browserTaskId);
       return;
     }
+    const agentHandle = this.agentTaskHandles.get(browserTaskId);
+    if (agentHandle) {
+      try {
+        await agentHandle.task.pause();
+      } catch (error) {
+        throw new Error(String(error));
+      }
+      return;
+    }
     const handle = this.taskHandles.get(browserTaskId);
     if (!handle) {
       return;
@@ -495,6 +659,11 @@ export class DownloadService {
       this.stopResumedHttp(browserTaskId);
       return;
     }
+    const agentHandle = this.agentTaskHandles.get(browserTaskId);
+    if (agentHandle) {
+      await agentHandle.task.pause();
+      return;
+    }
     const handle = this.taskHandles.get(browserTaskId);
     if (!handle) {
       return;
@@ -510,6 +679,20 @@ export class DownloadService {
       } catch (error) {
         this.clearArkWebHandle(arkWebHandle.guid);
         throw new Error(String(error));
+      }
+      return true;
+    }
+    const agentHandle = this.agentTaskHandles.get(browserTaskId);
+    if (agentHandle) {
+      try {
+        await agentHandle.task.resume();
+      } catch (error) {
+        try {
+          await agentHandle.task.start();
+        } catch (_) {
+          this.agentTaskHandles.delete(browserTaskId);
+          throw new Error(String(error));
+        }
       }
       return true;
     }
@@ -558,7 +741,7 @@ export class DownloadService {
         );
       } catch (error) {
         if (!String(error).includes('range response ignored')) {
-          throw error;
+          throw new Error(String(error));
         }
         savedPath = await this.downloadHttpFileWithRange(
           browserTaskId,
@@ -575,7 +758,7 @@ export class DownloadService {
         this.interruptedResumedHttp.delete(browserTaskId);
         return;
       }
-      throw error;
+      throw new Error(String(error));
     }
   }
 
@@ -854,6 +1037,10 @@ export class DownloadService {
   private downloadHttpImage(browserTaskId: string, hostContext: object, requestInfo: DownloadStartRequest,
     headers: Record<string, string>, callbacks: DownloadServiceCallbacks): Promise<string> {
     const target = this.openImageDownloadTarget(hostContext, requestInfo);
+    hilog.info(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+      'IMAGE_HTTP_BEGIN task=%{public}s origin=%{public}s targetReady=%{public}s cookie=%{public}s referer=%{public}s',
+      browserTaskId, getDownloadOrigin(requestInfo.sourceUrl), String(target.path.length > 0),
+      String(headers['Cookie'] !== undefined), String(headers['Referer'] !== undefined));
     const httpRequest = http.createHttp();
     this.imageFallbackHandles.set(browserTaskId, {
       request: httpRequest,
@@ -875,11 +1062,16 @@ export class DownloadService {
         this.closeImageTarget(target.fd);
         this.destroyHttpRequest(httpRequest);
         if (writeError) {
+          hilog.error(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+            'IMAGE_HTTP_WRITE_FAILED task=%{public}s error=%{public}s',
+            browserTaskId, getSafeErrorSummary(writeError));
           this.removeDownloadTarget(target.path);
           reject(writeError);
           return;
         }
         if (responseCode < 200 || responseCode >= 300) {
+          hilog.error(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+            'IMAGE_HTTP_REJECTED task=%{public}s code=%{public}d', browserTaskId, responseCode);
           if (this.isNetworkAvailable()) {
             this.removeDownloadTarget(target.path);
           }
@@ -919,9 +1111,14 @@ export class DownloadService {
         .then((code: number) => {
           responseCode = code;
           responseReady = true;
+          hilog.info(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+            'IMAGE_HTTP_RESPONSE task=%{public}s code=%{public}d', browserTaskId, code);
           finish();
         })
         .catch((error: Error) => {
+          hilog.error(DOWNLOAD_LOG_DOMAIN, DOWNLOAD_LOG_TAG,
+            'IMAGE_HTTP_REQUEST_FAILED task=%{public}s error=%{public}s',
+            browserTaskId, getSafeErrorSummary(error));
           if (settled) {
             return;
           }
