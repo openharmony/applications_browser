@@ -714,9 +714,11 @@ export struct SettingsPage {
   }
 
   private getActiveContentMaxWidth(): number {
-    // The about design uses the full content pane while other sections stay readable.
-    return this.activeSectionId === 'about' ? Math.max(1, this.viewportWidth) :
-      SettingsLayoutPolicy.getContentMaxWidth();
+    const navigationWidth = this.showPersistentSidebar()
+      ? SettingsLayoutPolicy.getNavigationWidth(this.useCompactSidebar())
+      : 0;
+    const availableWidth = this.viewportWidth - navigationWidth - this.getContentPadding() * 2;
+    return SettingsLayoutPolicy.getContentMaxWidth(availableWidth);
   }
 
   @Builder

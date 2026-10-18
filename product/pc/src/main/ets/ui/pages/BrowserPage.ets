@@ -7955,8 +7955,8 @@ export struct BrowserPage {
             .padding({ right: 4 });
           }
           .width('100%')
-          .height(46)
-          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .height(52)
+          .padding({ left: 10, right: 10, top: 7, bottom: 7 })
           .backgroundColor(this.getToolbarBackgroundColor())
           .border({ width: { bottom: 1 }, color: this.getToolbarBorderColor() });
 
@@ -7996,7 +7996,7 @@ export struct BrowserPage {
             .padding({ left: 16, right: 16, top: 8, bottom: 8 })
             .backgroundColor('#ffffff')
             .border({ width: { bottom: 1 }, color: '#edf0f4' });
-          } else if (this.showBookmarkBar) {
+          } else if (this.showBookmarkBar && this.bookmarkBarItems.length > 0) {
             BookmarkBar({
               bookmarks: this.bookmarkBarItems,
               availableWidth: Math.max(0, this.viewportWidth - this.titleButtonAreaWidth - 20),

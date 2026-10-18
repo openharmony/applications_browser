@@ -7,6 +7,7 @@ export interface SettingsLayoutConfig {
   sidebarWidth: number;
   railWidth: number;
   drawerWidth: number;
+  /** 0 means the settings content follows the available width without a cap. */
   contentMaxWidth: number;
   compactContentPadding: number;
   contentPadding: number;
@@ -20,7 +21,7 @@ export const SETTINGS_LAYOUT_CONFIG: SettingsLayoutConfig = {
   sidebarWidth: 240,
   railWidth: 64,
   drawerWidth: 240,
-  contentMaxWidth: 800,
+  contentMaxWidth: 0,
   compactContentPadding: 16,
   contentPadding: 24,
 };
@@ -53,7 +54,9 @@ export class SettingsLayoutPolicy {
     return SETTINGS_LAYOUT_CONFIG.drawerWidth;
   }
 
-  static getContentMaxWidth(): number {
-    return SETTINGS_LAYOUT_CONFIG.contentMaxWidth;
+  static getContentMaxWidth(availableWidth: number): number {
+    const normalizedWidth = Math.max(1, availableWidth);
+    const configuredMaxWidth = SETTINGS_LAYOUT_CONFIG.contentMaxWidth;
+    return configuredMaxWidth > 0 ? Math.min(normalizedWidth, configuredMaxWidth) : normalizedWidth;
   }
 }
