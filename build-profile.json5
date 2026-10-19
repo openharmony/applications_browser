@@ -101,7 +101,6 @@
         {
           "name": "default",
           "applyToProducts": [
-            "default",
             "pc"
           ]
         }
