@@ -1,6 +1,8 @@
 // SearchEngineConfig：PC 产品默认搜索引擎配置。
 // 搜索引擎地址保存在 rawfile/search_engines.json，运行时注入管理器。
 
+import { util } from '@kit.ArkTS';
+
 export interface SearchEngineConfigEntry {
   id: string;
   name: string;
@@ -61,7 +63,7 @@ export class SearchEngineConfigProvider {
       throw new Error('search_engine_config_resource_manager_missing');
     }
     const data = await hostContext.resourceManager.getRawFileContent(SearchEngineConfigProvider.CONFIG_FILE);
-    const parsed = JSON.parse(SearchEngineConfigProvider.decodeAscii(data)) as SearchEngineConfig;
+    const parsed = JSON.parse(SearchEngineConfigProvider.decodeUtf8(data)) as SearchEngineConfig;
     const entries = Array.isArray(parsed.builtInEngines) ? parsed.builtInEngines : [];
     const validEntries: SearchEngineConfigEntry[] = entries.filter((entry: SearchEngineConfigEntry) => {
       return typeof entry.id === 'string' && entry.id.trim().length > 0 &&
@@ -84,11 +86,9 @@ export class SearchEngineConfigProvider {
     };
   }
 
-  private static decodeAscii(data: Uint8Array): string {
-    let text = '';
-    for (let index = 0; index < data.length; index++) {
-      text += String.fromCharCode(data[index]);
-    }
-    return text;
+  // rawfile 内容按 UTF-8 解码：json 内含中文搜索引擎名（如“百度”），
+  // 逐字节 String.fromCharCode 会把多字节 UTF-8 序列解码成乱码。
+  private static decodeUtf8(data: Uint8Array): string {
+    return util.TextDecoder.create('utf-8', { ignoreBOM: true }).decodeToString(data);
   }
 }
