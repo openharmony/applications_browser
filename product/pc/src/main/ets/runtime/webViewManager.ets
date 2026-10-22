@@ -1,12 +1,11 @@
-// WebViewManager: create and manage per-tab WebviewController instances and their JSBridge facades.
+// WebViewManager: create and manage isolated per-tab WebviewController instances.
 //
-// This file focuses on isolation: each tab should have its own controller + bridge instance.
+// Each tab owns its WebView and feature-specific media bridges.
 
 import webview from '@ohos.web.webview';
 import { AbilityConstant } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { TabId } from '../core/types';
-import { JSBridgeFacade, JSBridgeFacadeOptions } from './jsBridgeFacade';
 import { WebMicCaptureService } from '../integration/webMicCaptureService';
 import { TabMicBridge } from './tabMicMonitor';
 
@@ -20,7 +19,6 @@ export const WEB_RUNTIME_CRITICAL_MEMORY_LIMIT: number = 2;
 
 export interface WebRuntime {
   controller: webview.WebviewController;
-  jsBridge: JSBridgeFacade;
   micCapture: WebMicCaptureService;
   micBridge: TabMicBridge;
   downloadDelegate?: webview.WebDownloadDelegate;
@@ -37,42 +35,7 @@ export class WebViewManager {
   private memoryPressureLevel: AbilityConstant.MemoryLevel =
     AbilityConstant.MemoryLevel.MEMORY_LEVEL_MODERATE;
 
-  // SDK JS source should be loaded once (e.g. from rawfile) and reused for all tabs.
-  private sdkSource: string = '';
-  private bridgeDefaultsEnabled: boolean = false;
-  private bridgeDefaultsAutoExposeAliases: string[] = ['zz'];
-  private bridgeDefaultsOverrideExistingGlobals: boolean = false;
-  private bridgeDefaultsInvokerWaitTimeoutMs: number = 3000;
-  private bridgeDefaultsDefaultTimeoutMs: number = 10000;
-
-  setSdkSource(source: string): void {
-    this.sdkSource = source || '';
-    // Update existing runtimes.
-    this.runtimes.forEach(rt => rt.jsBridge.setSdkSource(this.sdkSource));
-  }
-
-  setBridgeDefaults(defaults: JSBridgeFacadeOptions): void {
-    if (!defaults) {
-      return;
-    }
-    if (typeof defaults.enabled === 'boolean') {
-      this.bridgeDefaultsEnabled = defaults.enabled;
-    }
-    if (Array.isArray(defaults.autoExposeAliases)) {
-      this.bridgeDefaultsAutoExposeAliases = defaults.autoExposeAliases;
-    }
-    if (typeof defaults.overrideExistingGlobals === 'boolean') {
-      this.bridgeDefaultsOverrideExistingGlobals = defaults.overrideExistingGlobals;
-    }
-    if (typeof defaults.invokerWaitTimeoutMs === 'number') {
-      this.bridgeDefaultsInvokerWaitTimeoutMs = Math.max(0, Math.floor(defaults.invokerWaitTimeoutMs));
-    }
-    if (typeof defaults.defaultTimeoutMs === 'number') {
-      this.bridgeDefaultsDefaultTimeoutMs = Math.max(0, Math.floor(defaults.defaultTimeoutMs));
-    }
-  }
-
-  getOrCreate(tabId: TabId, options?: JSBridgeFacadeOptions, protectedTabIds: string[] = []): WebRuntime {
+  getOrCreate(tabId: TabId, protectedTabIds: string[] = []): WebRuntime {
     const key = String(tabId);
     const existing = this.runtimes.get(key);
     if (existing) {
@@ -83,44 +46,12 @@ export class WebViewManager {
     this.prepareForCreate(key, protectedTabIds);
 
     const controller = new webview.WebviewController();
-    const effective: JSBridgeFacadeOptions = {
-      enabled: this.bridgeDefaultsEnabled,
-      autoExposeAliases: this.bridgeDefaultsAutoExposeAliases,
-      overrideExistingGlobals: this.bridgeDefaultsOverrideExistingGlobals,
-      invokerWaitTimeoutMs: this.bridgeDefaultsInvokerWaitTimeoutMs,
-      defaultTimeoutMs: this.bridgeDefaultsDefaultTimeoutMs,
-    };
-    if (options) {
-      if (typeof options.enabled === 'boolean') {
-        effective.enabled = options.enabled;
-      }
-      if (Array.isArray(options.autoExposeAliases)) {
-        effective.autoExposeAliases = options.autoExposeAliases;
-      }
-      if (typeof options.overrideExistingGlobals === 'boolean') {
-        effective.overrideExistingGlobals = options.overrideExistingGlobals;
-      }
-      if (Array.isArray(options.allowedHosts)) {
-        effective.allowedHosts = options.allowedHosts;
-      }
-      if (Array.isArray(options.capabilities)) {
-        effective.capabilities = options.capabilities;
-      }
-      if (typeof options.invokerWaitTimeoutMs === 'number') {
-        effective.invokerWaitTimeoutMs = Math.max(0, Math.floor(options.invokerWaitTimeoutMs));
-      }
-      if (typeof options.defaultTimeoutMs === 'number') {
-        effective.defaultTimeoutMs = Math.max(0, Math.floor(options.defaultTimeoutMs));
-      }
-    }
-    const jsBridge = new JSBridgeFacade(controller, effective);
-    jsBridge.setSdkSource(this.sdkSource);
     const micCapture = new WebMicCaptureService();
     const micBridge = new TabMicBridge(micCapture);
 
     const revision = (this.runtimeRevisionsByTabId.get(key) ?? 0) + 1;
     this.runtimeRevisionsByTabId.set(key, revision);
-    const rt: WebRuntime = { controller, jsBridge, micCapture, micBridge, revision };
+    const rt: WebRuntime = { controller, micCapture, micBridge, revision };
     this.runtimes.set(key, rt);
     this.touch(key);
     this.logState('RUNTIME_CREATED', key);

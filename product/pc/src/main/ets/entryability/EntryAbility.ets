@@ -11,7 +11,6 @@ import { SessionManager } from '../core/sessionManager';
 import { SettingsManager } from '../core/settingsManager';
 import { DownloadManager } from '../core/downloadManager';
 import { DownloadNetworkWatcher } from '../integration/downloadNetworkWatcher';
-import { ScriptStore } from '../runtime/scriptStore';
 import { SearchEngineConfigProvider } from '../core/searchEngineConfig';
 import {
   appLifecycleEvents,
@@ -38,32 +37,6 @@ export default class EntryAbility extends UIAbility {
       webview.WebviewController.initializeWebEngine();
     } catch (err) {
       hilog.error(DOMAIN, 'testTag', 'Failed to initialize web engine. Cause: %{public}s', JSON.stringify(err));
-    }
-
-    // Preload JSBridge SDK source from rawfile once and cache it for all tabs.
-    // Note: if this fails, JSBridge can still work when pages provide SDK themselves.
-    try {
-      // getRawFileContent is async; we do not block ability creation.
-      this.context.resourceManager.getRawFileContent('jsbridge/index.global.js')
-        .then((data: Uint8Array) => {
-          try {
-            // ASCII fast-path: zz-jsbridge-sdk dist is expected to be ASCII-only.
-            // If you bundle non-ASCII scripts later, replace with a proper UTF-8 decoder.
-            let text = '';
-            for (let i = 0; i < data.length; i++) {
-              text += String.fromCharCode(data[i]);
-            }
-            ScriptStore.setCachedJsBridgeSdk(text);
-            hilog.info(DOMAIN, 'JSBridge', 'Preloaded JSBridge SDK, bytes=%{public}d', data.length);
-          } catch (e) {
-            hilog.error(DOMAIN, 'JSBridge', 'Decode JSBridge SDK failed: %{public}s', JSON.stringify(e));
-          }
-        })
-        .catch((e: object) => {
-          hilog.error(DOMAIN, 'JSBridge', 'Load JSBridge SDK failed: %{public}s', JSON.stringify(e));
-        });
-    } catch (e) {
-      hilog.error(DOMAIN, 'JSBridge', 'Preload JSBridge SDK exception: %{public}s', JSON.stringify(e));
     }
 
     try {

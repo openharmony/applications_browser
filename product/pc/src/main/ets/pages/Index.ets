@@ -1,15 +1,10 @@
 import { BrowserPage } from '../ui/pages/BrowserPage';
-import { DevLauncherPage } from '../ui/pages/DevLauncherPage';
-import { OverlayPlaygroundPage } from '../ui/pages/OverlayPlaygroundPage';
 import { AppRoute, AppRouter } from '../core/appRouter';
-import { DebugGate } from '../core/debugGate';
 
 @Entry
 @Component
 struct Index {
-  @StorageLink('browserRoute') route: AppRoute = AppRouter.getStartupRoute(
-    DebugGate.getInstance().shouldLaunchToDevLauncher()
-  );
+  @StorageLink('browserRoute') route: AppRoute = AppRouter.browser;
   // 启动时默认进入首页（新标签页），不预置要打开的 URL。
   @StorageLink('browserPendingUrl') pendingUrl: string = '';
   @StorageLink('browserPendingNewTabUrl') pendingNewTabUrl: string = '';
@@ -33,17 +28,6 @@ struct Index {
         .height('100%')
         .zIndex(0);
 
-      if (this.route === AppRouter.devLauncher) {
-        DevLauncherPage({ route: $route, pendingUrl: $pendingUrl })
-          .width('100%')
-          .height('100%')
-          .zIndex(1);
-      } else if (this.route === AppRouter.overlayPlayground) {
-        OverlayPlaygroundPage({ route: $route })
-          .width('100%')
-          .height('100%')
-          .zIndex(1);
-      }
     }
     .height('100%')
     .width('100%');

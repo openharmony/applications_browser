@@ -1,5 +1,4 @@
-// NativeEventBus: shared event emitters for propagating native-side lifecycle/system events
-// to the currently active WebView/JSBridge layer.
+// NativeEventBus: shared event emitters for application lifecycle and system events.
 //
 // Keep payloads small and JSON-serializable.
 
@@ -16,9 +15,7 @@ export interface AppLifecyclePayload {
 export const appLifecycleEvents = new EventEmitter<AppLifecyclePayload>();
 
 /**
- * System memory pressure notifications are emitted by EntryAbility and
- * consumed by BrowserPage. Keeping this channel separate from lifecycle
- * events avoids coupling the WebView manager to the ability implementation.
+ * EntryAbility emits memory pressure changes; BrowserPage adjusts live WebView runtimes.
  */
 export interface MemoryPressurePayload {
   level: AbilityConstant.MemoryLevel;

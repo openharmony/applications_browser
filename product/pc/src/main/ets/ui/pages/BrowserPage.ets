@@ -20,8 +20,6 @@ import { BrowserHome } from './BrowserHome';
 import { SettingsShellPage } from './SettingsShellPage';
 import { BrowserErrorPage } from '../components/BrowserErrorPage';
 import { BrowserPageViewModel, BrowserPageViewState } from '../viewmodels/BrowserPageViewModel';
-import { JSBridgeFacade, JSBridgeFacadeOptions } from '../../runtime/jsBridgeFacade';
-import { ScriptStore } from '../../runtime/scriptStore';
 import {
   appLifecycleEvents,
   AppLifecyclePayload,
@@ -29,7 +27,6 @@ import {
   MemoryPressurePayload,
   getCurrentMemoryPressureLevel,
 } from '../../runtime/nativeEventBus';
-import { JSBridgePolicyManager, JSBridgePolicy } from '../../runtime/jsBridgePolicyManager';
 import { WebRuntime, WebViewManager } from '../../runtime/webViewManager';
 import {
   TabMediaBridge,
@@ -44,7 +41,6 @@ import {
 import { WEB_MIC_GUM_POLYFILL } from '../../runtime/webMicGumPolyfill';
 import { AppliedCookieSettings, AppliedWebSettings, WebSettingsAdapter } from '../../runtime/webSettingsAdapter';
 import { AppRoute, AppRouter } from '../../core/appRouter';
-import { DebugGate } from '../../core/debugGate';
 import { BrowserSettings, SettingsManager } from '../../core/settingsManager';
 import { BrowserShortcutAction, ShortcutManager } from '../../core/shortcutManager';
 import { WindowManager } from '../../core/windowManager';
@@ -224,18 +220,10 @@ interface BookmarkEditFolderOption {
 
 @Component
 export struct BrowserPage {
-  private jsBridgeOptions: JSBridgeFacadeOptions = {
-    enabled: false, // browser-grade JSBridge should be off by default
-    autoExposeAliases: ['OHBridge'],
-    overrideExistingGlobals: false,
-  };
-
-  private jsBridgePolicy: JSBridgePolicyManager = JSBridgePolicyManager.getInstance();
   private webViewManager: WebViewManager = new WebViewManager();
   private shortcutManager: ShortcutManager = new ShortcutManager();
   private windowManager: WindowManager = WindowManager.getInstance();
   private viewModel: BrowserPageViewModel = new BrowserPageViewModel();
-  private debugGate: DebugGate = DebugGate.getInstance();
   private bookmarkManager: BookmarkManager = BookmarkManager.getInstance();
   private permissionManager: PermissionManager = PermissionManager.getInstance();
   private permissionService: PermissionService = new PermissionService();
@@ -1252,14 +1240,6 @@ export struct BrowserPage {
     if (p.state === 'background') {
       this.persistSession();
     }
-    // Emit app lifecycle events to H5 when JSBridge is enabled for the current page.
-    // Event names follow a simple convention: app:foreground / app:background.
-    // Standard event envelope: { ts, data }
-    const dataJson: string = `{"ts":${p.ts},"data":{"state":${JSON.stringify(p.state)}}}`;
-    const jsBridge = this.getActiveJsBridge();
-    if (jsBridge) {
-      jsBridge.emitEvent(`app:${p.state}`, dataJson);
-    }
   }
 
   private memoryPressureListener: (p: MemoryPressurePayload) => void = (p: MemoryPressurePayload) => {
@@ -1629,12 +1609,6 @@ export struct BrowserPage {
     this.applyBrowserSettingsChange(SettingsManager.getInstance().getSettings(), true);
     this.refreshBookmarkBarItems();
     this.refreshDownloadIndicator();
-
-    // Inject SDK source if preloaded by EntryAbility.
-    const sdk = ScriptStore.getCachedJsBridgeSdk();
-    if (sdk) {
-      this.webViewManager.setSdkSource(sdk);
-    }
 
     // Subscribe native lifecycle events.
     appLifecycleEvents.on(this.appLifecycleListener);
@@ -3150,13 +3124,6 @@ export struct BrowserPage {
     return this.viewState.tabs.find((tab: Tab) => String(tab.id) === String(tabId)) ?? null;
   }
 
-  private openDevLauncher(): void {
-    if (!this.debugGate.canOpenDevLauncher()) {
-      return;
-    }
-    this.navigateToRoute(AppRouter.devLauncher);
-  }
-
   private handleKeyEvent(event: KeyEvent): boolean {
     if (this.showJavaScriptDialog) {
       if (event.type !== KeyType.Down) {
@@ -4586,11 +4553,6 @@ export struct BrowserPage {
       return;
     }
 
-    if (action.command === 'open_dev_launcher') {
-      this.openDevLauncher();
-      return;
-    }
-
     if (action.command === 'open_find_in_page') {
       this.openFindPanel();
       return;
@@ -5198,7 +5160,6 @@ export struct BrowserPage {
     }
     return this.webViewManager.getOrCreate(
       activeTabId,
-      this.jsBridgeOptions,
       this.getRuntimeProtectionIds(activeTabId),
     );
   }
@@ -5206,7 +5167,6 @@ export struct BrowserPage {
   private ensureRuntimeForTab(tabId: TabId): WebRuntime {
     return this.webViewManager.getOrCreate(
       tabId,
-      this.jsBridgeOptions,
       this.getRuntimeProtectionIds(tabId),
     );
   }
@@ -6177,13 +6137,6 @@ export struct BrowserPage {
       String(tabId),
       Date.now() + NAVIGATION_STATE_SETTLE_MS,
     );
-    const policy: JSBridgePolicy = this.jsBridgePolicy.resolve(event.url);
-    const jsBridge = runtime.jsBridge;
-    jsBridge.setEnabled(policy.enabled);
-    jsBridge.setAllowedHosts(policy.allowedHosts);
-    jsBridge.setCapabilityGateEnabled(policy.capabilityGateEnabled);
-    jsBridge.setCapabilities(policy.capabilities);
-    jsBridge.onPageBegin(event.url);
   }
 
   private handleTabPageEnd(tabId: TabId, runtime: WebRuntime, event: OnPageEndEvent): void {
@@ -6261,9 +6214,6 @@ export struct BrowserPage {
     // applyViewState() already schedules a delayed native history refresh.
     // Reading here as well is prone to observing the pre-navigation list and
     // briefly reverting the state just committed by PageBegin/PageEnd.
-
-    const jsBridge = runtime.jsBridge;
-    jsBridge.onPageEnd(event.url);
 
     if (this.isActiveTabId(tabId)) {
       this.reapplyPageRuntimeVisualState();
@@ -7138,10 +7088,6 @@ export struct BrowserPage {
 
   private getActiveController(): webview.WebviewController | null {
     return this.getActiveRuntime()?.controller ?? null;
-  }
-
-  private getActiveJsBridge(): JSBridgeFacade | null {
-    return this.getActiveRuntime()?.jsBridge ?? null;
   }
 
   private shouldRenderTabWeb(tab: Tab): boolean {

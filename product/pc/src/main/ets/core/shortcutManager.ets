@@ -27,7 +27,6 @@ export type BrowserShortcutCommand =
   'open_bookmarks' |
   'open_history' |
   'open_downloads' |
-  'open_dev_launcher' |
   'open_find_in_page' |
   'find_next' |
   'find_previous' |
