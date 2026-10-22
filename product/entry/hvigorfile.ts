@@ -1,4 +1,5 @@
 import { hapTasks } from '@ohos/hvigor-ohos-plugin';
+import { hvigor } from '@ohos/hvigor';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -10,22 +11,7 @@ const REMOVED_SYSCAPS = new Set([
 ]);
 
 function getRequestedProduct(): string | undefined {
-  for (let index = 0; index < process.argv.length; index++) {
-    const argument = process.argv[index];
-    if (argument.startsWith('product=')) {
-      return argument.substring('product='.length);
-    }
-    if (argument.startsWith('--product=')) {
-      return argument.substring('--product='.length);
-    }
-    if (argument === '--product' && index + 1 < process.argv.length) {
-      const nextArgument = process.argv[index + 1];
-      return nextArgument.startsWith('product=')
-        ? nextArgument.substring('product='.length)
-        : nextArgument;
-    }
-  }
-  return undefined;
+  return hvigor.getParameter().getExtParam('product');
 }
 
 function shouldPruneRpcidSyscaps(): boolean {
