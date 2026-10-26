@@ -1,0 +1,15 @@
+{
+  "fallbackEngineId": "baidu",
+  "builtInEngines": [
+    {
+      "id": "baidu",
+      "name": "百度",
+      "searchUrlTemplate": "https://www.baidu.com/s?wd={query}"
+    },
+    {
+      "id": "so360",
+      "name": "360 搜索",
+      "searchUrlTemplate": "https://www.so.com/s?q={query}"
+    }
+  ]
+}

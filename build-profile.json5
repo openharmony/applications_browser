@@ -22,6 +22,14 @@
         "compatibleSdkVersion": 23,
         "targetSdkVersion": 23,
         "runtimeOS": "OpenHarmony"
+      },
+      {
+        "name": "pc",
+        "signingConfig": "default",
+        "compileSdkVersion": "26.0.0",
+        "compatibleSdkVersion": 23,
+        "targetSdkVersion": 23,
+        "runtimeOS": "OpenHarmony"
       }
     ],
     "buildModeSet": [
@@ -82,6 +90,18 @@
           "name": "default",
           "applyToProducts": [
             "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "pc",
+      "srcPath": "./product/pc",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "pc"
           ]
         }
       ]
