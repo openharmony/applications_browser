@@ -255,8 +255,15 @@ export class AppStateSync {
     AppStorage.setOrCreate(AppStorageKeys.THEME_REV, 0)
     AppStorage.setOrCreate(AppStorageKeys.DARK_MODE_PICKER_VISIBLE, false)
     AppStorage.setOrCreate(AppStorageKeys.SCAN_QR_VISIBLE, false)
-    AppStorage.setOrCreate(AppStorageKeys.SAFE_AREA_TOP, 0)
-    AppStorage.setOrCreate(AppStorageKeys.SAFE_AREA_BOTTOM, 0)
+    // SAFE_AREA_TOP/BOTTOM 是窗口运行时状态，由 BrowserWindowService 在窗口绑定/避让区变化时写入。
+    // 这里只在缺失时补默认 0，避免 initUiDefaults 晚于 bindWindow 的 syncAvoidArea，
+    // 把已同步的状态栏/导航条避让值覆盖为 0（会导致搜索框压状态栏）。
+    if (AppStorage.get<number>(AppStorageKeys.SAFE_AREA_TOP) === undefined) {
+      AppStorage.setOrCreate(AppStorageKeys.SAFE_AREA_TOP, 0)
+    }
+    if (AppStorage.get<number>(AppStorageKeys.SAFE_AREA_BOTTOM) === undefined) {
+      AppStorage.setOrCreate(AppStorageKeys.SAFE_AREA_BOTTOM, 0)
+    }
     AppStorage.setOrCreate(AppStorageKeys.FONT_SIZE, 'system')
     AppStorage.setOrCreate(AppStorageKeys.FONT_UI_REV, 0)
     AppStorage.setOrCreate(AppStorageKeys.FONT_UI_SCALE, 1)
