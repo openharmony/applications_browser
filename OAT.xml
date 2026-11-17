@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <oatconfig>
+        <filefilterlist>
+            <filefilter name="defaultFilter" desc="Files not to check">
+                <filteritem
+                    type="filepath"
+                    name="product/pc/src/main/resources/base/media/.*.png"
+                    desc="PC端运行时所需的自研图标、应用图标和背景图片资源。" />
+                <filteritem
+                        type="filepath"
+                        name="product/pad/src/main/resources/base/media/.*.png"
+                        desc="Pad端运行时所需的自研图标、应用图标和背景图片资源。" />
+            </filefilter>
+            <filefilter name="binaryFileTypePolicyFilter" desc="Filters for binary file policies">
+                <filteritem
+                    type="filepath"
+                    name="product/pc/src/main/resources/base/media/.*.png"
+                    desc="PC端运行时所需的自研图片资源。" />
+                <filteritem
+                        type="filepath"
+                        name="product/pad/src/main/resources/base/media/.*.png"
+                        desc="Pad端运行时所需的自研图片资源。" />
+            </filefilter>
+        </filefilterlist>
+    </oatconfig>
+</configuration>
